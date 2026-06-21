@@ -70,13 +70,15 @@ async function main(): Promise<void> {
   const { doc, audio } = await loadScene(args.file);
   const audioPath = args.audio ?? audio;
 
+  const physics = await maybePhysics(doc);
+
   if (args.still) {
-    await renderStill(doc, args.frame, args.still);
+    await renderStill(doc, args.frame, args.still, { physics });
+    physics?.dispose();
     console.log(`✓ still frame ${args.frame} → ${args.still}`);
     return;
   }
 
-  const physics = await maybePhysics(doc);
   const t0 = Date.now();
   const res = await renderToVideo(doc, {
     output: args.output,
