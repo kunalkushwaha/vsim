@@ -43,6 +43,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
 
+  examples/03-beat-sync:
+    dependencies:
+      '@vsim/authoring':
+        specifier: workspace:*
+        version: link:../../packages/authoring
+      '@vsim/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
   packages/authoring:
     dependencies:
       '@vsim/core':

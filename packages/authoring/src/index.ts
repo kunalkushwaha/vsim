@@ -170,3 +170,30 @@ export class SceneBuilder {
 export function scene(meta: MetaInput): SceneBuilder {
   return new SceneBuilder(meta);
 }
+
+/** Beat onsets as FRAME indices for a constant tempo — the unit that keeps audio-reactive
+ * motion reproducible (frame-locked, not wall-clock). */
+export function beatsFromBPM(bpm: number, fps: number, durationFrames: number): number[] {
+  const framesPerBeat = (60 / bpm) * fps;
+  const beats: number[] = [];
+  for (let f = 0; f < durationFrames; f += framesPerBeat) beats.push(Math.round(f));
+  return beats;
+}
+
+/** Build scale-pulse keyframes that pop on each beat frame and decay back. Deterministic
+ * because beats are frame indices, so the render matches the preview exactly. */
+export function pulseKeyframes(
+  beats: number[],
+  opts: { base?: number; peak?: number; release?: number } = {},
+): { frame: number; value: number[]; easing: string }[] {
+  const base = opts.base ?? 1;
+  const peak = opts.peak ?? 1.4;
+  const release = opts.release ?? 8;
+  const kfs: { frame: number; value: number[]; easing: string }[] = [];
+  if (beats[0] !== 0) kfs.push({ frame: 0, value: [base, base, base], easing: "linear" });
+  for (const fb of beats) {
+    kfs.push({ frame: fb, value: [peak, peak, peak], easing: "easeOut" });
+    kfs.push({ frame: fb + release, value: [base, base, base], easing: "easeOut" });
+  }
+  return kfs.sort((a, b) => a.frame - b.frame);
+}
