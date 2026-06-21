@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+.turbo/
+.DS_Store
+coverage/
+out/
+*.mp4
+*.webm
+!test/**/*.png

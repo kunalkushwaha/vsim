@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Video Framework — Concept Deck</title>
+<style>
+  :root{
+    --bg:#0c0e14; --bg2:#11141d; --card:#161a26; --line:#252b3b;
+    --ink:#e8ebf5; --mut:#9aa3bd; --dim:#646d88;
+    --acc:#6c7bff; --acc2:#22d3ee; --hot:#ff6b9d; --warn:#ffb454; --ok:#4ade80;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(120% 120% at 80% -10%,#1a1f33 0%,var(--bg) 55%);
+    color:var(--ink);font-family:var(--sans);overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  .deck{height:100vh;width:100vw;position:relative}
+  .slide{
+    position:absolute;inset:0;display:none;flex-direction:column;
+    justify-content:center;padding:6vh 8vw;animation:fade .45s ease;
+  }
+  .slide.active{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  .kicker{font-family:var(--mono);font-size:.8rem;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--acc2);margin-bottom:1.1rem}
+  h1{font-size:clamp(2.2rem,5.6vw,4.2rem);line-height:1.04;font-weight:800;
+    letter-spacing:-.02em}
+  h2{font-size:clamp(1.7rem,3.6vw,2.7rem);line-height:1.1;font-weight:750;
+    letter-spacing:-.015em;margin-bottom:.4rem}
+  .grad{background:linear-gradient(110deg,var(--acc),var(--acc2) 60%,var(--hot));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--mut);font-size:clamp(1rem,1.7vw,1.4rem);margin-top:1.3rem;
+    max-width:60ch;line-height:1.55}
+  .lead{font-size:clamp(1.05rem,1.5vw,1.25rem);color:var(--ink);max-width:62ch;
+    line-height:1.6}
+
+  ul{list-style:none;margin-top:1.6rem;display:flex;flex-direction:column;gap:.85rem}
+  li{display:flex;gap:.8rem;align-items:flex-start;font-size:clamp(.98rem,1.5vw,1.25rem);
+    color:var(--ink);line-height:1.45}
+  li .b{color:var(--acc);font-family:var(--mono);font-weight:700;flex:none}
+  li small{color:var(--mut);font-weight:400}
+
+  .grid{display:grid;gap:1rem;margin-top:1.8rem}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:1.2rem 1.3rem}
+  .card h3{font-size:1.05rem;margin-bottom:.45rem;letter-spacing:-.01em}
+  .card p{color:var(--mut);font-size:.92rem;line-height:1.5}
+  .card .tag{font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--acc2);display:block;margin-bottom:.55rem}
+  .card.bad .tag{color:var(--hot)} .card.good .tag{color:var(--ok)}
+  .card.warn .tag{color:var(--warn)}
+
+  .num{font-family:var(--mono);font-size:1.6rem;font-weight:700;color:var(--acc);
+    margin-bottom:.5rem;display:block}
+
+  pre{background:#0a0c12;border:1px solid var(--line);border-radius:14px;
+    padding:1.4rem 1.6rem;margin-top:1.6rem;font-family:var(--mono);
+    font-size:clamp(.72rem,1.05vw,.95rem);line-height:1.55;color:#cfd6f0;
+    overflow:auto;white-space:pre}
+  pre .c{color:var(--acc2)} pre .d{color:var(--dim)} pre .h{color:var(--hot)}
+
+  .pill{display:inline-block;font-family:var(--mono);font-size:.74rem;
+    padding:.28rem .7rem;border:1px solid var(--line);border-radius:999px;
+    color:var(--mut);margin:.3rem .3rem 0 0}
+  .pill.on{color:var(--bg);background:var(--acc);border-color:var(--acc);font-weight:700}
+
+  .phase{display:flex;gap:1rem;margin-top:1.8rem}
+  .phase .p{flex:1;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:1.1rem;position:relative;overflow:hidden}
+  .phase .p::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+    background:var(--acc)}
+  .phase .p:nth-child(2)::before{background:var(--acc2)}
+  .phase .p:nth-child(3)::before{background:var(--warn)}
+  .phase .p:nth-child(4)::before{background:var(--hot)}
+  .phase h4{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dim);margin-bottom:.5rem}
+  .phase strong{display:block;font-size:1rem;margin-bottom:.5rem}
+  .phase p{color:var(--mut);font-size:.85rem;line-height:1.45}
+
+  .foot{position:fixed;bottom:18px;left:0;right:0;display:flex;
+    justify-content:space-between;align-items:center;padding:0 28px;
+    font-family:var(--mono);font-size:.72rem;color:var(--dim);pointer-events:none}
+  .dots{display:flex;gap:7px;pointer-events:auto}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--line);cursor:pointer;
+    transition:.2s}
+  .dot.on{background:var(--acc);transform:scale(1.25)}
+  .bar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--acc),var(--acc2));
+    transition:width .35s ease;z-index:10}
+  .hint{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:.72rem;color:var(--dim)}
+  .quote{font-family:var(--mono);color:var(--acc2);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="deck" id="deck">
+
+  <!-- 1: TITLE -->
+  <section class="slide active">
+    <div class="kicker">Concept Deck · 2026</div>
+    <h1>A web-native engine for<br><span class="grad">3D animation &amp; short video</span></h1>
+    <p class="sub">Create and simulate 3D animation in the browser — fed by Blender/glTF
+    assets, edited live, rendered at scale. One project ships as both a video and a live embed.</p>
+    <div style="margin-top:2rem">
+      <span class="pill on">Open-core</span>
+      <span class="pill on">Developers first</span>
+      <span class="pill">Deterministic</span>
+      <span class="pill">AI copilot</span>
+    </div>
+  </section>
+
+  <!-- 2: PITCH -->
+  <section class="slide">
+    <div class="kicker">The one-liner</div>
+    <h1>“<span class="grad">Remotion for real 3D</span>.”</h1>
+    <p class="lead" style="margin-top:1.6rem">A code-first, <b>deterministic</b> 3D engine that
+    <b>exports short videos</b> <i>and</i> <b>embeds live interactive scenes</b> from the same
+    project — with real simulation and an AI copilot. Open-core, developers first.</p>
+    <p class="sub">A pitch a developer and an investor both understand in one sentence.</p>
+  </section>
+
+  <!-- 3: THE GAP -->
+  <section class="slide">
+    <div class="kicker">Why now · the gap</div>
+    <h2>Everyone proved a piece. Nobody owns the middle.</h2>
+    <div class="grid g4">
+      <div class="card bad"><span class="tag">Remotion</span><p><b>Proved:</b> code → video is a category.<br><b>Misses:</b> 2D React-DOM only. No real 3D or simulation.</p></div>
+      <div class="card bad"><span class="tag">Spline / Theatre.js</span><p><b>Proved:</b> web 3D editing + timelines.<br><b>Misses:</b> weak sim, video export, AI, data scale.</p></div>
+      <div class="card bad"><span class="tag">Blender</span><p><b>Proved:</b> full 3D power.<br><b>Misses:</b> desktop-only, steep, no web/embed/scale.</p></div>
+      <div class="card bad"><span class="tag">Runway / AI video</span><p><b>Proved:</b> text → video is magic.<br><b>Misses:</b> no scene graph, no determinism, no precision.</p></div>
+    </div>
+    <p class="sub">The wedge: <b style="color:var(--ink)">controllable, reproducible, code-defined 3D
+    that ships as both video and live embed.</b></p>
+  </section>
+
+  <!-- 4: AUDIENCES -->
+  <section class="slide">
+    <div class="kicker">Strategy · one engine, four surfaces</div>
+    <h2>Layered platform — served in sequence, not at once</h2>
+    <ul>
+      <li><span class="b">1 →</span><div><b>Developers</b> · core SDK / code API &nbsp;<small>← FIRST WEDGE</small></div></li>
+      <li><span class="b">2 →</span><div><b>Designers / motion artists</b> · visual timeline editor on the SDK</div></li>
+      <li><span class="b">3 →</span><div><b>Non-technical creators</b> · templates + AI + simple controls</div></li>
+      <li><span class="b">4 →</span><div><b>End-users on a site</b> · embeddable, configurable widgets</div></li>
+    </ul>
+    <p class="sub">The Figma / Remotion / Supabase pattern: engine → editor → templates → embeds.
+    <br><span class="quote">Model: open-source engine + paid cloud editor &amp; server rendering.</span></p>
+  </section>
+
+  <!-- 5: ARCHITECTURE -->
+  <section class="slide">
+    <div class="kicker">Architecture</div>
+    <h2>Three authoring modes → one document → two outputs</h2>
+<pre>   <span class="c">Timeline UI</span>     <span class="c">Code (R3F / DSL)</span>     <span class="c">AI copilot</span>
+        └──────────────┬──────────────┘
+                       ▼
+        ┌──────────────────────────────┐
+        │   <span class="h">CANONICAL SCENE DOCUMENT</span>    │  <span class="d">single source of truth (JSON/DSL)</span>
+        └───────────────┬──────────────┘
+                        ▼
+        ┌──────────────────────────────┐
+        │   <span class="h">DETERMINISTIC RUNTIME</span>       │  <span class="d">fixed timestep · seeded RNG</span>
+        │   <span class="d">Three.js + Rapier (v1)</span>      │  <span class="d">engine behind thin interface</span>
+        └───────┬───────────────┬───────┘
+                ▼               ▼
+        <span class="c">LIVE EMBED</span>        <span class="c">HEADLESS RENDER</span> → ffmpeg → <span class="h">MP4</span>
+                ▲
+        <span class="d">Blender / glTF assets feed in (source, not runtime)</span></pre>
+  </section>
+
+  <!-- 6: THE BETS -->
+  <section class="slide">
+    <div class="kicker">The three core bets</div>
+    <h2>What makes it hard is what makes it defensible</h2>
+    <div class="grid g3">
+      <div class="card good">
+        <span class="num">01</span><h3>One canonical document</h3>
+        <p>Timeline, code, and AI all read/write the <b>same</b> serializable scene. Must round-trip.
+        The moat — and the hardest UX problem (the Webflow↔code problem).</p>
+      </div>
+      <div class="card good">
+        <span class="num">02</span><h3>Determinism is the game</h3>
+        <p>Video + interactive + N personalized variants + simulation ⇒ fixed timestep, seeded RNG.
+        <b>preview == final render == every variant.</b> Rapier is deterministic by design.</p>
+      </div>
+      <div class="card good">
+        <span class="num">03</span><h3>Same engine, two modes</h3>
+        <p>Real-time loop for the embed; deterministic frame-stepping for export. One codebase —
+        no second renderer, no “render surprise.”</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7: STACK -->
+  <section class="slide">
+    <div class="kicker">Stack decision</div>
+    <h2>Three.js + Rapier now — WebGPU core later</h2>
+    <div class="grid g2">
+      <div class="card">
+        <span class="tag">v1 runtime</span>
+        <h3>Three.js + Rapier</h3>
+        <p>Largest dev community + React-Three-Fiber (perfect for code authoring). Rapier is
+        Rust/WASM and <b>deterministic by design</b>. Fastest path to a working SDK for your
+        first wedge: developers.</p>
+      </div>
+      <div class="card">
+        <span class="tag">the future-proofing</span>
+        <h3>Thin engine interface</h3>
+        <p>Keep the scene document &amp; public API independent of the renderer. Later swap in a
+        <b>custom WebGPU compute core</b> for GPU particles/fluids — without breaking user scenes.</p>
+      </div>
+    </div>
+    <p class="sub">Babylon.js = strong runner-up (more batteries) but loses on the dev-ecosystem
+    dimension that <i>is</i> the wedge. Audio is core: map <b>beats → frame numbers</b> so
+    audio-reactive motion stays reproducible.</p>
+  </section>
+
+  <!-- 8: MVP -->
+  <section class="slide">
+    <div class="kicker">MVP · the magic moment</div>
+    <h2><span class="grad">Code → Video.</span> The developer “aha.”</h2>
+    <p class="lead" style="margin-top:1rem">Write a small 3D scene in code, with physics. Hit render.
+    Get an MP4 with real 3D + <b>deterministic simulation</b>.</p>
+    <div class="grid g2" style="margin-top:1.5rem">
+      <div class="card good"><span class="tag">v0.1 must-haves</span>
+        <p>✓ Canonical scene document (v0)<br>✓ Deterministic fixed-timestep loop + seeded RNG<br>
+        ✓ R3F-style declarative API<br>✓ Rapier physics<br>✓ glTF import<br>✓ Headless render → ffmpeg → MP4<br>✓ Audio track attached</p>
+      </div>
+      <div class="card bad"><span class="tag">explicitly NOT v0.1</span>
+        <p>✗ Visual editor<br>✗ Multiplayer<br>✗ Templates / marketplace<br>✗ GPU particle core<br>
+        ✗ Characters / skeletal<br>✗ AI (Phase 1)<br><br><b>Hold the line</b> — small team, months horizon.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9: ROADMAP -->
+  <section class="slide">
+    <div class="kicker">Roadmap</div>
+    <h2>From “code → video” to a platform</h2>
+    <div class="phase">
+      <div class="p"><h4>Phase 0 · MVP</h4><strong>Code → Video</strong>
+        <p>Scene doc + deterministic Three.js+Rapier runtime + code API + headless MP4.</p></div>
+      <div class="p"><h4>Phase 1</h4><strong>AI + Assets + Audio</strong>
+        <p>AI copilot (prompt→doc, schema-constrained), glTF pipeline + library, beat-sync + TTS.</p></div>
+      <div class="p"><h4>Phase 2</h4><strong>Editor + Cloud</strong>
+        <p>Visual timeline on the document. Cloud render service — first revenue.</p></div>
+      <div class="p"><h4>Phase 3</h4><strong>Scale</strong>
+        <p>Templates/verticals, WebGPU particle core, characters/mocap, collaboration.</p></div>
+    </div>
+    <p class="sub">Simulation order: physics → particles → procedural/data → characters (hardest).</p>
+  </section>
+
+  <!-- 10: RISKS -->
+  <section class="slide">
+    <div class="kicker">Top risks · open questions</div>
+    <h2>What can sink it</h2>
+    <div class="grid g2">
+      <div class="card warn"><span class="tag">Architecture</span><h3>Code ↔ timeline round-trip</h3><p>The hardest UX problem. Decide the source-of-truth model early — don’t naively two-way sync.</p></div>
+      <div class="card warn"><span class="tag">Cost / COGS</span><h3>Headless GPU rendering</h3><p>This is both the cost center and the monetization hook. Validate the render pipeline early.</p></div>
+      <div class="card warn"><span class="tag">Determinism</span><h3>Cross-platform floats</h3><p>Mitigated by running finals through the same pipeline; still verify Rapier reproducibility.</p></div>
+      <div class="card warn"><span class="tag">Discipline</span><h3>Scope creep</h3><p>4 audiences × 4 use cases × 4 sim types = a platform, not an MVP. Hold at “code → video.”</p></div>
+    </div>
+  </section>
+
+  <!-- 11: CLOSE -->
+  <section class="slide">
+    <div class="kicker">Next step</div>
+    <h1>Build the <span class="grad">code → video</span> demo.<br>Everything else follows.</h1>
+    <p class="sub">One canonical document. One deterministic runtime. Two outputs. Win developers
+    first, then layer the editor, AI, and templates on top of an engine that already works.</p>
+    <p class="quote" style="margin-top:1.8rem">Full notes: CONCEPT.md</p>
+  </section>
+
+</div>
+
+<div class="bar" id="progress"></div>
+<div class="foot">
+  <div class="dots" id="dots"></div>
+  <div id="count">1 / 11</div>
+</div>
+<div class="hint">← → / Space to navigate · F fullscreen</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const dots=document.getElementById('dots');
+  const count=document.getElementById('count');
+  const bar=document.getElementById('bar');
+  let i=0;
+  slides.forEach((_,n)=>{const d=document.createElement('div');d.className='dot';
+    d.onclick=()=>go(n);dots.appendChild(d);});
+  const dotEls=[...dots.children];
+  function go(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    dotEls.forEach((d,k)=>d.classList.toggle('on',k===i));
+    count.textContent=(i+1)+' / '+slides.length;
+    bar.style.width=((i)/(slides.length-1)*100)+'%';
+  }
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight',' ','PageDown'].includes(e.key)){e.preventDefault();go(i+1);}
+    if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();go(i-1);}
+    if(e.key==='Home')go(0); if(e.key==='End')go(slides.length-1);
+    if(e.key.toLowerCase()==='f'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
+  });
+  let sx=0;
+  document.addEventListener('touchstart',e=>sx=e.touches[0].clientX,{passive:true});
+  document.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;
+    if(Math.abs(dx)>50)go(i+(dx<0?1:-1));},{passive:true});
+  go(0);
+</script>
+</body>
+</html>

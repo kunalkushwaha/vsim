@@ -1,0 +1,29 @@
+{
+  "name": "vsim-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A web-native, deterministic 3D animation & short-video framework. Code → video.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "render": "tsx packages/cli/src/index.ts render",
+    "example:cube": "tsx examples/01-cube/scene.ts",
+    "example:physics": "tsx examples/02-physics/scene.ts",
+    "example:beat": "tsx examples/03-beat-sync/scene.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
