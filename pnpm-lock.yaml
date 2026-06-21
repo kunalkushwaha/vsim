@@ -52,6 +52,24 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
 
+  examples/04-gltf:
+    dependencies:
+      '@vsim/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
+      '@vsim/authoring':
+        specifier: workspace:*
+        version: link:../../packages/authoring
+      '@vsim/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
+  packages/assets:
+    dependencies:
+      '@vsim/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/authoring:
     dependencies:
       '@vsim/core':
@@ -124,6 +142,9 @@ importers:
 
   packages/render:
     dependencies:
+      '@vsim/assets':
+        specifier: workspace:*
+        version: link:../assets
       '@vsim/core':
         specifier: workspace:*
         version: link:../core

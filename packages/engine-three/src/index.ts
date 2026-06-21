@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {
   tessellate,
-  type Engine, type FrameState, type SceneDocument, type ResolvedLight, type Geometry,
+  type Engine, type FrameState, type SceneDocument, type ResolvedLight, type Geometry, type MeshData,
 } from "@vsim/core";
 
 export interface ThreeEngineOptions {
@@ -76,10 +76,16 @@ export class ThreeEngine implements Engine {
     this.scene.add(this.lightObjs.ambient);
   }
 
-  /** Replace a node's geometry with loaded glTF mesh data. */
-  setGeometry(nodeId: string, geom: THREE.BufferGeometry): void {
+  /** Inject loaded mesh data (e.g. a glTF model) for a node. */
+  loadMesh(nodeId: string, data: MeshData): void {
     const mesh = this.meshes.get(nodeId);
-    if (mesh) mesh.geometry = geom;
+    if (!mesh) return;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(data.positions, 3));
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(data.normals, 3));
+    g.setIndex(data.indices);
+    mesh.geometry.dispose();
+    mesh.geometry = g;
   }
 
   private buildGeometry(geo: Geometry): THREE.BufferGeometry {

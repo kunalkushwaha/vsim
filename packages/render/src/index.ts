@@ -6,9 +6,22 @@ import {
   type Engine, type PhysicsAdapter, type SceneDocument,
 } from "@vsim/core";
 import { SoftwareEngine } from "@vsim/engine-software";
+import { loadGltf } from "@vsim/assets";
 import { encodePNG } from "./png.js";
 
 export { encodePNG } from "./png.js";
+
+/** Load any glTF assets referenced by gltf-geometry nodes and inject them into the engine. */
+async function loadAssets(doc: SceneDocument, engine: Engine): Promise<void> {
+  if (!engine.loadMesh) return;
+  const assets = new Map(doc.assets.map((a) => [a.id, a]));
+  for (const node of doc.nodes) {
+    if (node.mesh?.geometry.kind !== "gltf") continue;
+    const asset = assets.get(node.mesh.geometry.assetId);
+    if (!asset) throw new Error(`Missing asset '${node.mesh.geometry.assetId}' for node '${node.id}'`);
+    engine.loadMesh(node.id, await loadGltf(asset.uri));
+  }
+}
 
 export interface RenderOptions {
   output: string;
@@ -44,6 +57,7 @@ export async function renderToVideo(input: unknown, opts: RenderOptions): Promis
   const { doc, engine, runtime } = prepare(input, opts);
   await runtime.init();
   await engine.init(doc);
+  await loadAssets(doc, engine);
   await mkdir(dirname(opts.output), { recursive: true });
 
   const { width, height, fps, durationFrames } = doc.meta;
@@ -93,6 +107,7 @@ export async function renderStill(input: unknown, frame: number, output: string,
   const { doc, engine, runtime } = prepare(input, opts as RenderOptions);
   await runtime.init();
   await engine.init(doc);
+  await loadAssets(doc, engine);
   await mkdir(dirname(output), { recursive: true });
   // forward-step to the requested frame
   for (let f = 0; f <= frame; f++) engine.renderFrame(runtime.computeFrameState(f));

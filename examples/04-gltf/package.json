@@ -1,0 +1,14 @@
+{
+  "name": "@vsim/example-gltf",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "make-asset": "tsx make-asset.ts"
+  },
+  "dependencies": {
+    "@vsim/assets": "workspace:*",
+    "@vsim/authoring": "workspace:*",
+    "@vsim/core": "workspace:*"
+  }
+}

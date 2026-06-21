@@ -1,5 +1,6 @@
 import type { Mat4, Quat, Vec3 } from "./math.js";
 import type { Material, Light, Mesh, SceneDocument } from "./document.js";
+import type { MeshData } from "./geometry.js";
 
 /**
  * A renderer-agnostic frame snapshot produced by the runtime. World matrices are already
@@ -51,6 +52,8 @@ export interface Engine {
   renderFrame(state: FrameState): void;
   /** RGBA8, length width*height*4, row 0 = top of image. */
   readPixels(): Uint8ClampedArray;
+  /** Inject loaded mesh data for a node (e.g. a glTF model) before rendering. */
+  loadMesh?(nodeId: string, data: MeshData): void;
   dispose(): void;
 }
 

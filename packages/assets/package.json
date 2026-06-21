@@ -1,5 +1,5 @@
 {
-  "name": "@vsim/render",
+  "name": "@vsim/assets",
   "version": "0.1.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -10,12 +10,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vsim/core": "workspace:*",
-    "@vsim/engine-software": "workspace:*",
-    "@vsim/assets": "workspace:*"
-  },
-  "devDependencies": {
-    "@vsim/authoring": "workspace:*",
-    "@vsim/physics-rapier": "workspace:*"
+    "@vsim/core": "workspace:*"
   }
 }

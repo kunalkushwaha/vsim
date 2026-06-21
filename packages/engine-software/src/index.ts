@@ -38,7 +38,7 @@ export class SoftwareEngine implements Engine {
   }
 
   /** Inject mesh data for a node (e.g. a loaded glTF mesh). */
-  setMesh(nodeId: string, data: MeshData): void {
+  loadMesh(nodeId: string, data: MeshData): void {
     this.meshes.set(nodeId, data);
   }
 
