@@ -1,0 +1,68 @@
+import type { Mat4, Quat, Vec3 } from "./math.js";
+import type { Material, Light, Mesh, SceneDocument } from "./document.js";
+
+/**
+ * A renderer-agnostic frame snapshot produced by the runtime. World matrices are already
+ * resolved (animation + physics + hierarchy applied), so an Engine only has to draw.
+ */
+export interface ResolvedNode {
+  id: string;
+  worldMatrix: Mat4;
+  mesh?: Mesh;
+  light?: Light;
+  /** Resolved material for this node's mesh (after material animation), if any. */
+  material?: Material;
+}
+
+export interface ResolvedLight {
+  type: Light["type"];
+  color: Vec3;
+  intensity: number;
+  /** World position (point) or normalized direction (directional). */
+  position: Vec3;
+  direction: Vec3;
+}
+
+export interface ResolvedCamera {
+  viewMatrix: Mat4;
+  projMatrix: Mat4;
+  position: Vec3;
+}
+
+export interface FrameState {
+  frame: number;
+  time: number;
+  width: number;
+  height: number;
+  background: Vec3;
+  nodes: ResolvedNode[];
+  lights: ResolvedLight[];
+  camera: ResolvedCamera;
+}
+
+/**
+ * A renderer. The SAME engine instance drives both live preview (read into a canvas) and
+ * offline render (readPixels → encoder). Two output modes, one renderer.
+ */
+export interface Engine {
+  readonly width: number;
+  readonly height: number;
+  init(doc: SceneDocument): Promise<void> | void;
+  renderFrame(state: FrameState): void;
+  /** RGBA8, length width*height*4, row 0 = top of image. */
+  readPixels(): Uint8ClampedArray;
+  dispose(): void;
+}
+
+/**
+ * Deterministic physics backend (implemented by @vsim/physics-rapier). Stepped at a fixed
+ * sub-timestep by the runtime so results are reproducible across runs.
+ */
+export interface PhysicsAdapter {
+  init(doc: SceneDocument): Promise<void> | void;
+  step(dt: number): void;
+  /** World transforms for body-controlled nodes, keyed by nodeId. */
+  getTransforms(): Map<string, { position: Vec3; quaternion: Quat }>;
+  reset(): Promise<void> | void;
+  dispose(): void;
+}
