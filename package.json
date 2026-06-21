@@ -12,10 +12,12 @@
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
+    "lint": "node scripts/check-determinism.mjs",
     "render": "tsx packages/cli/src/index.ts render",
-    "example:cube": "tsx examples/01-cube/scene.ts",
-    "example:physics": "tsx examples/02-physics/scene.ts",
-    "example:beat": "tsx examples/03-beat-sync/scene.ts"
+    "example:cube": "tsx packages/cli/src/index.ts render examples/01-cube/scene.ts -o out/cube.mp4",
+    "example:physics": "tsx packages/cli/src/index.ts render examples/02-physics/scene.ts -o out/physics.mp4",
+    "example:beat": "tsx packages/cli/src/index.ts render examples/03-beat-sync/scene.ts -o out/beat.mp4",
+    "example:gltf": "tsx packages/cli/src/index.ts render examples/04-gltf/scene.ts -o out/gltf.mp4"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
