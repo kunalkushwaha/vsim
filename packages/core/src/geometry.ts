@@ -67,12 +67,29 @@ function sphere(r: number, seg: number): MeshData {
   return { positions, normals, indices };
 }
 
-/** Plane on the XZ ground plane, normal +Y, centered at origin. */
-function planeXZ([w, d]: [number, number]): MeshData {
+/**
+ * Plane on the XZ ground plane, normal +Y, centered at origin. Subdivided into a grid: the
+ * software renderer skips whole triangles that cross the camera near plane (no clipping), so
+ * a single huge quad would vanish — many small cells keep the visible region intact.
+ */
+function planeXZ([w, d]: [number, number], seg = 32): MeshData {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
   const hw = w / 2, hd = d / 2;
-  return {
-    positions: [-hw, 0, -hd, hw, 0, -hd, hw, 0, hd, -hw, 0, hd],
-    normals: [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0],
-    indices: [0, 2, 1, 0, 3, 2],
-  };
+  for (let i = 0; i <= seg; i++) {
+    for (let j = 0; j <= seg; j++) {
+      positions.push(-hw + (i / seg) * w, 0, -hd + (j / seg) * d);
+      normals.push(0, 1, 0);
+    }
+  }
+  const stride = seg + 1;
+  for (let i = 0; i < seg; i++) {
+    for (let j = 0; j < seg; j++) {
+      const a = i * stride + j;
+      const b = (i + 1) * stride + j;
+      indices.push(a, b, b + 1, a, b + 1, a + 1);
+    }
+  }
+  return { positions, normals, indices };
 }

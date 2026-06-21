@@ -22,6 +22,15 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9
 
+  examples/01-cube:
+    dependencies:
+      '@vsim/authoring':
+        specifier: workspace:*
+        version: link:../../packages/authoring
+      '@vsim/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
   packages/authoring:
     dependencies:
       '@vsim/core':
@@ -97,6 +106,10 @@ importers:
       '@vsim/engine-software':
         specifier: workspace:*
         version: link:../engine-software
+    devDependencies:
+      '@vsim/authoring':
+        specifier: workspace:*
+        version: link:../authoring
 
 packages:
 

@@ -50,6 +50,8 @@ export const LightSchema = z.object({
   type: z.enum(["ambient", "directional", "point"]),
   color: color.default([1, 1, 1]),
   intensity: z.number().default(1),
+  /** World-space direction a directional light travels (e.g. [0,-1,0] = straight down). */
+  direction: vec3.optional(),
 });
 
 export const NodeSchema = z.object({
@@ -139,6 +141,7 @@ export type Node = z.infer<typeof NodeSchema>;
 export type Mesh = z.infer<typeof MeshSchema>;
 export type Material = z.infer<typeof MaterialSchema>;
 export type Geometry = z.infer<typeof GeometrySchema>;
+export type GeometryInput = z.input<typeof GeometrySchema>;
 export type Light = z.infer<typeof LightSchema>;
 export type Track = z.infer<typeof TrackSchema>;
 export type Keyframe = z.infer<typeof KeyframeSchema>;

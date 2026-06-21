@@ -142,7 +142,9 @@ export class SceneRuntime {
           color: n.light.color,
           intensity: n.light.intensity,
           position: mat4.getTranslation(world),
-          direction: v3.normalize(mat4.transformDir(world, [0, 0, -1])),
+          direction: n.light.direction
+            ? v3.normalize(n.light.direction)
+            : v3.normalize(mat4.transformDir(world, [0, 0, -1])),
         });
       }
     }

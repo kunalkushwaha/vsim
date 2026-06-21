@@ -12,5 +12,8 @@
   "dependencies": {
     "@vsim/core": "workspace:*",
     "@vsim/engine-software": "workspace:*"
+  },
+  "devDependencies": {
+    "@vsim/authoring": "workspace:*"
   }
 }
