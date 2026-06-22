@@ -1,10 +1,7 @@
 {
-  "name": "@vsim/cli",
+  "name": "@vsim/ai",
   "version": "0.1.0",
   "type": "module",
-  "bin": {
-    "vsim": "./src/index.ts"
-  },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -15,22 +12,17 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vsim/ai": "workspace:*",
-    "@vsim/core": "workspace:*",
-    "@vsim/render": "workspace:*",
-    "@vsim/engine-software": "workspace:*",
-    "@vsim/authoring": "workspace:*",
-    "@vsim/physics-rapier": "workspace:*",
-    "tsx": "^4.19.2"
+    "@anthropic-ai/sdk": "^0.105.0",
+    "@vsim/core": "workspace:*"
   },
-  "description": "vsim command-line — render a code scene to a deterministic MP4.",
+  "description": "AI copilot for vsim — natural-language prompt → schema-constrained scene-document edits via Claude tool-use.",
   "license": "MIT",
   "author": "Kunal Kushwaha",
   "homepage": "https://github.com/kunalkushwaha/vsim#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kunalkushwaha/vsim.git",
-    "directory": "packages/cli"
+    "directory": "packages/ai"
   },
   "bugs": {
     "url": "https://github.com/kunalkushwaha/vsim/issues"
@@ -63,9 +55,6 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
       }
-    },
-    "bin": {
-      "vsim": "./dist/index.js"
     }
   }
 }

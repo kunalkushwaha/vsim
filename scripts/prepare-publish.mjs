@@ -19,6 +19,7 @@ const DESC = {
   player: "Browser real-time preview component for vsim scenes.",
   assets: "glTF/GLB asset pipeline (load + export) for vsim.",
   cli: "vsim command-line — render a code scene to a deterministic MP4.",
+  ai: "AI copilot for vsim — natural-language prompt → schema-constrained scene-document edits via Claude tool-use.",
 };
 
 const KEYWORDS = ["3d", "animation", "video", "webgl", "three.js", "deterministic", "rendering", "remotion", "vsim"];

@@ -73,7 +73,29 @@ pnpm showreel         # renders all examples → out/showreel.mp4
 | `@vsim/authoring` | Declarative builder API: code → scene document |
 | `@vsim/player` | Browser real-time preview component |
 | `@vsim/assets` | glTF/GLB asset pipeline (load + export) |
-| `@vsim/cli` | `vsim render scene.ts -o out.mp4` |
+| `@vsim/ai` | AI copilot: natural-language prompt → schema-constrained scene-document edits (Claude tool-use) |
+| `@vsim/cli` | `vsim render scene.ts -o out.mp4` · `vsim edit scene.ts --prompt "…"` |
+
+## AI copilot (preview)
+
+Edit a scene in natural language. The copilot turns your prompt into **schema-constrained
+edit operations** (Claude tool-use), grounded in the scene's existing objects — it can't
+emit invalid geometry — then applies them deterministically into a new scene document you
+can render like any other.
+
+```bash
+export ANTHROPIC_API_KEY=…
+vsim edit scene.ts --prompt "make the cube blue and add a point light" -o edited.scene.json
+vsim edit scene.ts --prompt "spin it twice as fast" --render out.mp4
+```
+
+The AI runs only at authoring time and produces a document — it never touches the render
+loop, so determinism is unaffected. Programmatically:
+
+```ts
+import { editScene } from "@vsim/ai";
+const { doc, operations, summary } = await editScene({ doc: scene, prompt: "add a red floor" });
+```
 
 ## Docs
 
@@ -99,9 +121,9 @@ Releasing is documented in [`RELEASING.md`](./RELEASING.md).
 ## Status
 
 **v0.1 — the open-source `code → video` SDK.** The runtime, renderer, physics, assets,
-audio, and player are built, tested, and deterministic in CI. Up next: an AI copilot
-(prompt → scene-document patches), a visual timeline editor, and cloud rendering — see
-[`PLAN.md`](./PLAN.md).
+audio, and player are built, tested, and deterministic in CI. **Phase 1 in progress:** the
+AI copilot (`@vsim/ai`, `vsim edit`) — prompt → schema-constrained scene-document edits.
+Next: a visual timeline editor and cloud rendering — see [`PLAN.md`](./PLAN.md).
 
 ## License
 
