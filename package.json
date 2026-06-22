@@ -8,7 +8,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "pnpm -r --filter \"./packages/*\" run build",
+    "clean": "pnpm -r --filter \"./packages/*\" exec rm -rf dist",
+    "build": "pnpm run clean && pnpm -r --filter \"./packages/*\" run build",
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -17,7 +18,9 @@
     "example:cube": "tsx packages/cli/src/index.ts render examples/01-cube/scene.ts -o out/cube.mp4",
     "example:physics": "tsx packages/cli/src/index.ts render examples/02-physics/scene.ts -o out/physics.mp4",
     "example:beat": "tsx packages/cli/src/index.ts render examples/03-beat-sync/scene.ts -o out/beat.mp4",
-    "example:gltf": "tsx packages/cli/src/index.ts render examples/04-gltf/scene.ts -o out/gltf.mp4"
+    "example:gltf": "tsx packages/cli/src/index.ts render examples/04-gltf/scene.ts -o out/gltf.mp4",
+    "showreel": "node scripts/build-showreel.mjs",
+    "release:dry": "pnpm build && pnpm -r --filter \"./packages/*\" publish --dry-run --no-git-checks"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

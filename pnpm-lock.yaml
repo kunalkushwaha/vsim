@@ -93,6 +93,9 @@ importers:
       '@vsim/render':
         specifier: workspace:*
         version: link:../render
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.4
 
   packages/core:
     dependencies:

@@ -1,9 +1,24 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env node
 import { readFile } from "node:fs/promises";
 import { resolve, extname } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseDocument, type PhysicsAdapter, type SceneDocument } from "@vsim/core";
 import { renderToVideo, renderStill } from "@vsim/render";
+
+/**
+ * Import a scene module. TypeScript scenes are compiled on the fly via tsx's
+ * programmatic API so the published CLI works under plain `node` (the dev loop
+ * already runs everything through tsx). `.js`/`.mjs` scenes import directly.
+ */
+// Loosely typed (like a dynamic import) — scene modules export arbitrary shapes.
+async function importScene(abs: string): Promise<any> {
+  const url = pathToFileURL(abs).href;
+  if (/\.tsx?$/.test(abs)) {
+    const { tsImport } = await import("tsx/esm/api");
+    return tsImport(url, import.meta.url);
+  }
+  return import(url);
+}
 
 interface Args {
   cmd: string;
@@ -33,7 +48,7 @@ async function loadScene(file: string): Promise<{ doc: SceneDocument; audio?: st
   if (extname(abs) === ".json") {
     return { doc: parseDocument(JSON.parse(await readFile(abs, "utf8"))) };
   }
-  const mod = await import(pathToFileURL(abs).href);
+  const mod = await importScene(abs);
   const exported = mod.default ?? mod.scene ?? mod.document;
   if (!exported) throw new Error(`${file} must export a scene (default export, or \`scene\`/\`document\`).`);
   const doc: SceneDocument = exported.version ? exported : parseDocument(exported);

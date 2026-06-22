@@ -4,7 +4,9 @@
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -15,5 +17,47 @@
   },
   "devDependencies": {
     "@types/three": "^0.171.0"
+  },
+  "description": "Three.js renderer adapter for vsim (GPU, high fidelity).",
+  "license": "MIT",
+  "author": "Kunal Kushwaha",
+  "homepage": "https://github.com/kunalkushwaha/vsim#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kunalkushwaha/vsim.git",
+    "directory": "packages/engine-three"
+  },
+  "bugs": {
+    "url": "https://github.com/kunalkushwaha/vsim/issues"
+  },
+  "keywords": [
+    "3d",
+    "animation",
+    "video",
+    "webgl",
+    "three.js",
+    "deterministic",
+    "rendering",
+    "remotion",
+    "vsim"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
   }
 }
