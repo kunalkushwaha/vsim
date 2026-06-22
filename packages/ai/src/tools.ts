@@ -151,6 +151,25 @@ export const EDIT_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+/**
+ * A compact textual description of the edit tools, for prompting models that take plain
+ * text (e.g. the `claude` CLI) instead of structured tool definitions. `*` marks required
+ * fields.
+ */
+export function toolsReference(): string {
+  return EDIT_TOOLS.map((t) => {
+    const schema = t.input_schema as {
+      properties?: Record<string, { type?: string; description?: string; enum?: string[] }>;
+      required?: string[];
+    };
+    const required = schema.required ?? [];
+    const fields = Object.entries(schema.properties ?? {})
+      .map(([k, v]) => `${k}${required.includes(k) ? "*" : ""} (${v.enum ? v.enum.join("|") : v.type ?? "any"})`)
+      .join(", ");
+    return `- ${t.name}: ${t.description}\n    input: ${fields || "(none)"}`;
+  }).join("\n");
+}
+
 /** Map a Claude tool_use block back to an EditOperation. Returns null for unknown tools. */
 export function toolUseToOperation(name: string, input: unknown): EditOperation | null {
   const i = input as Record<string, unknown>;

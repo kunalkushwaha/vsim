@@ -83,8 +83,11 @@ edit operations** (Claude tool-use), grounded in the scene's existing objects �
 emit invalid geometry — then applies them deterministically into a new scene document you
 can render like any other.
 
+It runs the LLM through the Anthropic SDK (`ANTHROPIC_API_KEY`) **or**, if no key is set,
+through the `claude` CLI (a Claude Code login) — so it works with whichever you have.
+
 ```bash
-export ANTHROPIC_API_KEY=…
+export ANTHROPIC_API_KEY=…            # optional — falls back to the `claude` CLI
 vsim edit scene.ts --prompt "make the cube blue and add a point light" -o edited.scene.json
 vsim edit scene.ts --prompt "spin it twice as fast" --render out.mp4
 ```

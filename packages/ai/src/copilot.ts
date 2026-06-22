@@ -3,6 +3,15 @@ import type { SceneDocument } from "@vsim/core";
 import { applyOperations, type EditOperation } from "./operations.js";
 import { EDIT_TOOLS, toolUseToOperation } from "./tools.js";
 import { summarizeScene } from "./summary.js";
+import { editViaClaudeCli } from "./claude-cli.js";
+
+/**
+ * Which backend drives the LLM call:
+ * - `"sdk"`        — the Anthropic SDK (needs ANTHROPIC_API_KEY).
+ * - `"claude-cli"` — the `claude` CLI in headless mode (uses a Claude Code login).
+ * - `"auto"`       — sdk when an API key/client is available, else claude-cli.
+ */
+export type Provider = "sdk" | "claude-cli" | "auto";
 
 const SYSTEM_PROMPT = `You are the editing copilot for vsim, a deterministic 3D animation framework. You translate a natural-language request into precise edits to a 3D scene.
 
@@ -26,6 +35,8 @@ export interface EditSceneOptions {
   /** Model id. Defaults to claude-opus-4-8. */
   model?: string;
   maxTokens?: number;
+  /** Which backend to use. Defaults to "auto". */
+  provider?: Provider;
 }
 
 export interface EditSceneResult {
@@ -35,6 +46,8 @@ export interface EditSceneResult {
   operations: EditOperation[];
   /** The model's one-line summary of what it changed. */
   summary: string;
+  /** Which backend produced the edits. */
+  provider: Exclude<Provider, "auto">;
 }
 
 function buildUserMessage(doc: SceneDocument, prompt: string): string {
@@ -57,23 +70,24 @@ function buildUserMessage(doc: SceneDocument, prompt: string): string {
  * deterministically and re-validated. The returned document can be rendered exactly like
  * any hand-authored one — the AI never participates in the deterministic render path.
  */
-export async function editScene(opts: EditSceneOptions): Promise<EditSceneResult> {
-  const client = opts.client ?? new Anthropic(opts.apiKey ? { apiKey: opts.apiKey } : {});
-  const model = opts.model ?? "claude-opus-4-8";
+function resolveProvider(opts: EditSceneOptions): Exclude<Provider, "auto"> {
+  if (opts.provider && opts.provider !== "auto") return opts.provider;
+  return opts.client || opts.apiKey || process.env.ANTHROPIC_API_KEY ? "sdk" : "claude-cli";
+}
 
+async function editViaSdk(opts: EditSceneOptions): Promise<{ operations: EditOperation[]; summary: string }> {
+  const client = opts.client ?? new Anthropic(opts.apiKey ? { apiKey: opts.apiKey } : {});
   const response = await client.messages.create({
-    model,
+    model: opts.model ?? "claude-opus-4-8",
     max_tokens: opts.maxTokens ?? 8000,
     thinking: { type: "adaptive" },
     system: SYSTEM_PROMPT,
     tools: EDIT_TOOLS,
     messages: [{ role: "user", content: buildUserMessage(opts.doc, opts.prompt) }],
   });
-
   if (response.stop_reason === "refusal") {
     throw new Error("The request was declined by the model's safety system.");
   }
-
   const operations: EditOperation[] = [];
   const textParts: string[] = [];
   for (const block of response.content) {
@@ -84,7 +98,16 @@ export async function editScene(opts: EditSceneOptions): Promise<EditSceneResult
       textParts.push(block.text);
     }
   }
+  return { operations, summary: textParts.join("\n").trim() };
+}
+
+export async function editScene(opts: EditSceneOptions): Promise<EditSceneResult> {
+  const provider = resolveProvider(opts);
+  const { operations, summary } =
+    provider === "claude-cli"
+      ? await editViaClaudeCli(opts.doc, opts.prompt, opts.model)
+      : await editViaSdk(opts);
 
   const doc = operations.length > 0 ? applyOperations(opts.doc, operations) : opts.doc;
-  return { doc, operations, summary: textParts.join("\n").trim() };
+  return { doc, operations, summary, provider };
 }

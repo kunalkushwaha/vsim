@@ -119,10 +119,10 @@ async function runEdit(args: Args): Promise<void> {
   const { doc: input } = await loadScene(args.file);
 
   process.stderr.write("  thinking…\n");
-  const { doc, operations, summary } = await editScene({ doc: input, prompt: args.prompt });
+  const { doc, operations, summary, provider } = await editScene({ doc: input, prompt: args.prompt });
 
   if (operations.length === 0) {
-    console.log("✗ The copilot proposed no edits.");
+    console.log(`✗ The copilot (${provider}) proposed no edits.`);
     return;
   }
 
@@ -130,7 +130,7 @@ async function runEdit(args: Args): Promise<void> {
   await mkdir(dirname(resolve(out)), { recursive: true });
   await writeFile(out, JSON.stringify(doc, null, 2));
 
-  console.log(`✓ ${operations.length} edit(s) → ${out}`);
+  console.log(`✓ ${operations.length} edit(s) via ${provider} → ${out}`);
   if (summary) console.log(`  ${summary}`);
   for (const op of operations) console.log(`    • ${op.op}${"id" in op && op.id ? ` ${op.id}` : "nodeId" in op ? ` ${op.nodeId}` : ""}`);
 
@@ -144,7 +144,7 @@ async function main(): Promise<void> {
   console.log(
     "Usage:\n" +
       "  vsim render <scene.ts|scene.json> [-o out.mp4] [--still frame.png --frame N] [--audio file]\n" +
-      '  vsim edit <scene.ts|scene.json> --prompt "..." [-o out.scene.json] [--render out.mp4]   (needs ANTHROPIC_API_KEY)',
+      '  vsim edit <scene.ts|scene.json> --prompt "..." [-o out.scene.json] [--render out.mp4]   (uses ANTHROPIC_API_KEY, or the claude CLI)',
   );
   process.exit(args.cmd ? 1 : 1);
 }
