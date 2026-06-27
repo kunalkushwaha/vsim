@@ -58,10 +58,14 @@ interface LightInput extends TransformInput {
 }
 
 interface CameraInput extends TransformInput {
+  /** Optional id, so shots and camera-animation tracks can reference this camera. */
+  id?: string;
   fov?: number;
   near?: number;
   far?: number;
   lookAt?: Vec3;
+  /** Aim at this node's world position every frame (a tracking shot). */
+  lookAtNodeId?: string;
 }
 
 type ColliderInput =
@@ -190,7 +194,51 @@ export class SceneBuilder {
 
   camera(c: CameraInput, id = "__camera"): this {
     this.node(id, c, {});
-    this.doc.camera = { nodeId: id, fov: c.fov, near: c.near, far: c.far, lookAt: c.lookAt };
+    this.doc.camera = { id: c.id, nodeId: id, fov: c.fov, near: c.near, far: c.far, lookAt: c.lookAt, lookAtNodeId: c.lookAtNodeId };
+    return this;
+  }
+
+  /** Add a named camera (for multi-shot scenes). Reference it from `shot()`. */
+  addCamera(id: string, c: CameraInput): this {
+    const nodeId = `__cam_${id}`;
+    this.node(nodeId, c, {});
+    this.doc.cameras = this.doc.cameras ?? [];
+    this.doc.cameras.push({ id, nodeId, fov: c.fov, near: c.near, far: c.far, lookAt: c.lookAt, lookAtNodeId: c.lookAtNodeId });
+    return this;
+  }
+
+  /** Film `[startFrame, endFrame]` (inclusive) with camera `cameraId` — a cut in the shot timeline. */
+  shot(cameraId: string, startFrame: number, endFrame: number): this {
+    this.doc.shots = this.doc.shots ?? [];
+    this.doc.shots.push({ cameraId, startFrame, endFrame });
+    return this;
+  }
+
+  /**
+   * Orbit preset: a named camera that circles `target` at `radius`/`height`, looking at it, over
+   * `[startFrame, endFrame]`. (Dolly/crane/track are just `addCamera` + `animate`/`lookAtNodeId`.)
+   */
+  orbit(
+    id: string,
+    opts: { target: Vec3; radius: number; height?: number; startFrame: number; endFrame: number; revolutions?: number; fov?: number; samples?: number },
+  ): this {
+    const nodeId = `__cam_${id}`;
+    const height = opts.height ?? opts.target[1];
+    const revolutions = opts.revolutions ?? 1;
+    const samples = opts.samples ?? 24;
+    this.node(nodeId, { position: [opts.target[0] + opts.radius, height, opts.target[2]] }, {});
+    this.doc.cameras = this.doc.cameras ?? [];
+    this.doc.cameras.push({ id, nodeId, fov: opts.fov, lookAt: opts.target });
+    const keyframes: Keyframes = [];
+    for (let s = 0; s <= samples; s++) {
+      const t = s / samples;
+      const ang = t * revolutions * 2 * Math.PI;
+      keyframes.push({
+        frame: Math.round(opts.startFrame + t * (opts.endFrame - opts.startFrame)),
+        value: [opts.target[0] + Math.cos(ang) * opts.radius, height, opts.target[2] + Math.sin(ang) * opts.radius],
+      });
+    }
+    this.doc.animation!.push({ target: { nodeId, path: "position" }, keyframes });
     return this;
   }
 
