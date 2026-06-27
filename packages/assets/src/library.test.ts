@@ -4,7 +4,7 @@ import { listCharacters, loadCharacter, loadVrm } from "./index.js";
 describe("character library", () => {
   it("lists the bundled characters", async () => {
     const ids = (await listCharacters()).map((c) => c.id).sort();
-    expect(ids).toEqual(["avatar", "figure", "fox", "human", "kid", "man", "person", "speaker", "suited"]);
+    expect(ids).toEqual(["avatar", "dog", "figure", "fox", "human", "kid", "man", "person", "speaker", "suited"]);
   });
 
   it("loads the MakeHuman-generated human (realistic rig + clip library + skin texture)", async () => {
@@ -66,6 +66,15 @@ describe("character library", () => {
     expect(mt[0]!.deltas).toHaveLength(rig.mesh.positions.length); // one xyz delta per vertex
     // a morph that does something: at least one vertex is actually displaced
     expect(mt[0]!.deltas.some((d) => Math.abs(d) > 1e-4)).toBe(true);
+  });
+
+  it("loads the procedural quadruped (multi-bone rig + walk/trot gaits)", async () => {
+    const { rig, meta } = await loadCharacter("dog", 30);
+    expect(meta.defaultClip).toBe("walk");
+    expect(rig.joints.length).toBeGreaterThan(8); // spine + neck/head + tail + four 2-bone legs
+    const clipIds = rig.clips.map((c) => c.id).sort();
+    expect(clipIds).toEqual(["trot", "walk"]);
+    expect(rig.mesh.joints).toBeDefined(); // skinned
   });
 
   it("loads the Blender-generated figure (rigged + walk clip)", async () => {

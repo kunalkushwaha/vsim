@@ -18,6 +18,7 @@ const CLIPS = [
   { name: "vrm", scene: "examples/16-vrm/scene.ts" },
   { name: "lipsync", scene: "examples/17-lipsync/scene.ts" },
   { name: "park", scene: "examples/18-park/scene.ts" },
+  { name: "dog", scene: "examples/19-dog/scene.ts" },
   { name: "manga", scene: "examples/09-manga/scene.ts" },
   { name: "fox", scene: "examples/06-fox/scene.ts" },
   { name: "gltf", scene: "examples/04-gltf/scene.ts" },
