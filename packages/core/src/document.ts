@@ -130,7 +130,9 @@ export const TrackSchema = z.object({
   target: z.object({
     nodeId: z.string().optional(),
     materialId: z.string().optional(),
-    /** Dot path, e.g. "position", "position.y", "rotation", "color". */
+    /** A camera (by id) — animate its "fov" (number) or "lookAt" (vec3). */
+    cameraId: z.string().optional(),
+    /** Dot path, e.g. "position", "position.y", "rotation", "color", "fov", "lookAt". */
     path: z.string(),
   }),
   keyframes: z.array(KeyframeSchema).min(1),
@@ -166,12 +168,23 @@ export const AudioSchema = z.object({
 });
 
 export const CameraSchema = z.object({
+  /** Optional name, referenced by shots and camera animation tracks. */
+  id: z.string().optional(),
   nodeId: z.string(),
   fov: z.number().default(50), // degrees
   near: z.number().default(0.1),
   far: z.number().default(1000),
   /** Optional explicit look-at target (world space). Else derived from node rotation. */
   lookAt: vec3.optional(),
+  /** Aim at this node's world position every frame (a tracking shot). Overrides `lookAt`. */
+  lookAtNodeId: z.string().optional(),
+});
+
+/** A segment of the timeline filmed by a given camera. Frames are inclusive. */
+export const ShotSchema = z.object({
+  cameraId: z.string(),
+  startFrame: z.number(),
+  endFrame: z.number(),
 });
 
 export const SceneDocumentSchema = z.object({
@@ -186,6 +199,10 @@ export const SceneDocumentSchema = z.object({
   physics: PhysicsSchema.optional(),
   audio: AudioSchema.optional(),
   camera: CameraSchema,
+  /** Additional named cameras (each needs an `id`); the active one per frame is chosen by `shots`. */
+  cameras: z.array(CameraSchema).default([]),
+  /** Camera timeline — which camera films each frame range. Empty = always the default `camera`. */
+  shots: z.array(ShotSchema).default([]),
 });
 
 export type SceneDocument = z.infer<typeof SceneDocumentSchema>;
@@ -204,6 +221,7 @@ export type Track = z.infer<typeof TrackSchema>;
 export type Keyframe = z.infer<typeof KeyframeSchema>;
 export type Body = z.infer<typeof BodySchema>;
 export type Camera = z.infer<typeof CameraSchema>;
+export type Shot = z.infer<typeof ShotSchema>;
 export type Asset = z.infer<typeof AssetSchema>;
 
 /** Validate + apply defaults. Throws a readable error on invalid input. */

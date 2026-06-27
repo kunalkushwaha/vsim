@@ -4,7 +4,7 @@ import { evaluateTrack } from "./animation.js";
 import { evaluateClip } from "./clip.js";
 import { mat4, quatFromEuler, v3, DEG2RAD } from "./math.js";
 import type { Mat4, Quat, Vec3 } from "./math.js";
-import type { Clip, Material, Node, SceneDocument, Skin } from "./document.js";
+import type { Camera, Clip, Material, Node, SceneDocument, Skin } from "./document.js";
 import type {
   FrameState,
   PhysicsAdapter,
@@ -74,6 +74,7 @@ export class SceneRuntime {
   private nodeMap = new Map<string, Node>();
   private skinMap = new Map<string, Skin>();
   private clipMap = new Map<string, Clip>();
+  private cameraById = new Map<string, Camera>();
 
   constructor(doc: SceneDocument, opts: { physics?: PhysicsAdapter } = {}) {
     this.doc = doc;
@@ -83,6 +84,8 @@ export class SceneRuntime {
     for (const n of doc.nodes) this.nodeMap.set(n.id, n);
     for (const s of doc.skins) this.skinMap.set(s.id, s);
     for (const c of doc.clips) this.clipMap.set(c.id, c);
+    for (const c of doc.cameras) if (c.id) this.cameraById.set(c.id, c);
+    if (doc.camera.id) this.cameraById.set(doc.camera.id, doc.camera);
   }
 
   async init(): Promise<void> {
@@ -133,6 +136,7 @@ export class SceneRuntime {
       }
     }
 
+    const cameraOverrides = new Map<string, { fov?: number; lookAt?: Vec3 }>();
     for (const track of this.doc.animation) {
       const value = evaluateTrack(track, frame);
       if (track.target.nodeId) {
@@ -141,6 +145,11 @@ export class SceneRuntime {
       } else if (track.target.materialId) {
         const mt = materials.get(track.target.materialId);
         if (mt) applyToMaterial(mt, track.target.path, value);
+      } else if (track.target.cameraId) {
+        const o = cameraOverrides.get(track.target.cameraId) ?? {};
+        if (track.target.path === "fov" && typeof value === "number") o.fov = value;
+        else if (track.target.path === "lookAt" && Array.isArray(value)) o.lookAt = [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0];
+        cameraOverrides.set(track.target.cameraId, o);
       }
     }
 
@@ -206,26 +215,46 @@ export class SceneRuntime {
       background: this.doc.meta.background,
       nodes,
       lights,
-      camera: this.resolveCamera(computeWorld),
+      camera: this.resolveCamera(frame, computeWorld, cameraOverrides),
     };
   }
 
-  private resolveCamera(computeWorld: (id: string) => Mat4): ResolvedCamera {
-    const cam = this.doc.camera;
+  /** The camera filming `frame` — the first matching shot's camera, else the default `camera`. */
+  private pickCamera(frame: number): Camera {
+    for (const shot of this.doc.shots) {
+      if (frame >= shot.startFrame && frame <= shot.endFrame) {
+        const c = this.cameraById.get(shot.cameraId);
+        if (c) return c;
+      }
+    }
+    return this.doc.camera;
+  }
+
+  private resolveCamera(
+    frame: number,
+    computeWorld: (id: string) => Mat4,
+    overrides: Map<string, { fov?: number; lookAt?: Vec3 }>,
+  ): ResolvedCamera {
+    const cam = this.pickCamera(frame);
+    const ov = (cam.id ? overrides.get(cam.id) : undefined) ?? {};
     const world = computeWorld(cam.nodeId);
     const position = mat4.getTranslation(world);
+
+    // Look-at target precedence: animated override → tracked node → static lookAt → node forward.
+    const target =
+      ov.lookAt ?? (cam.lookAtNodeId ? mat4.getTranslation(computeWorld(cam.lookAtNodeId)) : cam.lookAt);
     let viewMatrix: Mat4;
-    if (cam.lookAt) {
-      viewMatrix = mat4.lookAt(position, cam.lookAt, [0, 1, 0]);
+    if (target) {
+      viewMatrix = mat4.lookAt(position, target, [0, 1, 0]);
     } else {
-      const target = v3.add(position, v3.normalize(mat4.transformDir(world, [0, 0, -1])));
+      const fwd = v3.add(position, v3.normalize(mat4.transformDir(world, [0, 0, -1])));
       const up = v3.normalize(mat4.transformDir(world, [0, 1, 0]));
-      viewMatrix = mat4.lookAt(position, target, up);
+      viewMatrix = mat4.lookAt(position, fwd, up);
     }
     const aspect = this.doc.meta.width / this.doc.meta.height;
     return {
       viewMatrix,
-      projMatrix: mat4.perspective(cam.fov * DEG2RAD, aspect, cam.near, cam.far),
+      projMatrix: mat4.perspective((ov.fov ?? cam.fov) * DEG2RAD, aspect, cam.near, cam.far),
       position,
     };
   }
