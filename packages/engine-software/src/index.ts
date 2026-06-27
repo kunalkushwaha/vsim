@@ -32,8 +32,9 @@ function clipNear(poly: number[][]): number[][] {
     if (curIn) out.push(cur);
     if (curIn !== nxtIn) {
       const tParam = (W_NEAR - cur[3]!) / (nxt[3]! - cur[3]!);
-      const v = new Array<number>(7);
-      for (let k = 0; k < 7; k++) v[k] = cur[k]! + (nxt[k]! - cur[k]!) * tParam;
+      const n = cur.length; // [x,y,z,w, r,g,b] or [...,u,v] when textured
+      const v = new Array<number>(n);
+      for (let k = 0; k < n; k++) v[k] = cur[k]! + (nxt[k]! - cur[k]!) * tParam;
       out.push(v);
     }
   }
@@ -88,9 +89,14 @@ export class SoftwareEngine implements Engine {
       const cy = new Float64Array(vcount);
       const cz = new Float64Array(vcount);
       const cw = new Float64Array(vcount);
+      // For textured meshes cr/cg/cb hold the incident LIGHTING (white-material); the albedo is
+      // sampled per-pixel from the texture. Otherwise they hold the fully shaded Gouraud color.
       const cr = new Float64Array(vcount);
       const cg = new Float64Array(vcount);
       const cb = new Float64Array(vcount);
+      const textured = md.texture !== undefined && md.uvs !== undefined;
+      const cu = textured ? new Float64Array(vcount) : undefined;
+      const cv = textured ? new Float64Array(vcount) : undefined;
 
       // Skinned meshes deform per-vertex by blended joint matrices (CPU linear-blend skinning);
       // static meshes use the node's world matrix.
@@ -104,8 +110,14 @@ export class SoftwareEngine implements Engine {
         const wp4 = mat4.transformPoint(m, pos);
         const wp: Vec3 = [wp4[0], wp4[1], wp4[2]];
         const wn = v3.normalize(mat4.transformDir(m, nrm));
-        const col = shade(wp, wn, material, state.lights, toon);
-        cr[i] = col[0]; cg[i] = col[1]; cb[i] = col[2];
+        if (textured) {
+          const lit = lightingAt(wp, wn, state.lights, toon);
+          cr[i] = lit[0]; cg[i] = lit[1]; cb[i] = lit[2];
+          cu![i] = md.uvs![i * 2]!; cv![i] = md.uvs![i * 2 + 1]!;
+        } else {
+          const col = shade(wp, wn, material, state.lights, toon);
+          cr[i] = col[0]; cg[i] = col[1]; cb[i] = col[2];
+        }
 
         const clip = mat4.transformPoint(viewProj, wp);
         cx[i] = clip[0]; cy[i] = clip[1]; cz[i] = clip[2]; cw[i] = clip[3];
@@ -126,29 +138,47 @@ export class SoftwareEngine implements Engine {
         const ain = cw[a]! >= W_NEAR, bin = cw[b]! >= W_NEAR, cin = cw[c]! >= W_NEAR;
 
         if (ain && bin && cin) {
-          // Fully in front: project directly (bit-identical to the unclipped path).
-          this.fb.triangle(
-            project(a), [cr[a]!, cg[a]!, cb[a]!],
-            project(b), [cr[b]!, cg[b]!, cb[b]!],
-            project(c), [cr[c]!, cg[c]!, cb[c]!],
-          );
+          // Fully in front: project directly (untextured path is bit-identical to before).
+          if (textured) {
+            this.fb.triangleTextured(
+              project(a), [cr[a]!, cg[a]!, cb[a]!], [cu![a]!, cv![a]!],
+              project(b), [cr[b]!, cg[b]!, cb[b]!], [cu![b]!, cv![b]!],
+              project(c), [cr[c]!, cg[c]!, cb[c]!], [cu![c]!, cv![c]!],
+              md.texture!, material.emissive,
+            );
+          } else {
+            this.fb.triangle(
+              project(a), [cr[a]!, cg[a]!, cb[a]!],
+              project(b), [cr[b]!, cg[b]!, cb[b]!],
+              project(c), [cr[c]!, cg[c]!, cb[c]!],
+            );
+          }
           continue;
         }
         if (!ain && !bin && !cin) continue; // wholly behind the near plane
 
         // Straddles the near plane: clip to a polygon, then fan-triangulate the visible part.
-        const poly = clipNear([
-          [cx[a]!, cy[a]!, cz[a]!, cw[a]!, cr[a]!, cg[a]!, cb[a]!],
-          [cx[b]!, cy[b]!, cz[b]!, cw[b]!, cr[b]!, cg[b]!, cb[b]!],
-          [cx[c]!, cy[c]!, cz[c]!, cw[c]!, cr[c]!, cg[c]!, cb[c]!],
-        ]);
+        const vert = (i: number): number[] =>
+          textured
+            ? [cx[i]!, cy[i]!, cz[i]!, cw[i]!, cr[i]!, cg[i]!, cb[i]!, cu![i]!, cv![i]!]
+            : [cx[i]!, cy[i]!, cz[i]!, cw[i]!, cr[i]!, cg[i]!, cb[i]!];
+        const poly = clipNear([vert(a), vert(b), vert(c)]);
         for (let k = 1; k + 1 < poly.length; k++) {
           const v0 = poly[0]!, v1 = poly[k]!, v2 = poly[k + 1]!;
-          this.fb.triangle(
-            projectV(v0), [v0[4]!, v0[5]!, v0[6]!],
-            projectV(v1), [v1[4]!, v1[5]!, v1[6]!],
-            projectV(v2), [v2[4]!, v2[5]!, v2[6]!],
-          );
+          if (textured) {
+            this.fb.triangleTextured(
+              projectV(v0), [v0[4]!, v0[5]!, v0[6]!], [v0[7]!, v0[8]!],
+              projectV(v1), [v1[4]!, v1[5]!, v1[6]!], [v1[7]!, v1[8]!],
+              projectV(v2), [v2[4]!, v2[5]!, v2[6]!], [v2[7]!, v2[8]!],
+              md.texture!, material.emissive,
+            );
+          } else {
+            this.fb.triangle(
+              projectV(v0), [v0[4]!, v0[5]!, v0[6]!],
+              projectV(v1), [v1[4]!, v1[5]!, v1[6]!],
+              projectV(v2), [v2[4]!, v2[5]!, v2[6]!],
+            );
+          }
         }
       }
     }
@@ -200,6 +230,40 @@ function shade(worldPos: Vec3, n: Vec3, mat: Material, lights: ResolvedLight[], 
     r += mat.color[0] * light.color[0] * f;
     g += mat.color[1] * light.color[1] * f;
     b += mat.color[2] * light.color[2] * f;
+  }
+  return [r, g, b];
+}
+
+/** Incident lighting for a white material — the albedo (texture sample) is applied per-pixel. */
+function lightingAt(worldPos: Vec3, n: Vec3, lights: ResolvedLight[], toon = false): Vec3 {
+  let r = 0, g = 0, b = 0;
+  for (const light of lights) {
+    if (light.type === "ambient") {
+      r += light.color[0] * light.intensity;
+      g += light.color[1] * light.intensity;
+      b += light.color[2] * light.intensity;
+      continue;
+    }
+    if (light.type === "hemisphere") {
+      const f = n[1] * 0.5 + 0.5;
+      const sky = light.skyColor ?? [1, 1, 1];
+      const ground = light.groundColor ?? [0.3, 0.3, 0.3];
+      r += (ground[0] + (sky[0] - ground[0]) * f) * light.intensity;
+      g += (ground[1] + (sky[1] - ground[1]) * f) * light.intensity;
+      b += (ground[2] + (sky[2] - ground[2]) * f) * light.intensity;
+      continue;
+    }
+    const L =
+      light.type === "directional"
+        ? v3.scale(light.direction, -1)
+        : v3.normalize(v3.sub(light.position, worldPos));
+    let lambert = Math.max(v3.dot(n, L), 0);
+    if (toon) lambert = bandLambert(lambert);
+    const f = lambert * light.intensity;
+    if (f <= 0) continue;
+    r += light.color[0] * f;
+    g += light.color[1] * f;
+    b += light.color[2] * f;
   }
   return [r, g, b];
 }

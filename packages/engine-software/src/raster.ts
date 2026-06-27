@@ -1,4 +1,4 @@
-import { clamp, type Vec3 } from "@vsim/core";
+import { clamp, type Texture, type Vec3 } from "@vsim/core";
 
 /** A CPU framebuffer with a z-buffer and a barycentric triangle rasterizer. */
 export class Framebuffer {
@@ -125,6 +125,73 @@ export class Framebuffer {
       }
     }
   }
+
+  /**
+   * Textured triangle. Per vertex: screen [x,y,z], incident lighting `l` (white-material), and
+   * uv. Per pixel the albedo is sampled (bilinear) from `tex` and combined as
+   * `emissive + albedo*lighting`. UV is interpolated affinely (fine for dense meshes).
+   */
+  triangleTextured(
+    p0: [number, number, number], l0: Vec3, uv0: [number, number],
+    p1: [number, number, number], l1: Vec3, uv1: [number, number],
+    p2: [number, number, number], l2: Vec3, uv2: [number, number],
+    tex: Texture, emissive: Vec3,
+  ): void {
+    const { width, height, color, depth } = this;
+    const area = edge(p0[0], p0[1], p1[0], p1[1], p2[0], p2[1]);
+    if (area === 0) return;
+    const inv = 1 / area;
+    const minX = Math.max(0, Math.floor(Math.min(p0[0], p1[0], p2[0])));
+    const maxX = Math.min(width - 1, Math.ceil(Math.max(p0[0], p1[0], p2[0])));
+    const minY = Math.max(0, Math.floor(Math.min(p0[1], p1[1], p2[1])));
+    const maxY = Math.min(height - 1, Math.ceil(Math.max(p0[1], p1[1], p2[1])));
+
+    for (let y = minY; y <= maxY; y++) {
+      const py = y + 0.5;
+      for (let x = minX; x <= maxX; x++) {
+        const px = x + 0.5;
+        const w0 = edge(p1[0], p1[1], p2[0], p2[1], px, py) * inv;
+        const w1 = edge(p2[0], p2[1], p0[0], p0[1], px, py) * inv;
+        const w2 = edge(p0[0], p0[1], p1[0], p1[1], px, py) * inv;
+        if (!((w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 <= 0 && w1 <= 0 && w2 <= 0))) continue;
+
+        const z = w0 * p0[2] + w1 * p1[2] + w2 * p2[2];
+        const di = y * width + x;
+        if (z >= depth[di]!) continue;
+        depth[di] = z;
+
+        const u = w0 * uv0[0] + w1 * uv1[0] + w2 * uv2[0];
+        const v = w0 * uv0[1] + w1 * uv1[1] + w2 * uv2[1];
+        const [ar, ag, ab] = sampleAlbedo(tex, u, v); // linear albedo
+        const lr = w0 * l0[0] + w1 * l1[0] + w2 * l2[0];
+        const lg = w0 * l0[1] + w1 * l1[1] + w2 * l2[1];
+        const lb = w0 * l0[2] + w1 * l1[2] + w2 * l2[2];
+
+        const pi = di * 4;
+        color[pi] = encodeGamma(emissive[0] + ar * lr);
+        color[pi + 1] = encodeGamma(emissive[1] + ag * lg);
+        color[pi + 2] = encodeGamma(emissive[2] + ab * lb);
+        color[pi + 3] = 255;
+      }
+    }
+  }
+}
+
+/** Bilinear sample of a base-color texture → linear-RGB albedo (sRGB-decoded), repeat-wrapped. */
+function sampleAlbedo(tex: Texture, u: number, v: number): [number, number, number] {
+  const { width: w, height: h, data } = tex;
+  const fx = (u - Math.floor(u)) * w - 0.5;
+  const fy = (v - Math.floor(v)) * h - 0.5;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const tx = fx - x0, ty = fy - y0;
+  const wrap = (n: number, m: number) => ((n % m) + m) % m;
+  const sx0 = wrap(x0, w), sx1 = wrap(x0 + 1, w), sy0 = wrap(y0, h), sy1 = wrap(y0 + 1, h);
+  const ch = (o: number): number => {
+    const top = data[(sy0 * w + sx0) * 4 + o]! + (data[(sy0 * w + sx1) * 4 + o]! - data[(sy0 * w + sx0) * 4 + o]!) * tx;
+    const bot = data[(sy1 * w + sx0) * 4 + o]! + (data[(sy1 * w + sx1) * 4 + o]! - data[(sy1 * w + sx0) * 4 + o]!) * tx;
+    return Math.pow((top + (bot - top) * ty) / 255, 2.2); // sRGB → linear
+  };
+  return [ch(0), ch(1), ch(2)];
 }
 
 function edge(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
