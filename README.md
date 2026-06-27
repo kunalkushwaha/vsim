@@ -50,9 +50,10 @@ scene are byte-identical, and the live preview matches the headless render frame
 
 ## Examples & showreel
 
-Nine canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
+Ten canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
 beat-synced pulse, a procedural **walking character** filmed from three angles, a **kid playing
-soccer** (a hand-animated kick + a ball that launches), two rigged characters from the bundled
+soccer** (a hand-animated kick + a ball that launches), an original **cartoon puppy** (a
+procedural quadruped with a trot gait + waggy tail), two rigged characters from the bundled
 [character library](./packages/assets/library/CREDITS.md) — a **Fox** and a realistic **person** —
 loaded by name with `loadCharacter()` and **rendered with their real glTF textures** (PNG/JPEG
 base-color, sampled in the software renderer), and a **manga** scene (one-flag cel-shading +

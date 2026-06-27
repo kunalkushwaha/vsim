@@ -24,6 +24,7 @@
     "example:person": "tsx packages/cli/src/index.ts render examples/07-person/scene.ts -o out/person.mp4",
     "example:soccer": "tsx packages/cli/src/index.ts render examples/08-soccer/scene.ts -o out/soccer.mp4",
     "example:manga": "tsx packages/cli/src/index.ts render examples/09-manga/scene.ts -o out/manga.mp4",
+    "example:puppy": "tsx packages/cli/src/index.ts render examples/10-puppy/scene.ts -o out/puppy.mp4",
     "showreel": "node scripts/build-showreel.mjs",
     "docs:site": "node scripts/build-docs-site.mjs",
     "release:dry": "pnpm build && pnpm -r --filter \"./packages/*\" publish --dry-run --no-git-checks"
