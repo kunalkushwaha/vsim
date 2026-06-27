@@ -50,9 +50,10 @@ scene are byte-identical, and the live preview matches the headless render frame
 
 ## Examples & showreel
 
-Five canonical scenes live in [`examples/`](./examples) (cube, collapsing box stack,
-glTF model, beat-synced pulse, and a procedural **walking character** on grass under a blue
-sky — skeletal animation, no external assets). Render any of them, or build the montage:
+Six canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
+beat-synced pulse, a procedural **walking character** filmed from three angles (skeletal
+animation, no assets), and a downloaded **rigged glTF Fox** walking on grass (see
+[its credits](./examples/06-fox/CREDITS.md)). Render any of them, or build the montage:
 
 ```bash
 pnpm install

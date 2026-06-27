@@ -8,6 +8,7 @@ const CLIPS = [
   { name: "cube", scene: "examples/01-cube/scene.ts" },
   { name: "physics", scene: "examples/02-physics/scene.ts" },
   { name: "character", scene: "examples/05-character/scene.ts" },
+  { name: "fox", scene: "examples/06-fox/scene.ts" },
   { name: "gltf", scene: "examples/04-gltf/scene.ts" },
   { name: "beat", scene: "examples/03-beat-sync/scene.ts" },
 ];

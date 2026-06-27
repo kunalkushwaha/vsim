@@ -53,7 +53,9 @@ async function loadScene(file: string): Promise<{ doc: SceneDocument; audio?: st
     return { doc: parseDocument(JSON.parse(await readFile(abs, "utf8"))) };
   }
   const mod = await importScene(abs);
-  const exported = mod.default ?? mod.scene ?? mod.document;
+  let exported = mod.default ?? mod.scene ?? mod.document;
+  // Scenes that load assets (e.g. a glTF rig) export a Promise — await it.
+  if (exported && typeof exported.then === "function") exported = await exported;
   if (!exported) throw new Error(`${file} must export a scene (default export, or \`scene\`/\`document\`).`);
   const doc: SceneDocument = exported.version ? exported : parseDocument(exported);
   return { doc, audio: mod.audioPath };

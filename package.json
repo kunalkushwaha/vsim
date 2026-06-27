@@ -20,6 +20,7 @@
     "example:beat": "tsx packages/cli/src/index.ts render examples/03-beat-sync/scene.ts -o out/beat.mp4",
     "example:gltf": "tsx packages/cli/src/index.ts render examples/04-gltf/scene.ts -o out/gltf.mp4",
     "example:character": "tsx packages/cli/src/index.ts render examples/05-character/scene.ts -o out/character.mp4",
+    "example:fox": "tsx packages/cli/src/index.ts render examples/06-fox/scene.ts -o out/fox.mp4",
     "showreel": "node scripts/build-showreel.mjs",
     "docs:site": "node scripts/build-docs-site.mjs",
     "release:dry": "pnpm build && pnpm -r --filter \"./packages/*\" publish --dry-run --no-git-checks"
