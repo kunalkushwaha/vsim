@@ -39,8 +39,9 @@ guarantees determinism, and keeps the dev loop and CI trivial. The GPU path is a
 
 ## Consequences
 - The whole stack runs headless anywhere; GPU is opt-in, not required.
-- "Preview == server render == N variants" holds by construction, tested in CI.
+- "Preview == server render == N variants" holds by construction, tested in CI
+  (`render/parity.test.ts` scrubs the player and frame-hashes it against the offline render).
 - Trade-off: the software renderer is feature-limited (lambert, no shadows/AA). Acceptable:
   it's the reference/default; `engine-three` is the fidelity path when GPU is available.
-- Open follow-up: near-plane clipping in the software renderer (currently large triangles
-  crossing the near plane are dropped; mitigated by subdividing planes).
+- Resolved: the software renderer now does near-plane clipping (Sutherland–Hodgman against
+  `w = ε`), so triangles crossing the near plane are clipped, not dropped.

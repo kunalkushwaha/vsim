@@ -14,6 +14,32 @@ const DEFAULT_MATERIAL: Material = {
   metalness: 0,
 };
 
+/** Clip-space w below this is at/behind the camera; the near plane sits just in front of it. */
+const W_NEAR = 1e-5;
+
+/**
+ * Sutherland–Hodgman clip of a convex clip-space polygon against the near plane `w = W_NEAR`.
+ * Each vertex is [x, y, z, w, r, g, b]; crossing edges get a linearly interpolated vertex.
+ * Returns the kept polygon (0 or ≥3 vertices), to be fan-triangulated by the caller.
+ */
+function clipNear(poly: number[][]): number[][] {
+  const out: number[][] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const cur = poly[i]!;
+    const nxt = poly[(i + 1) % poly.length]!;
+    const curIn = cur[3]! >= W_NEAR;
+    const nxtIn = nxt[3]! >= W_NEAR;
+    if (curIn) out.push(cur);
+    if (curIn !== nxtIn) {
+      const tParam = (W_NEAR - cur[3]!) / (nxt[3]! - cur[3]!);
+      const v = new Array<number>(7);
+      for (let k = 0; k < 7; k++) v[k] = cur[k]! + (nxt[k]! - cur[k]!) * tParam;
+      out.push(v);
+    }
+  }
+  return out;
+}
+
 /**
  * Pure-TypeScript reference renderer. No GPU, no native deps — runs identically everywhere,
  * which makes it the determinism oracle and the default headless renderer. Lambert shading
@@ -54,10 +80,12 @@ export class SoftwareEngine implements Engine {
       const material = node.material ?? DEFAULT_MATERIAL;
       const vcount = md.positions.length / 3;
 
-      const sx = new Float64Array(vcount);
-      const sy = new Float64Array(vcount);
-      const sz = new Float64Array(vcount);
-      const valid = new Uint8Array(vcount);
+      // Clip-space coords (pre-divide) + Gouraud color, kept so triangles straddling the near
+      // plane can be clipped rather than dropped.
+      const cx = new Float64Array(vcount);
+      const cy = new Float64Array(vcount);
+      const cz = new Float64Array(vcount);
+      const cw = new Float64Array(vcount);
       const cr = new Float64Array(vcount);
       const cg = new Float64Array(vcount);
       const cb = new Float64Array(vcount);
@@ -72,23 +100,48 @@ export class SoftwareEngine implements Engine {
         cr[i] = col[0]; cg[i] = col[1]; cb[i] = col[2];
 
         const clip = mat4.transformPoint(viewProj, wp);
-        const w = clip[3];
-        if (w <= 1e-6) { valid[i] = 0; continue; } // simple near cull (no clipping)
-        valid[i] = 1;
-        sx[i] = ((clip[0] / w) * 0.5 + 0.5) * width;
-        sy[i] = (0.5 - (clip[1] / w) * 0.5) * height;
-        sz[i] = clip[2] / w;
+        cx[i] = clip[0]; cy[i] = clip[1]; cz[i] = clip[2]; cw[i] = clip[3];
       }
+
+      const project = (i: number): [number, number, number] => {
+        const w = cw[i]!;
+        return [((cx[i]! / w) * 0.5 + 0.5) * width, (0.5 - (cy[i]! / w) * 0.5) * height, cz[i]! / w];
+      };
+      const projectV = (v: number[]): [number, number, number] => {
+        const w = v[3]!;
+        return [((v[0]! / w) * 0.5 + 0.5) * width, (0.5 - (v[1]! / w) * 0.5) * height, v[2]! / w];
+      };
 
       const idx = md.indices;
       for (let t = 0; t < idx.length; t += 3) {
         const a = idx[t]!, b = idx[t + 1]!, c = idx[t + 2]!;
-        if (!valid[a] || !valid[b] || !valid[c]) continue;
-        this.fb.triangle(
-          [sx[a]!, sy[a]!, sz[a]!], [cr[a]!, cg[a]!, cb[a]!],
-          [sx[b]!, sy[b]!, sz[b]!], [cr[b]!, cg[b]!, cb[b]!],
-          [sx[c]!, sy[c]!, sz[c]!], [cr[c]!, cg[c]!, cb[c]!],
-        );
+        const ain = cw[a]! >= W_NEAR, bin = cw[b]! >= W_NEAR, cin = cw[c]! >= W_NEAR;
+
+        if (ain && bin && cin) {
+          // Fully in front: project directly (bit-identical to the unclipped path).
+          this.fb.triangle(
+            project(a), [cr[a]!, cg[a]!, cb[a]!],
+            project(b), [cr[b]!, cg[b]!, cb[b]!],
+            project(c), [cr[c]!, cg[c]!, cb[c]!],
+          );
+          continue;
+        }
+        if (!ain && !bin && !cin) continue; // wholly behind the near plane
+
+        // Straddles the near plane: clip to a polygon, then fan-triangulate the visible part.
+        const poly = clipNear([
+          [cx[a]!, cy[a]!, cz[a]!, cw[a]!, cr[a]!, cg[a]!, cb[a]!],
+          [cx[b]!, cy[b]!, cz[b]!, cw[b]!, cr[b]!, cg[b]!, cb[b]!],
+          [cx[c]!, cy[c]!, cz[c]!, cw[c]!, cr[c]!, cg[c]!, cb[c]!],
+        ]);
+        for (let k = 1; k + 1 < poly.length; k++) {
+          const v0 = poly[0]!, v1 = poly[k]!, v2 = poly[k + 1]!;
+          this.fb.triangle(
+            projectV(v0), [v0[4]!, v0[5]!, v0[6]!],
+            projectV(v1), [v1[4]!, v1[5]!, v1[6]!],
+            projectV(v2), [v2[4]!, v2[5]!, v2[6]!],
+          );
+        }
       }
     }
   }

@@ -68,9 +68,10 @@ function sphere(r: number, seg: number): MeshData {
 }
 
 /**
- * Plane on the XZ ground plane, normal +Y, centered at origin. Subdivided into a grid: the
- * software renderer skips whole triangles that cross the camera near plane (no clipping), so
- * a single huge quad would vanish — many small cells keep the visible region intact.
+ * Plane on the XZ ground plane, normal +Y, centered at origin. Subdivided into a grid so
+ * per-vertex (Gouraud) lighting has enough vertices to look smooth across a large surface.
+ * (The software renderer near-plane-clips, so subdivision is no longer needed to avoid huge
+ * quads vanishing — it's purely a shading-quality choice now.)
  */
 function planeXZ([w, d]: [number, number], seg = 32): MeshData {
   const positions: number[] = [];
