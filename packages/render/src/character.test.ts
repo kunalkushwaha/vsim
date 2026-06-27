@@ -35,18 +35,18 @@ function barRig(): CharacterRig {
 }
 
 function buildScene() {
-  const b = scene({ fps: 30, duration: 11, width: 64, height: 64, background: [0, 0, 0] })
+  return scene({ fps: 30, duration: 11, width: 64, height: 64, background: [0, 0, 0] })
     .material("m", { color: [0.9, 0.5, 0.3] })
     .light({ type: "ambient", intensity: 0.9 })
     .character("hero", barRig(), { clip: "walk", material: "m" })
-    .camera({ position: [0, 1, 6], lookAt: [0, 1, 0], fov: 50 });
-  return { doc: b.build(), meshes: b.characterMeshes() };
+    .camera({ position: [0, 1, 6], lookAt: [0, 1, 0], fov: 50 })
+    .build();
 }
 
 async function stillBytes(frame: number): Promise<Buffer> {
-  const { doc, meshes } = buildScene();
+  const doc = buildScene(); // self-contained: the rig mesh is inlined in the document
   const out = join(tmpdir(), `vsim-char-${frame}-${Date.now()}-${Math.random().toString(36).slice(2)}.png`);
-  await renderStill(doc, frame, out, { meshes });
+  await renderStill(doc, frame, out, {});
   const bytes = readFileSync(out);
   rmSync(out, { force: true });
   return bytes;

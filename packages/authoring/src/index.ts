@@ -86,7 +86,6 @@ interface BodyInput {
 export class SceneBuilder {
   private doc: SceneDocumentInput;
   private lightCount = 0;
-  private charMeshes = new Map<string, MeshData>();
 
   constructor(meta: MetaInput) {
     this.doc = {
@@ -171,20 +170,14 @@ export class SceneBuilder {
       });
     }
 
-    const meshNodeId = `${id}__mesh`;
     const clipName = opts.clip ?? rig.clips[0]?.id;
     this.doc.nodes!.push({
-      id: meshNodeId,
-      mesh: { geometry: { kind: "box", size: [1, 1, 1] }, materialId: opts.material, skinId: `${id}__skin` },
+      id: `${id}__mesh`,
+      // Inline the skinned mesh so the scene document stays self-contained (CLI-renderable).
+      mesh: { geometry: { kind: "mesh", data: rig.mesh }, materialId: opts.material, skinId: `${id}__skin` },
       clip: clipName ? { clipId: `${id}/${clipName}`, loop: opts.loop, speed: opts.speed, startFrame: opts.startFrame } : undefined,
     } as any);
-    this.charMeshes.set(meshNodeId, rig.mesh);
     return this;
-  }
-
-  /** Skinned mesh data for characters added via `character()`, keyed by node id — pass to `RenderOptions.meshes`. */
-  characterMeshes(): Map<string, MeshData> {
-    return this.charMeshes;
   }
 
   light(props: LightInput, id?: string): this {
@@ -241,6 +234,11 @@ export class SceneBuilder {
 export function scene(meta: MetaInput): SceneBuilder {
   return new SceneBuilder(meta);
 }
+
+// Re-export the core math/geometry helpers authoring code commonly needs (e.g. building a
+// procedural rig), so scenes can import everything from `@vsim/authoring`.
+export { tessellate, mat4, v3, quatFromEuler } from "@vsim/core";
+export type { Vec3, Quat, Mat4, MeshData, Clip } from "@vsim/core";
 
 /** Beat onsets as FRAME indices for a constant tempo — the unit that keeps audio-reactive
  * motion reproducible (frame-locked, not wall-clock). */

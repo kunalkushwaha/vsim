@@ -1,0 +1,92 @@
+// Example 05 — a procedural walking character on grass under a blue sky.
+//
+// No external assets: the character is a small articulated figure (box limbs bound to a 7-joint
+// skeleton) with a hand-authored walk clip, all built in code. It demonstrates the skeletal
+// pipeline end to end — rig → clip → CPU skinning → deterministic render — with the figure
+// striding across the field, filmed from a 3/4 angle.
+import {
+  scene, tessellate, quatFromEuler, mat4,
+  type CharacterRig, type MeshData, type Vec3, type Quat,
+} from "@vsim/authoring";
+
+// --- Skeleton: joint id, parent, and LOCAL bind translation (rotations are identity at bind). ---
+const JOINTS: { id: string; parent?: string; local: Vec3 }[] = [
+  { id: "hip", local: [0, 1.0, 0] },
+  { id: "torso", parent: "hip", local: [0, 0.5, 0] },
+  { id: "head", parent: "torso", local: [0, 0.55, 0] },
+  { id: "armL", parent: "torso", local: [0.35, 0.35, 0] },
+  { id: "armR", parent: "torso", local: [-0.35, 0.35, 0] },
+  { id: "legL", parent: "hip", local: [0.18, 0, 0] },
+  { id: "legR", parent: "hip", local: [-0.18, 0, 0] },
+];
+const INDEX = new Map(JOINTS.map((j, i) => [j.id, i]));
+
+/** A box limb (in world bind space) bound 100% to one joint. */
+const LIMBS: { joint: string; center: Vec3; size: Vec3 }[] = [
+  { joint: "hip", center: [0, 1.0, 0], size: [0.45, 0.3, 0.28] },
+  { joint: "torso", center: [0, 1.5, 0], size: [0.5, 0.7, 0.3] },
+  { joint: "head", center: [0, 2.15, 0], size: [0.32, 0.32, 0.32] },
+  { joint: "armL", center: [0.46, 1.5, 0], size: [0.16, 0.8, 0.16] },
+  { joint: "armR", center: [-0.46, 1.5, 0], size: [0.16, 0.8, 0.16] },
+  { joint: "legL", center: [0.18, 0.5, 0], size: [0.18, 0.95, 0.18] },
+  { joint: "legR", center: [-0.18, 0.5, 0], size: [0.18, 0.95, 0.18] },
+];
+
+/** World bind translation of a joint = sum of its chain's local translations (identity rotations). */
+function worldBind(id: string): Vec3 {
+  const j = JOINTS.find((x) => x.id === id)!;
+  const p = j.parent ? worldBind(j.parent) : [0, 0, 0];
+  return [p[0] + j.local[0], p[1] + j.local[1], p[2] + j.local[2]];
+}
+
+function buildFigure(): CharacterRig {
+  const mesh: MeshData = { positions: [], normals: [], indices: [], joints: [], weights: [] };
+  for (const limb of LIMBS) {
+    const box = tessellate({ kind: "box", size: limb.size });
+    const base = mesh.positions.length / 3;
+    const ji = INDEX.get(limb.joint)!;
+    for (let i = 0; i < box.positions.length / 3; i++) {
+      mesh.positions.push(box.positions[i * 3]! + limb.center[0], box.positions[i * 3 + 1]! + limb.center[1], box.positions[i * 3 + 2]! + limb.center[2]);
+      mesh.normals.push(box.normals[i * 3]!, box.normals[i * 3 + 1]!, box.normals[i * 3 + 2]!);
+      mesh.joints!.push(ji, 0, 0, 0);
+      mesh.weights!.push(1, 0, 0, 0);
+    }
+    for (const k of box.indices) mesh.indices.push(base + k);
+  }
+
+  // Swing channel about Z (legs/arms stride forward-back along X — the travel direction).
+  const qz = (a: number): Quat => quatFromEuler(0, 0, a);
+  const swing = (id: string, a: number) => ({
+    jointNodeId: id,
+    path: "rotation" as const,
+    interpolation: "linear" as const,
+    times: [0, 15, 30],
+    values: [...qz(a), ...qz(-a), ...qz(a)],
+  });
+
+  return {
+    mesh,
+    joints: JOINTS.map((j) => j.id),
+    jointNodes: JOINTS.map((j) => ({ id: j.id, parent: j.parent, translation: j.local, rotation: [0, 0, 0, 1] as Quat, scale: [1, 1, 1] as Vec3 })),
+    inverseBindMatrices: JOINTS.map((j) => mat4.invert(mat4.compose(worldBind(j.id), [0, 0, 0, 1], [1, 1, 1]))),
+    clips: [
+      {
+        id: "walk",
+        durationFrames: 30,
+        channels: [swing("legL", 0.5), swing("legR", -0.5), swing("armL", -0.4), swing("armR", 0.4)],
+      },
+    ],
+  };
+}
+
+export default scene({ fps: 30, duration: 90, width: 480, height: 270, background: [0.53, 0.74, 0.96] })
+  .material("grass", { color: [0.27, 0.55, 0.24] })
+  .material("skin", { color: [0.85, 0.62, 0.45] })
+  .light({ type: "ambient", intensity: 0.55 })
+  .light({ type: "directional", intensity: 1.0, direction: [-0.4, -1, -0.3] })
+  .mesh("ground", { geometry: { kind: "plane", size: [40, 40] }, material: "grass", position: [0, 0, 0] })
+  .character("hero", buildFigure(), { clip: "walk", loop: true, material: "skin" })
+  // Walk the whole figure across the field.
+  .animate("hero", "position.x", [{ frame: 0, value: -3 }, { frame: 90, value: 3 }])
+  .camera({ position: [4, 2.6, 6], lookAt: [0, 1.2, 0], fov: 42 })
+  .build();

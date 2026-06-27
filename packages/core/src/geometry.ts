@@ -17,6 +17,7 @@ export function tessellate(geo: Geometry): MeshData {
     case "sphere": return sphere(geo.radius, geo.segments);
     case "plane": return planeXZ(geo.size);
     case "gltf": return { positions: [], normals: [], indices: [] }; // filled by loader
+    case "mesh": return geo.data; // inline mesh data carried in the document
   }
 }
 

@@ -39,6 +39,18 @@ export const GeometrySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("sphere"), radius: z.number().default(0.5), segments: z.number().int().min(3).default(16) }),
   z.object({ kind: z.literal("plane"), size: z.tuple([z.number(), z.number()]).default([10, 10]) }),
   z.object({ kind: z.literal("gltf"), assetId: z.string() }),
+  // Inline mesh data carried in the document (e.g. a procedurally-built rig) — keeps the scene
+  // self-contained. Includes optional skinning attributes.
+  z.object({
+    kind: z.literal("mesh"),
+    data: z.object({
+      positions: z.array(z.number()),
+      normals: z.array(z.number()),
+      indices: z.array(z.number()),
+      joints: z.array(z.number()).optional(),
+      weights: z.array(z.number()).optional(),
+    }),
+  }),
 ]);
 
 export const MeshSchema = z.object({
