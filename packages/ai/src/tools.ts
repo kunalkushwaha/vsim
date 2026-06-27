@@ -111,28 +111,69 @@ export const EDIT_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: "add_light",
-    description: "Add a light. `type` is ambient, directional, or point. directional lights take a `direction` they travel along (e.g. [0,-1,0] = straight down).",
+    description: "Add a light. `type` is ambient, directional, point, or hemisphere. directional lights take a `direction` they travel along (e.g. [0,-1,0] = straight down). hemisphere lights take skyColor (lights upward-facing surfaces) and groundColor (downward) — great natural outdoor fill.",
     input_schema: {
       type: "object",
       properties: {
         id: { type: "string", description: "optional; auto-generated if omitted" },
-        type: { type: "string", enum: ["ambient", "directional", "point"] },
+        type: { type: "string", enum: ["ambient", "directional", "point", "hemisphere"] },
         color,
         intensity: { type: "number" },
         direction: vec3,
+        skyColor: color,
+        groundColor: color,
       },
       required: ["type"],
     },
   },
   {
     name: "set_camera",
-    description: "Move the active camera and/or set its look-at target and field of view (degrees).",
+    description: "Move the active (default) camera and/or set its look-at target and field of view (degrees).",
     input_schema: {
       type: "object",
       properties: {
         position: vec3,
         lookAt: vec3,
         fov: { type: "number", description: "vertical field of view in degrees" },
+      },
+    },
+  },
+  {
+    name: "add_camera",
+    description: "Add a named camera (for multi-shot scenes). Reference it from set_shot. Set `lookAtNodeId` to make it track a moving node (a tracking shot), or `lookAt` for a fixed target.",
+    input_schema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "name to reference from set_shot" },
+        position: vec3,
+        lookAt: vec3,
+        lookAtNodeId: { type: "string", description: "id of a node to aim at every frame (tracking)" },
+        fov: { type: "number", description: "vertical field of view in degrees" },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "set_shot",
+    description: "Film a frame range with a named camera (a cut in the shot timeline). Add multiple to cut between camera angles. Frames are inclusive.",
+    input_schema: {
+      type: "object",
+      properties: {
+        cameraId: { type: "string", description: "id of a camera from add_camera" },
+        startFrame: { type: "integer" },
+        endFrame: { type: "integer" },
+      },
+      required: ["cameraId", "startFrame", "endFrame"],
+    },
+  },
+  {
+    name: "set_environment",
+    description: "Set a gradient sky background. skyTop is the color overhead, skyBottom the color at the horizon (e.g. a blue sky: skyTop [0.32,0.52,0.92], skyBottom [0.74,0.85,0.97]).",
+    input_schema: {
+      type: "object",
+      properties: {
+        skyTop: color,
+        skyBottom: color,
       },
     },
   },
@@ -188,6 +229,12 @@ export function toolUseToOperation(name: string, input: unknown): EditOperation 
       return { op: "addLight", ...i } as EditOperation;
     case "set_camera":
       return { op: "setCamera", ...i } as EditOperation;
+    case "add_camera":
+      return { op: "addCamera", ...i } as EditOperation;
+    case "set_shot":
+      return { op: "setShot", ...i } as EditOperation;
+    case "set_environment":
+      return { op: "setEnvironment", ...i } as EditOperation;
     case "add_animation":
       return { op: "addAnimation", ...i } as EditOperation;
     default:

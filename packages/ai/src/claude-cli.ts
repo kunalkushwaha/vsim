@@ -13,7 +13,7 @@ import { summarizeScene } from "./summary.js";
 
 const INSTRUCTIONS = `You are the editing copilot for vsim, a deterministic 3D animation framework. Translate the request into precise edits to the scene.
 
-Conventions: the coordinate system is Y-up; colors are linear RGB with each component in 0..1; time is measured in FRAMES (integer indices), not seconds; meshes reference materials by id (create the material before a mesh uses it); reuse the ids already present in the scene; change only what the request asks for.`;
+Conventions: the coordinate system is Y-up; colors are linear RGB with each component in 0..1; time is measured in FRAMES (integer indices), not seconds; meshes reference materials by id (create the material before a mesh uses it); reuse the ids already present in the scene. For outdoor scenes use set_environment (gradient sky) + a large ground plane + a hemisphere light; for different camera angles add named cameras (add_camera, with lookAtNodeId to track) and cut between them with set_shot. When asked to build a whole scene, compose it from these tools; otherwise change only what the request asks for.`;
 
 function runClaude(prompt: string, model?: string): Promise<string> {
   return new Promise((resolve, reject) => {

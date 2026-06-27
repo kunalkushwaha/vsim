@@ -94,4 +94,48 @@ describe("toolUseToOperation", () => {
   it("returns null for an unknown tool", () => {
     expect(toolUseToOperation("frobnicate", {})).toBeNull();
   });
+
+  it("maps the environment & camera tools", () => {
+    expect(toolUseToOperation("set_environment", { skyTop: [0, 0, 1] })).toEqual({ op: "setEnvironment", skyTop: [0, 0, 1] });
+    expect(toolUseToOperation("add_camera", { id: "wide", position: [0, 2, 9] })).toEqual({ op: "addCamera", id: "wide", position: [0, 2, 9] });
+    expect(toolUseToOperation("set_shot", { cameraId: "wide", startFrame: 0, endFrame: 30 })).toEqual({
+      op: "setShot",
+      cameraId: "wide",
+      startFrame: 0,
+      endFrame: 30,
+    });
+  });
+});
+
+describe("environment & cinematography operations", () => {
+  it("setEnvironment sets a gradient sky", () => {
+    const out = applyOperations(baseDoc(), [{ op: "setEnvironment", skyTop: [0, 0, 1], skyBottom: [1, 1, 1] }]);
+    expect(out.environment?.sky?.type).toBe("gradient");
+    expect(out.environment?.sky?.top).toEqual([0, 0, 1]);
+    expect(out.environment?.sky?.bottom).toEqual([1, 1, 1]);
+  });
+
+  it("addLight supports hemisphere with sky/ground tints", () => {
+    const out = applyOperations(baseDoc(), [
+      { op: "addLight", type: "hemisphere", skyColor: [0, 0, 1], groundColor: [0, 1, 0], intensity: 0.6 },
+    ]);
+    const lt = out.nodes.find((n) => n.light?.type === "hemisphere");
+    expect(lt?.light?.skyColor).toEqual([0, 0, 1]);
+    expect(lt?.light?.groundColor).toEqual([0, 1, 0]);
+  });
+
+  it("addCamera + setShot create a named camera and a shot", () => {
+    const out = applyOperations(baseDoc(), [
+      { op: "addCamera", id: "wide", position: [0, 2, 10], lookAt: [0, 0, 0], fov: 40 },
+      { op: "setShot", cameraId: "wide", startFrame: 0, endFrame: 30 },
+    ]);
+    expect(out.cameras.find((c) => c.id === "wide")?.nodeId).toBe("__cam_wide");
+    expect(out.nodes.find((n) => n.id === "__cam_wide")?.position).toEqual([0, 2, 10]);
+    expect(out.shots[0]).toEqual({ cameraId: "wide", startFrame: 0, endFrame: 30 });
+  });
+
+  it("addCamera with lookAtNodeId makes a tracking camera", () => {
+    const out = applyOperations(baseDoc(), [{ op: "addCamera", id: "track", position: [0, 1, 5], lookAtNodeId: "cube" }]);
+    expect(out.cameras.find((c) => c.id === "track")?.lookAtNodeId).toBe("cube");
+  });
 });

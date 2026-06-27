@@ -26,17 +26,23 @@ export type EditOperation =
   | { op: "addMesh"; id: string; geometry: GeometrySpec; material?: string; position?: Vec3; rotation?: Vec3; scale?: Vec3 }
   | { op: "updateNode"; id: string; position?: Vec3; rotation?: Vec3; scale?: Vec3 }
   | { op: "removeNode"; id: string }
-  | { op: "addLight"; id?: string; type: "ambient" | "directional" | "point"; color?: Vec3; intensity?: number; direction?: Vec3 }
+  | { op: "addLight"; id?: string; type: "ambient" | "directional" | "point" | "hemisphere"; color?: Vec3; intensity?: number; direction?: Vec3; skyColor?: Vec3; groundColor?: Vec3 }
   | { op: "setCamera"; position?: Vec3; lookAt?: Vec3; fov?: number }
+  | { op: "addCamera"; id: string; position?: Vec3; lookAt?: Vec3; lookAtNodeId?: string; fov?: number }
+  | { op: "setShot"; cameraId: string; startFrame: number; endFrame: number }
+  | { op: "setEnvironment"; skyTop?: Vec3; skyBottom?: Vec3 }
   | { op: "addAnimation"; nodeId: string; path: string; keyframes: Keyframe[] };
 
 type Draft = {
   meta: Record<string, unknown>;
   materials: Record<string, unknown>[];
   nodes: Record<string, unknown>[];
-  animation: { target: { nodeId?: string; materialId?: string; path: string }; keyframes: Keyframe[] }[];
+  animation: { target: { nodeId?: string; materialId?: string; cameraId?: string; path: string }; keyframes: Keyframe[] }[];
   physics?: { gravity?: Vec3; bodies: { nodeId: string }[] };
   camera: { nodeId: string; fov?: number; lookAt?: Vec3; near?: number; far?: number };
+  cameras?: Record<string, unknown>[];
+  shots?: { cameraId: string; startFrame: number; endFrame: number }[];
+  environment?: { sky?: Record<string, unknown> };
   [k: string]: unknown;
 };
 
@@ -102,7 +108,7 @@ function applyOne(draft: Draft, op: EditOperation): void {
         draft.nodes.push(node);
       }
       const light: Record<string, unknown> = { type: op.type };
-      assignDefined(light, op, ["color", "intensity", "direction"]);
+      assignDefined(light, op, ["color", "intensity", "direction", "skyColor", "groundColor"]);
       node.light = light;
       break;
     }
@@ -114,6 +120,35 @@ function applyOne(draft: Draft, op: EditOperation): void {
       }
       assignDefined(node, op, ["position"]);
       assignDefined(draft.camera, op, ["lookAt", "fov"]);
+      break;
+    }
+    case "addCamera": {
+      const nodeId = `__cam_${op.id}`;
+      let node = findNode(draft, nodeId);
+      if (!node) {
+        node = { id: nodeId };
+        draft.nodes.push(node);
+      }
+      assignDefined(node, op, ["position"]);
+      draft.cameras ??= [];
+      let cam = draft.cameras.find((c) => c.id === op.id);
+      if (!cam) {
+        cam = { id: op.id, nodeId };
+        draft.cameras.push(cam);
+      }
+      assignDefined(cam, op, ["lookAt", "lookAtNodeId", "fov"]);
+      break;
+    }
+    case "setShot": {
+      draft.shots ??= [];
+      draft.shots.push({ cameraId: op.cameraId, startFrame: op.startFrame, endFrame: op.endFrame });
+      break;
+    }
+    case "setEnvironment": {
+      const sky: Record<string, unknown> = { type: "gradient" };
+      if (op.skyTop !== undefined) sky.top = op.skyTop;
+      if (op.skyBottom !== undefined) sky.bottom = op.skyBottom;
+      draft.environment = { ...(draft.environment ?? {}), sky };
       break;
     }
     case "addAnimation": {
