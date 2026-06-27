@@ -1,9 +1,9 @@
 // Example 12 — a realistic human created with MakeHuman, walking on grass.
 //
 // The rig was generated headlessly with MakeHuman's MPFB 2 Blender add-on
-// (scripts/blender/make-human.py → packages/assets/library/human.glb, CC0) — a 19k-vertex human
-// with a 53-bone skeleton and a walk clip. It loads by name from the library, no hand-coded rig.
-// (Untextured: install MPFB's skin asset pack to export with skin/clothing textures.)
+// (scripts/blender/make-human.py → packages/assets/library/human.glb, CC0) — a ~22k-vertex human
+// with a 53-bone skeleton, a real (CC0) skin texture, and a clip library (walk/run/idle/wave).
+// It loads by name from the library, no hand-coded rig. See examples/13-clips for the other clips.
 import { scene } from "@vsim/authoring";
 import { loadCharacter } from "@vsim/assets";
 

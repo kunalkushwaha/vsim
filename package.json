@@ -29,7 +29,8 @@
     "example:makehuman": "tsx packages/cli/src/index.ts render examples/12-makehuman/scene.ts -o out/makehuman.mp4",
     "showreel": "node scripts/build-showreel.mjs",
     "docs:site": "node scripts/build-docs-site.mjs",
-    "release:dry": "pnpm build && pnpm -r --filter \"./packages/*\" publish --dry-run --no-git-checks"
+    "release:dry": "pnpm build && pnpm -r --filter \"./packages/*\" publish --dry-run --no-git-checks",
+    "example:clips": "tsx packages/cli/src/index.ts render examples/13-clips/scene.ts -o out/clips.mp4"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

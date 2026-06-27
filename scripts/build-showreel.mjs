@@ -12,6 +12,7 @@ const CLIPS = [
   { name: "puppy", scene: "examples/10-puppy/scene.ts" },
   { name: "person", scene: "examples/07-person/scene.ts" },
   { name: "makehuman", scene: "examples/12-makehuman/scene.ts" },
+  { name: "clips", scene: "examples/13-clips/scene.ts" },
   { name: "manga", scene: "examples/09-manga/scene.ts" },
   { name: "fox", scene: "examples/06-fox/scene.ts" },
   { name: "gltf", scene: "examples/04-gltf/scene.ts" },
