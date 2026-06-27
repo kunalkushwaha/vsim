@@ -100,6 +100,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
 
+  examples/08-soccer:
+    dependencies:
+      '@vsim/authoring':
+        specifier: workspace:*
+        version: link:../../packages/authoring
+      '@vsim/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
   packages/ai:
     dependencies:
       '@anthropic-ai/sdk':
