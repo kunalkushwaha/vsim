@@ -30,6 +30,9 @@ importers:
 
   apps/studio:
     dependencies:
+      '@vsim/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@vsim/authoring':
         specifier: workspace:*
         version: link:../../packages/authoring
@@ -42,6 +45,9 @@ importers:
       '@vsim/player':
         specifier: workspace:*
         version: link:../../packages/player
+      '@vsim/render':
+        specifier: workspace:*
+        version: link:../../packages/render
       three:
         specifier: ^0.171.0
         version: 0.171.0

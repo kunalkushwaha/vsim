@@ -124,17 +124,19 @@ session.document; // the edited scene so far
 
 The first slice of the **visual editor** (surface 2). A browser app on top of the same engine:
 load a scene, **play/scrub** the timeline, **select** an object, **edit** its transform/colour
-live, and **keyframe** those properties (set a value at one frame, another later → it animates,
-with clickable keyframe markers on the timeline). The preview updates instantly because the runtime
-reads the scene document every frame, so *preview == render*. Export the document as JSON and
-`vsim render` it.
+live, **keyframe** those properties (value at one frame, another later → it animates, with clickable
+markers on the timeline), ask the **AI copilot** to change the scene in natural language, and
+**render an MP4** — all in the browser. The preview updates instantly because the runtime reads the
+scene document every frame, so *preview == render*.
 
 ```bash
-pnpm studio          # vite dev server → http://localhost:5173
-pnpm studio:build    # bundle the editor
+pnpm studio:server   # backend (AI copilot + MP4 render) → http://localhost:8787
+pnpm studio          # editor (Vite dev server)         → http://localhost:5173
 ```
 
-Built with Vite + vanilla TS (no UI framework), reusing `@vsim/player` + `@vsim/engine-three`. See
+Built with Vite + vanilla TS (no UI framework), reusing `@vsim/player` + `@vsim/engine-three` in the
+browser and `@vsim/ai` + `@vsim/render` in a tiny Node backend (the seed of the eventual cloud layer;
+the AI uses `ANTHROPIC_API_KEY` or the `claude` CLI). See
 [`docs/plan-platform-studio.md`](./docs/plan-platform-studio.md) for the roadmap to a full platform.
 
 ## Docs

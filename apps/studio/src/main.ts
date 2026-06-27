@@ -1,41 +1,31 @@
-// vsim Studio — a minimal browser editor on top of the deterministic engine. Loads a scene, drives
-// the real @vsim/player against a canvas, lets you scrub the timeline, select objects, edit their
-// transform/material live, and KEYFRAME those properties (M4) — set a value at one frame, another at
-// a later frame, and it animates. Edits mutate the scene document; the runtime reads it every frame,
-// so preview == render and `vsim render` exports exactly what you see.
+// vsim Studio — a minimal browser editor on top of the deterministic engine. Load a scene, drive the
+// real @vsim/player against a canvas, scrub the timeline, select/edit objects live, keyframe them, ask
+// the AI copilot to change the scene, and render an MP4. Edits mutate the scene document; the runtime
+// reads it every frame, so preview == render and what you see is what the server renders.
 import { Player } from "@vsim/player";
 import type { SceneDocument } from "@vsim/core";
 import { sampleScene } from "./sample-scene.js";
 
-const doc: SceneDocument = sampleScene();
+let doc: SceneDocument = sampleScene();
+let player: Player;
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const totalFrames = doc.meta.durationFrames;
 
 const canvas = $<HTMLCanvasElement>("preview");
-canvas.width = doc.meta.width;
-canvas.height = doc.meta.height;
-const player = new Player(doc, { canvas, loop: true });
-
-// ---------- transport ----------
 const playBtn = $<HTMLButtonElement>("play");
 const scrub = $<HTMLInputElement>("scrub");
 const frameLbl = $<HTMLSpanElement>("frame");
-scrub.max = String(totalFrames - 1);
-const stop = () => { if (player.isPlaying) { player.pause(); playBtn.textContent = "▶"; } };
-playBtn.onclick = () => { player.toggle(); playBtn.textContent = player.isPlaying ? "⏸" : "▶"; };
-scrub.oninput = () => { stop(); void player.seek(Number(scrub.value)); };
-player.onFrame = (f, total) => { scrub.value = String(f); frameLbl.textContent = `${f} / ${total - 1}`; refreshValues(f); };
+const stop = () => { if (player?.isPlaying) { player.pause(); playBtn.textContent = "▶"; } };
 
 // ---------- keyframe model (the document's animation tracks) ----------
 type KF = { frame: number; value: number | number[]; easing?: string };
 type Track = { target: { nodeId?: string; materialId?: string; path: string }; keyframes: KF[] };
-const anim = doc.animation as unknown as Track[];
+const tracks = () => doc.animation as unknown as Track[];
 const sameTarget = (a: Track["target"], b: Track["target"]) =>
   a.nodeId === b.nodeId && a.materialId === b.materialId && a.path === b.path;
-const findTrack = (t: Track["target"]) => anim.find((x) => sameTarget(x.target, t));
+const findTrack = (t: Track["target"]) => tracks().find((x) => sameTarget(x.target, t));
 function ensureTrack(t: Track["target"]): Track {
   let tr = findTrack(t);
-  if (!tr) { tr = { target: t, keyframes: [] }; anim.push(tr); }
+  if (!tr) { tr = { target: t, keyframes: [] }; tracks().push(tr); }
   return tr;
 }
 function upsertKey(tr: Track, frame: number, value: number[]) {
@@ -89,9 +79,7 @@ const toHex = (c: number[]) => `#${hex2(c[0]!)}${hex2(c[1]!)}${hex2(c[2]!)}`;
 const fromHex = (h: string): number[] =>
   [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
 
-/** Animated fields whose inputs should follow the playhead (refreshed on every frame). */
 let refs: { inputs: HTMLInputElement[]; kind: "vec" | "color"; fmt: (x: number) => number; track: () => Track | undefined }[] = [];
-
 const select = (id: string) => { selected = id; buildTree(); buildInspector(); };
 
 function buildInspector() {
@@ -113,8 +101,7 @@ function rowShell(label: string, animated: boolean, onKey: () => void) {
   const l = document.createElement("label"); l.textContent = label; wrap.appendChild(l);
   const body = document.createElement("div"); body.className = "vec"; wrap.appendChild(body);
   const key = document.createElement("button"); key.className = "kbtn" + (animated ? " on" : ""); key.textContent = "◆";
-  key.title = "Key this property at the current frame";
-  key.onclick = onKey; wrap.appendChild(key);
+  key.title = "Key this property at the current frame"; key.onclick = onKey; wrap.appendChild(key);
   inspector.appendChild(wrap);
   return body;
 }
@@ -154,7 +141,6 @@ function colorRow(matId: string) {
   refs.push({ inputs: [inp], kind: "color", fmt: (x) => x, track });
 }
 
-/** On scrub/play, animated fields follow the playhead (unless the user is editing that input). */
 function refreshValues(frame: number) {
   for (const f of refs) {
     const t = f.track(); if (!t) continue;
@@ -164,31 +150,93 @@ function refreshValues(frame: number) {
   }
 }
 
-/** Diamonds on the timeline at the selected object's keyframe frames; click to seek. */
 function renderStrip() {
   kfstrip.innerHTML = "";
   if (!selected) return;
   const n: any = doc.nodes.find((x: any) => x.id === selected);
   const matId: string | undefined = n?.mesh?.materialId;
   const frames = new Set<number>();
-  for (const t of anim)
+  for (const t of tracks())
     if (t.target.nodeId === selected || (matId && t.target.materialId === matId))
       for (const k of t.keyframes) frames.add(k.frame);
   for (const fr of frames) {
     const d = document.createElement("div"); d.className = "kf";
-    d.style.left = `${(fr / Math.max(1, totalFrames - 1)) * 100}%`;
+    d.style.left = `${(fr / Math.max(1, doc.meta.durationFrames - 1)) * 100}%`;
     d.title = `frame ${fr} — click to seek`;
     d.onclick = () => { stop(); void player.seek(fr); };
     kfstrip.appendChild(d);
   }
 }
 
-// ---------- export ----------
-$("export").onclick = () => {
-  const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = "scene.json"; a.click();
+// ---------- (re)mount a document: (re)create the player + rebuild the UI ----------
+async function mount(next: SceneDocument) {
+  if (player) player.dispose();
+  doc = next;
+  canvas.width = doc.meta.width;
+  canvas.height = doc.meta.height;
+  player = new Player(doc, { canvas, loop: true });
+  player.onFrame = (f, total) => { scrub.value = String(f); frameLbl.textContent = `${f} / ${total - 1}`; refreshValues(f); };
+  scrub.max = String(doc.meta.durationFrames - 1);
+  scrub.value = "0";
+  selected = null;
+  buildTree();
+  buildInspector();
+  await player.init();
+  frameLbl.textContent = `0 / ${doc.meta.durationFrames - 1}`;
+}
+
+playBtn.onclick = () => { player.toggle(); playBtn.textContent = player.isPlaying ? "⏸" : "▶"; };
+scrub.oninput = () => { stop(); void player.seek(Number(scrub.value)); };
+
+// ---------- AI copilot (server: POST /api/edit) ----------
+const promptInp = $<HTMLInputElement>("prompt");
+const applyBtn = $<HTMLButtonElement>("apply");
+const aistatus = $("aistatus");
+async function applyPrompt() {
+  const prompt = promptInp.value.trim();
+  if (!prompt) return;
+  stop(); applyBtn.disabled = true; aistatus.className = "aistatus"; aistatus.textContent = "Thinking…";
+  try {
+    const res = await fetch("/api/edit", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ doc, prompt }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "edit failed");
+    await mount(data.doc as SceneDocument); // structural changes → rebuild
+    aistatus.textContent = `✓ ${data.summary ?? `${data.operations?.length ?? 0} change(s)`} (${data.provider})`;
+    promptInp.value = "";
+  } catch (e: any) {
+    aistatus.className = "aistatus err"; aistatus.textContent = "✗ " + (e?.message ?? e);
+  } finally {
+    applyBtn.disabled = false;
+  }
+}
+applyBtn.onclick = applyPrompt;
+promptInp.onkeydown = (e) => { if (e.key === "Enter") applyPrompt(); };
+
+// ---------- render to MP4 (server: POST /api/render) ----------
+const renderBtn = $<HTMLButtonElement>("render");
+renderBtn.onclick = async () => {
+  stop(); renderBtn.disabled = true; const label = renderBtn.textContent; renderBtn.textContent = "Rendering…";
+  try {
+    const res = await fetch("/api/render", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error ?? "render failed");
+    const blob = await res.blob();
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "scene.mp4"; a.click();
+  } catch (e: any) {
+    aistatus.className = "aistatus err"; aistatus.textContent = "✗ render: " + (e?.message ?? e);
+  } finally {
+    renderBtn.disabled = false; renderBtn.textContent = label;
+  }
 };
 
-buildTree();
-void player.init().then(() => { frameLbl.textContent = `0 / ${totalFrames - 1}`; });
+// ---------- export the document as JSON ----------
+$("export").onclick = () => {
+  const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "scene.json"; a.click();
+};
+
+void mount(doc);

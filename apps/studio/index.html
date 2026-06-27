@@ -56,6 +56,13 @@
       input[type=color] { width: 100%; height: 26px; background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; }
       #inspector .empty { color: var(--mut); font-style: italic; }
       #inspector h3 { margin: 2px 0 8px; font-size: 13px; }
+      #prompt { width: 100%; background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
+        border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; }
+      button.apply { width: 100%; background: var(--accent); color: #0b0d11; border: 0; border-radius: 6px;
+        padding: 7px; font-weight: 600; cursor: pointer; }
+      button.apply:disabled { opacity: .55; cursor: default; }
+      .aistatus { color: var(--mut); font-size: 12px; margin-top: 6px; min-height: 16px; }
+      .aistatus.err { color: #ff8a8a; }
     </style>
   </head>
   <body>
@@ -64,11 +71,17 @@
         <span class="logo">vsim <b>Studio</b></span>
         <span class="tag">deterministic 3D — preview == render</span>
         <span class="spacer"></span>
+        <button id="render">Render MP4</button>
         <button id="export">Export scene JSON</button>
       </header>
       <aside>
         <div class="sec"><h2>Scene</h2><div id="tree"></div></div>
         <div class="sec" style="flex:1"><h2>Inspector</h2><div id="inspector"><p class="empty">Select an object.</p></div></div>
+        <div class="sec"><h2>AI copilot</h2>
+          <input id="prompt" type="text" placeholder="e.g. make the cube blue" />
+          <button id="apply" class="apply">Apply</button>
+          <div id="aistatus" class="aistatus"></div>
+        </div>
       </aside>
       <main><canvas id="preview"></canvas></main>
       <footer>

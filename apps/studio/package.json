@@ -10,10 +10,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@vsim/ai": "workspace:*",
     "@vsim/authoring": "workspace:*",
     "@vsim/core": "workspace:*",
     "@vsim/engine-three": "workspace:*",
     "@vsim/player": "workspace:*",
+    "@vsim/render": "workspace:*",
     "three": "^0.171.0"
   },
   "devDependencies": {
