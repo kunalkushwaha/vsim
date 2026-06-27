@@ -1,0 +1,18 @@
+# Character asset library — credits & licenses
+
+These sample rigged characters are bundled so scenes can load a ready-made character by id
+(`loadCharacter("person")` / `loadCharacter("fox")`). They come from the
+[glTF Sample Assets](https://github.com/KhronosGroup/glTF-Sample-Assets) repository and retain
+their original licenses (vsim's own code is MIT).
+
+## `cesium-man.glb` — "Person" (CesiumMan)
+- © 2017, Cesium — [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (attribution required).
+- The Cesium logo on the model is a **trademark** (our software renderer doesn't load textures, so
+  the logo is not displayed; the file is included unmodified).
+
+## `fox.glb` — "Fox"
+- Model: © 2014, PixelMannen — [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (public domain).
+- Rigging & animation (Survey / Walk / Run): © 2014, @tomkranis — [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- glTF conversion: © 2017, @AsoboStudio and @scurest — [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+Both files are unmodified. CC BY requires attribution — this file provides it.

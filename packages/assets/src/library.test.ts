@@ -1,0 +1,22 @@
+import { describe, it, expect } from "vitest";
+import { listCharacters, loadCharacter } from "./index.js";
+
+describe("character library", () => {
+  it("lists the bundled characters", async () => {
+    const ids = (await listCharacters()).map((c) => c.id).sort();
+    expect(ids).toEqual(["fox", "person"]);
+  });
+
+  it("loads a character by id with its rig + placement metadata", async () => {
+    const { rig, meta } = await loadCharacter("person", 30);
+    expect(meta.defaultClip).toBe("clip0");
+    expect(meta.rotation).toEqual([-1.5708, 0, 0]); // stands the Z-up model upright
+    expect(rig.joints.length).toBeGreaterThan(0);
+    expect(rig.clips.length).toBeGreaterThan(0);
+    expect(rig.mesh.joints).toBeDefined();
+  });
+
+  it("throws a helpful error on an unknown id", async () => {
+    await expect(loadCharacter("nobody", 30)).rejects.toThrow(/Unknown character/);
+  });
+});

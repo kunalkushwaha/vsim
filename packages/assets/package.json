@@ -42,6 +42,7 @@
   },
   "files": [
     "dist",
+    "library",
     "README.md"
   ],
   "sideEffects": false,

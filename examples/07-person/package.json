@@ -1,0 +1,11 @@
+{
+  "name": "@vsim/example-person",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@vsim/assets": "workspace:*",
+    "@vsim/authoring": "workspace:*",
+    "@vsim/core": "workspace:*"
+  }
+}

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { mat4, v3, type Mat4, type MeshData, type Vec3, type Quat, type Clip, type ClipChannel } from "@vsim/core";
 
 /**
@@ -140,6 +141,39 @@ function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
   });
 
   return { mesh, joints, jointNodes, inverseBindMatrices, clips };
+}
+
+/** A bundled sample character — its rig file plus how to place it (normalized to ~human scale, Y-up). */
+export interface CharacterMeta {
+  id: string;
+  name: string;
+  description: string;
+  file: string;
+  defaultClip: string;
+  clips: string[];
+  /** Uniform scale to apply so the model is ~1.5–2 units tall. */
+  scale: number;
+  /** Euler rotation (radians) to orient the model upright/Y-up. */
+  rotation: Vec3;
+  /** Which world axis the character faces (walk it along this axis). */
+  faces: string;
+  credit: string;
+}
+
+const libraryDir = fileURLToPath(new URL("../library/", import.meta.url));
+
+/** List the bundled sample characters (see `library/manifest.json`). */
+export async function listCharacters(): Promise<CharacterMeta[]> {
+  const manifest = JSON.parse(await readFile(resolve(libraryDir, "manifest.json"), "utf8"));
+  return manifest.characters as CharacterMeta[];
+}
+
+/** Load a bundled character by id: its rig plus placement metadata (scale/rotation/clip). */
+export async function loadCharacter(id: string, fps: number): Promise<{ rig: RiggedGltf; meta: CharacterMeta }> {
+  const meta = (await listCharacters()).find((c) => c.id === id);
+  if (!meta) throw new Error(`Unknown character "${id}". Available: ${(await listCharacters()).map((c) => c.id).join(", ")}`);
+  const rig = await loadGltfRig(resolve(libraryDir, meta.file), fps);
+  return { rig, meta };
 }
 
 function parseGLB(buf: Buffer): { json: any; glbBin?: Buffer } {

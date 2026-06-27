@@ -1,0 +1,28 @@
+{
+  "characters": [
+    {
+      "id": "person",
+      "name": "Person",
+      "file": "cesium-man.glb",
+      "description": "A realistic walking human (the glTF CesiumMan sample).",
+      "defaultClip": "clip0",
+      "clips": ["clip0"],
+      "scale": 1.0,
+      "rotation": [-1.5708, 0, 0],
+      "faces": "-x",
+      "credit": "CesiumMan from glTF Sample Assets — CC BY 4.0 (© 2017 Cesium). The Cesium logo is a trademark."
+    },
+    {
+      "id": "fox",
+      "name": "Fox",
+      "file": "fox.glb",
+      "description": "A four-legged fox with Walk/Run/Survey animations (the glTF Fox sample).",
+      "defaultClip": "Walk",
+      "clips": ["Walk", "Run", "Survey"],
+      "scale": 0.02,
+      "rotation": [0, 0, 0],
+      "faces": "-x",
+      "credit": "Fox from glTF Sample Assets — CC0 model (© 2014 PixelMannen) + CC BY 4.0 rig/animation (© 2014 tomkranis; © 2017 AsoboStudio, scurest)."
+    }
+  ]
+}
