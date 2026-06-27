@@ -17,6 +17,8 @@ export const MetaSchema = z.object({
   seed: z.number().int().default(0),
   substeps: z.number().int().positive().default(4),
   background: color.default([0.05, 0.06, 0.09]),
+  /** Render style: "realistic" (smooth Lambert) or "manga" (banded cel-shading + outlines). */
+  style: z.enum(["realistic", "manga"]).default("realistic"),
 });
 
 export const AssetSchema = z.object({

@@ -21,7 +21,7 @@ export interface Keyframe {
 }
 
 export type EditOperation =
-  | { op: "setMeta"; fps?: number; durationFrames?: number; width?: number; height?: number; background?: Vec3 }
+  | { op: "setMeta"; fps?: number; durationFrames?: number; width?: number; height?: number; background?: Vec3; style?: "realistic" | "manga" }
   | { op: "setMaterial"; id: string; color?: Vec3; emissive?: Vec3; opacity?: number; roughness?: number; metalness?: number }
   | { op: "addMesh"; id: string; geometry: GeometrySpec; material?: string; position?: Vec3; rotation?: Vec3; scale?: Vec3 }
   | { op: "updateNode"; id: string; position?: Vec3; rotation?: Vec3; scale?: Vec3 }
@@ -66,7 +66,7 @@ function nextLightId(draft: Draft): string {
 function applyOne(draft: Draft, op: EditOperation): void {
   switch (op.op) {
     case "setMeta": {
-      assignDefined(draft.meta, op, ["fps", "durationFrames", "width", "height", "background"]);
+      assignDefined(draft.meta, op, ["fps", "durationFrames", "width", "height", "background", "style"]);
       break;
     }
     case "setMaterial": {

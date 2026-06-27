@@ -48,6 +48,42 @@ export class Framebuffer {
   }
 
   /**
+   * Manga-style outline: darken pixels that sit on a depth discontinuity (object silhouettes
+   * against the background, and where one part overlaps another). Run as a post-pass after all
+   * geometry is drawn. Edges are detected from the z-buffer first, so outline pixels don't seed
+   * more edges.
+   */
+  outline(rgb: Vec3, threshold = 0.002): void {
+    const { width, height, color, depth } = this;
+    const r = encodeGamma(rgb[0]);
+    const g = encodeGamma(rgb[1]);
+    const b = encodeGamma(rgb[2]);
+    const edge = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x;
+        const d = depth[i]!;
+        if (d === Infinity) continue; // background: the outline sits on the object's near side
+        // A neighbor that is farther (or the background) means this pixel is on a silhouette/edge.
+        const e =
+          (x > 0 && depth[i - 1]! - d > threshold) ||
+          (x < width - 1 && depth[i + 1]! - d > threshold) ||
+          (y > 0 && depth[i - width]! - d > threshold) ||
+          (y < height - 1 && depth[i + width]! - d > threshold);
+        if (e) edge[i] = 1;
+      }
+    }
+    for (let i = 0; i < edge.length; i++) {
+      if (!edge[i]) continue;
+      const p = i * 4;
+      color[p] = r;
+      color[p + 1] = g;
+      color[p + 2] = b;
+      color[p + 3] = 255;
+    }
+  }
+
+  /**
    * Rasterize a screen-space triangle. Each vertex is [x, y, ndcZ] with a linear RGB color;
    * color and depth are interpolated affinely (screen-space) — fine for our scene scale.
    */

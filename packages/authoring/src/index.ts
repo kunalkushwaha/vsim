@@ -36,6 +36,8 @@ interface MetaInput {
   seed?: number;
   substeps?: number;
   background?: Vec3;
+  /** "realistic" (default) or "manga" (cel-shading + outlines). */
+  style?: "realistic" | "manga";
 }
 
 interface TransformInput {
@@ -104,6 +106,7 @@ export class SceneBuilder {
         seed: meta.seed ?? 0,
         substeps: meta.substeps ?? 4,
         background: meta.background ?? [0.05, 0.06, 0.09],
+        style: meta.style ?? "realistic",
       },
       assets: [],
       materials: [],

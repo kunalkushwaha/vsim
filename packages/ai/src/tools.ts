@@ -51,6 +51,7 @@ export const EDIT_TOOLS: Anthropic.Tool[] = [
         width: { type: "integer" },
         height: { type: "integer" },
         background: color,
+        style: { type: "string", enum: ["realistic", "manga"], description: "manga = cel-shading + outlines" },
       },
     },
   },

@@ -73,6 +73,7 @@ export class SoftwareEngine implements Engine {
     else this.fb.clear(state.background);
     const viewProj = mat4.multiply(state.camera.projMatrix, state.camera.viewMatrix);
     const { width, height } = this;
+    const toon = state.style === "manga";
 
     for (const node of state.nodes) {
       if (!node.mesh) continue;
@@ -103,7 +104,7 @@ export class SoftwareEngine implements Engine {
         const wp4 = mat4.transformPoint(m, pos);
         const wp: Vec3 = [wp4[0], wp4[1], wp4[2]];
         const wn = v3.normalize(mat4.transformDir(m, nrm));
-        const col = shade(wp, wn, material, state.lights);
+        const col = shade(wp, wn, material, state.lights, toon);
         cr[i] = col[0]; cg[i] = col[1]; cb[i] = col[2];
 
         const clip = mat4.transformPoint(viewProj, wp);
@@ -151,6 +152,8 @@ export class SoftwareEngine implements Engine {
         }
       }
     }
+
+    if (toon) this.fb.outline([0.04, 0.05, 0.08]); // manga: dark silhouette/edge lines
   }
 
   readPixels(): Uint8ClampedArray {
@@ -162,7 +165,12 @@ export class SoftwareEngine implements Engine {
   }
 }
 
-function shade(worldPos: Vec3, n: Vec3, mat: Material, lights: ResolvedLight[]): Vec3 {
+/** Quantize the diffuse term into hard bands for cel/manga shading (0, then 3 lit steps). */
+function bandLambert(x: number): number {
+  return x <= 0 ? 0 : Math.ceil(Math.min(x, 1) * 3) / 3;
+}
+
+function shade(worldPos: Vec3, n: Vec3, mat: Material, lights: ResolvedLight[], toon = false): Vec3 {
   let r = mat.emissive[0], g = mat.emissive[1], b = mat.emissive[2];
   for (const light of lights) {
     if (light.type === "ambient") {
@@ -185,11 +193,13 @@ function shade(worldPos: Vec3, n: Vec3, mat: Material, lights: ResolvedLight[]):
       light.type === "directional"
         ? v3.scale(light.direction, -1)
         : v3.normalize(v3.sub(light.position, worldPos));
-    const ndotl = Math.max(v3.dot(n, L), 0) * light.intensity;
-    if (ndotl <= 0) continue;
-    r += mat.color[0] * light.color[0] * ndotl;
-    g += mat.color[1] * light.color[1] * ndotl;
-    b += mat.color[2] * light.color[2] * ndotl;
+    let lambert = Math.max(v3.dot(n, L), 0);
+    if (toon) lambert = bandLambert(lambert); // hard cel bands instead of a smooth ramp
+    const f = lambert * light.intensity;
+    if (f <= 0) continue;
+    r += mat.color[0] * light.color[0] * f;
+    g += mat.color[1] * light.color[1] * f;
+    b += mat.color[2] * light.color[2] * f;
   }
   return [r, g, b];
 }

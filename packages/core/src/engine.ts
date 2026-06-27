@@ -46,6 +46,8 @@ export interface FrameState {
   background: Vec3;
   /** Resolved gradient sky (top→horizon). When set, engines fill the background with it. */
   sky?: { top: Vec3; bottom: Vec3 };
+  /** Render style — "manga" = banded cel-shading + outlines. */
+  style: "realistic" | "manga";
   nodes: ResolvedNode[];
   lights: ResolvedLight[];
   camera: ResolvedCamera;
