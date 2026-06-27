@@ -51,6 +51,9 @@ export const GeometrySchema = z.discriminatedUnion("kind", [
       indices: z.array(z.number()),
       joints: z.array(z.number()).optional(),
       weights: z.array(z.number()).optional(),
+      uvs: z.array(z.number()).optional(),
+      // In-memory RGBA texture (not JSON-serializable; reference a glTF asset for that path).
+      texture: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
     }),
   }),
 ]);

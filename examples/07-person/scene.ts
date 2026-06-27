@@ -2,8 +2,8 @@
 //
 // loadCharacter("person") returns the rig + placement metadata. The model is Z-up, so the
 // metadata rotates it upright. Asset license: see packages/assets/library/CREDITS.md.
-// (Note: the software renderer is flat-shaded — no textures yet — so the face, which is a texture,
-// is not shown; the body shape and walk animation are fully realistic.)
+// The renderer samples the model's base-color texture, so it renders with its real surface
+// detail (not a flat color). The `skin` material below is only a fallback.
 import { scene } from "@vsim/authoring";
 import { loadCharacter } from "@vsim/assets";
 
