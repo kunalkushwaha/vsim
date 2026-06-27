@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
-import { mat4, v3, type Mat4, type MeshData, type Vec3 } from "@vsim/core";
+import { mat4, v3, type Mat4, type MeshData, type Vec3, type Quat, type Clip, type ClipChannel } from "@vsim/core";
 
 /**
  * Minimal glTF 2.0 / GLB loader → merged MeshData (the "Blender asset source" pipeline).
@@ -26,6 +26,120 @@ export async function loadGltf(path: string): Promise<MeshData> {
   };
   for (const r of roots) visit(r, mat4.identity());
   return merged;
+}
+
+/** A joint in a loaded skeleton — its bind-pose local transform and parent (if also a joint). */
+export interface RigJointNode {
+  id: string;
+  parent?: string;
+  translation: Vec3;
+  rotation: Quat;
+  scale: Vec3;
+}
+
+/** A rigged glTF parsed into vsim's document pieces (joints kept in local space — NOT baked). */
+export interface RiggedGltf {
+  /** Skinned geometry with per-vertex joints/weights, in the mesh's local space. */
+  mesh: MeshData;
+  /** Joint ids in skin order (matches JOINTS_0 indices and `inverseBindMatrices`). */
+  joints: string[];
+  jointNodes: RigJointNode[];
+  inverseBindMatrices: Mat4[];
+  /** Animation clips, times converted from glTF seconds to frames at `fps`. */
+  clips: Clip[];
+}
+
+/**
+ * Load a rigged glTF/GLB: skin (joints + inverse bind matrices), the skinned mesh with
+ * JOINTS_0/WEIGHTS_0, the joint hierarchy, and animation clips. Unlike `loadGltf`, joints are
+ * kept in local space so the runtime can pose them. Limitations: joints must use TRS (not a
+ * matrix), float WEIGHTS_0, and only translation/rotation/scale channels (no morph targets).
+ */
+export async function loadGltfRig(path: string, fps: number): Promise<RiggedGltf> {
+  const file = await readFile(resolve(path));
+  const isGlb = file.readUInt32LE(0) === 0x46546c67;
+  const { json, glbBin } = isGlb ? parseGLB(file) : { json: JSON.parse(file.toString("utf8")), glbBin: undefined };
+  const buffers = await loadBuffers(json, glbBin, dirname(resolve(path)));
+  return parseRig(json, buffers, fps);
+}
+
+const VALID_INTERP = new Set(["linear", "step", "cubicspline"]);
+const jointIdOf = (json: any, idx: number): string => `${json.nodes[idx]?.name ?? "joint"}_${idx}`;
+
+function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
+  const nodeIdx = (json.nodes ?? []).findIndex((n: any) => n.mesh != null && n.skin != null);
+  if (nodeIdx < 0) throw new Error("glTF rig: no skinned mesh node (a node with both `mesh` and `skin`)");
+  const node = json.nodes[nodeIdx];
+  const skin = json.skins[node.skin];
+  const jointSet = new Set<number>(skin.joints);
+
+  const joints: string[] = skin.joints.map((ji: number) => jointIdOf(json, ji));
+  const ibm = readAccessor(json, buffers, skin.inverseBindMatrices);
+  const inverseBindMatrices: Mat4[] = skin.joints.map((_: number, j: number) => ibm.slice(j * 16, j * 16 + 16));
+
+  // node index → parent node index (from every node's children list)
+  const parentOf = new Map<number, number>();
+  (json.nodes ?? []).forEach((n: any, i: number) => {
+    for (const c of n.children ?? []) parentOf.set(c, i);
+  });
+
+  const jointNodes: RigJointNode[] = skin.joints.map((ji: number) => {
+    const jn = json.nodes[ji];
+    if (jn.matrix) throw new Error(`glTF rig: joint "${jointIdOf(json, ji)}" uses a matrix transform (unsupported; use TRS)`);
+    const p = parentOf.get(ji);
+    return {
+      id: jointIdOf(json, ji),
+      parent: p != null && jointSet.has(p) ? jointIdOf(json, p) : undefined,
+      translation: (jn.translation ?? [0, 0, 0]) as Vec3,
+      rotation: (jn.rotation ?? [0, 0, 0, 1]) as Quat,
+      scale: (jn.scale ?? [1, 1, 1]) as Vec3,
+    };
+  });
+
+  const mesh: MeshData = { positions: [], normals: [], indices: [], joints: [], weights: [] };
+  for (const prim of json.meshes[node.mesh].primitives ?? []) {
+    if (prim.attributes?.POSITION == null) continue;
+    const pos = readAccessor(json, buffers, prim.attributes.POSITION);
+    const vcount = pos.length / 3;
+    const nrm = prim.attributes.NORMAL != null ? readAccessor(json, buffers, prim.attributes.NORMAL) : undefined;
+    const jnt = prim.attributes.JOINTS_0 != null ? readAccessor(json, buffers, prim.attributes.JOINTS_0) : undefined;
+    const wgt = prim.attributes.WEIGHTS_0 != null ? readAccessor(json, buffers, prim.attributes.WEIGHTS_0) : undefined;
+    const idx = prim.indices != null ? readAccessor(json, buffers, prim.indices) : Array.from({ length: vcount }, (_, i) => i);
+    const base = mesh.positions.length / 3;
+    for (let i = 0; i < vcount; i++) {
+      mesh.positions.push(pos[i * 3]!, pos[i * 3 + 1]!, pos[i * 3 + 2]!);
+      mesh.normals.push(nrm ? nrm[i * 3]! : 0, nrm ? nrm[i * 3 + 1]! : 1, nrm ? nrm[i * 3 + 2]! : 0);
+      for (let k = 0; k < 4; k++) {
+        mesh.joints!.push(jnt ? jnt[i * 4 + k]! : 0);
+        mesh.weights!.push(wgt ? wgt[i * 4 + k]! : k === 0 ? 1 : 0);
+      }
+    }
+    for (const k of idx) mesh.indices.push(base + k);
+  }
+
+  const clips: Clip[] = (json.animations ?? []).map((anim: any, ai: number) => {
+    const channels: ClipChannel[] = [];
+    let durationFrames = 0;
+    for (const ch of anim.channels ?? []) {
+      const target = ch.target?.node;
+      if (target == null || !jointSet.has(target)) continue; // joint TRS channels only
+      if (ch.target.path !== "translation" && ch.target.path !== "rotation" && ch.target.path !== "scale") continue;
+      const sampler = anim.samplers[ch.sampler];
+      const times = readAccessor(json, buffers, sampler.input).map((t) => t * fps);
+      const interp = (sampler.interpolation ?? "LINEAR").toLowerCase();
+      channels.push({
+        jointNodeId: jointIdOf(json, target),
+        path: ch.target.path,
+        times,
+        values: readAccessor(json, buffers, sampler.output),
+        interpolation: (VALID_INTERP.has(interp) ? interp : "linear") as ClipChannel["interpolation"],
+      });
+      durationFrames = Math.max(durationFrames, times[times.length - 1] ?? 0);
+    }
+    return { id: anim.name ?? `clip${ai}`, durationFrames, channels };
+  });
+
+  return { mesh, joints, jointNodes, inverseBindMatrices, clips };
 }
 
 function parseGLB(buf: Buffer): { json: any; glbBin?: Buffer } {
