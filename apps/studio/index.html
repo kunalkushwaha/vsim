@@ -38,8 +38,17 @@
         background: var(--accent); color: #0b0d11; border: 0; cursor: pointer; }
       #scrub { flex: 1; }
       #frame { font-variant-numeric: tabular-nums; color: var(--mut); min-width: 92px; text-align: right; }
-      .field { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 6px; margin: 4px 0; }
+      .field { display: grid; grid-template-columns: 58px 1fr 18px; align-items: center; gap: 6px; margin: 4px 0; }
       .field > label { color: var(--mut); }
+      .kbtn { width: 16px; height: 16px; padding: 0; line-height: 13px; text-align: center; font-size: 10px;
+        border: 1px solid var(--line); border-radius: 4px; background: var(--panel2); color: var(--mut); cursor: pointer; }
+      .kbtn:hover { border-color: var(--accent); }
+      .kbtn.on { background: #caa23a; color: #1a1a1a; border-color: #caa23a; } /* property is animated */
+      .timeline { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+      #kfstrip { position: relative; height: 12px; }
+      .kf { position: absolute; top: 1px; width: 9px; height: 9px; background: #caa23a; border: 1px solid #7a6420;
+        transform: translateX(-50%) rotate(45deg); cursor: pointer; }
+      .kf:hover { background: #ffd45e; }
       .vec { display: flex; gap: 4px; }
       .vec input { width: 100%; }
       input[type=number] { background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
@@ -64,7 +73,10 @@
       <main><canvas id="preview"></canvas></main>
       <footer>
         <button class="play" id="play">▶</button>
-        <input type="range" id="scrub" min="0" value="0" step="1" />
+        <div class="timeline">
+          <div id="kfstrip"></div>
+          <input type="range" id="scrub" min="0" value="0" step="1" />
+        </div>
         <span id="frame">0 / 0</span>
       </footer>
     </div>

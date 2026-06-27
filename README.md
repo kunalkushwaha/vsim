@@ -123,9 +123,11 @@ session.document; // the edited scene so far
 ## vsim Studio (preview — the visual editor)
 
 The first slice of the **visual editor** (surface 2). A browser app on top of the same engine:
-load a scene, **play/scrub** the timeline, **select** an object, and **edit** its transform/colour
-live — the preview updates instantly because the runtime reads the scene document every frame, so
-*preview == render*. Export the edited document as JSON and `vsim render` it.
+load a scene, **play/scrub** the timeline, **select** an object, **edit** its transform/colour
+live, and **keyframe** those properties (set a value at one frame, another later → it animates,
+with clickable keyframe markers on the timeline). The preview updates instantly because the runtime
+reads the scene document every frame, so *preview == render*. Export the document as JSON and
+`vsim render` it.
 
 ```bash
 pnpm studio          # vite dev server → http://localhost:5173
