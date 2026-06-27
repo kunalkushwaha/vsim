@@ -160,10 +160,29 @@ function applyOne(draft: Draft, op: EditOperation): void {
 
 /**
  * Apply a list of edit operations to a scene document, producing a new validated
- * document. Pure and deterministic: same (doc, ops) → same output, every time. Throws a
- * readable error (via `parseDocument`) if the operations produce an invalid document.
+ * document. Pure and deterministic: same (doc, ops) → same output, every time.
+ *
+ * By default it's strict: if the operations produce an invalid document, it throws (via
+ * `parseDocument`). With `{ skipInvalid: true }` it applies operations one at a time and
+ * silently drops any that would make the document invalid — useful for AI-proposed edits,
+ * where one malformed op shouldn't discard the rest of a generation.
  */
-export function applyOperations(doc: SceneDocument, ops: EditOperation[]): SceneDocument {
+export function applyOperations(
+  doc: SceneDocument,
+  ops: EditOperation[],
+  opts: { skipInvalid?: boolean } = {},
+): SceneDocument {
+  if (opts.skipInvalid) {
+    let current = doc;
+    for (const op of ops) {
+      try {
+        current = applyOperations(current, [op]); // strict single-op apply
+      } catch {
+        // drop the malformed op and keep going
+      }
+    }
+    return current;
+  }
   const draft = structuredClone(doc) as unknown as Draft;
   draft.materials ??= [];
   draft.nodes ??= [];

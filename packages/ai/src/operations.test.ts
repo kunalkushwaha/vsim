@@ -73,6 +73,23 @@ describe("applyOperations", () => {
     expect(out.animation).toHaveLength(0);
   });
 
+  it("throws on an invalid operation by default (strict)", () => {
+    expect(() => applyOperations(baseDoc(), [{ op: "addMesh", id: "bad", geometry: { kind: "blob" as any } }])).toThrow();
+  });
+
+  it("skipInvalid drops malformed ops but applies the valid ones", () => {
+    const out = applyOperations(
+      baseDoc(),
+      [
+        { op: "addMesh", id: "bad", geometry: { kind: "blob" as any } }, // invalid geometry kind
+        { op: "setMaterial", id: "cube", color: [0, 1, 0] }, // valid
+      ],
+      { skipInvalid: true },
+    );
+    expect(out.nodes.find((n) => n.id === "bad")).toBeUndefined(); // bad op skipped
+    expect(out.materials.find((m) => m.id === "cube")?.color).toEqual([0, 1, 0]); // good op applied
+  });
+
   it("is deterministic: same ops produce identical documents", () => {
     const ops: EditOperation[] = [
       { op: "setMaterial", id: "cube", color: [0.1, 0.2, 0.3] },

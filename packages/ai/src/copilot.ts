@@ -120,7 +120,9 @@ export async function editScene(opts: EditSceneOptions): Promise<EditSceneResult
       ? await editViaClaudeCli(opts.doc, opts.prompt, opts.model, opts.history)
       : await editViaSdk(opts);
 
-  const doc = operations.length > 0 ? applyOperations(opts.doc, operations) : opts.doc;
+  // skipInvalid: tolerate the occasional malformed op from the model rather than discarding the
+  // whole edit — the AI is authoring-time, so resilience matters more than strictness here.
+  const doc = operations.length > 0 ? applyOperations(opts.doc, operations, { skipInvalid: true }) : opts.doc;
   return { doc, operations, summary, provider };
 }
 

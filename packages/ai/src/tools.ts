@@ -197,15 +197,27 @@ export const EDIT_TOOLS: Anthropic.Tool[] = [
  * text (e.g. the `claude` CLI) instead of structured tool definitions. `*` marks required
  * fields.
  */
+/** Describe a JSON-schema node compactly, expanding nested objects/arrays/enums one level deep. */
+function describeSchema(v: any): string {
+  if (!v || typeof v !== "object") return "any";
+  if (v.enum) return v.enum.join("|");
+  if (v.type === "object" && v.properties) {
+    const sub = Object.entries(v.properties)
+      .map(([k, sv]) => `${k}: ${describeSchema(sv)}`)
+      .join(", ");
+    return `{ ${sub} }`;
+  }
+  if (v.type === "array") return `${describeSchema(v.items)}[]`;
+  if (v.anyOf) return v.anyOf.map(describeSchema).join("|");
+  return v.type ?? "any";
+}
+
 export function toolsReference(): string {
   return EDIT_TOOLS.map((t) => {
-    const schema = t.input_schema as {
-      properties?: Record<string, { type?: string; description?: string; enum?: string[] }>;
-      required?: string[];
-    };
+    const schema = t.input_schema as { properties?: Record<string, any>; required?: string[] };
     const required = schema.required ?? [];
     const fields = Object.entries(schema.properties ?? {})
-      .map(([k, v]) => `${k}${required.includes(k) ? "*" : ""} (${v.enum ? v.enum.join("|") : v.type ?? "any"})`)
+      .map(([k, v]) => `${k}${required.includes(k) ? "*" : ""} (${describeSchema(v)})`)
       .join(", ");
     return `- ${t.name}: ${t.description}\n    input: ${fields || "(none)"}`;
   }).join("\n");
