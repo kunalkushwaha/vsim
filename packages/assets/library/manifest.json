@@ -13,6 +13,30 @@
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
     },
     {
+      "id": "man",
+      "name": "Man (MakeHuman)",
+      "file": "man.glb",
+      "description": "A realistic adult male (gender=1.0, taller/broader build) with a real skin texture and the walk/run/idle/wave clip library. Generated with MakeHuman (MPFB 2); see scripts/blender/make-human.py.",
+      "defaultClip": "walk",
+      "clips": ["walk", "run", "idle", "wave"],
+      "scale": 1.0,
+      "rotation": [0, 0, 0],
+      "faces": "+x",
+      "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
+    },
+    {
+      "id": "kid",
+      "name": "Child (MakeHuman)",
+      "file": "kid.glb",
+      "description": "A realistic child (age=0.16, shorter child proportions) with a real skin texture and the walk/run/idle/wave clip library. Generated with MakeHuman (MPFB 2); see scripts/blender/make-human.py.",
+      "defaultClip": "walk",
+      "clips": ["walk", "run", "idle", "wave"],
+      "scale": 1.0,
+      "rotation": [0, 0, 0],
+      "faces": "+x",
+      "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
+    },
+    {
       "id": "figure",
       "name": "Figure (Blender)",
       "file": "figure.glb",

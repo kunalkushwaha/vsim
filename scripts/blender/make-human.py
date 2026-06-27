@@ -1,7 +1,12 @@
 # Generate a REALISTIC rigged + walk-animated human using MakeHuman (the MPFB 2 Blender add-on),
-# headless — optionally with a real skin TEXTURE. Run with:
+# headless — optionally with a real skin TEXTURE and a distinct body. Run with:
 #
-#   blender --background --python scripts/blender/make-human.py -- <mpfb2.zip> <output.glb> [skin.mhmat]
+#   blender --background --python scripts/blender/make-human.py -- <mpfb2.zip> <output.glb> [skin.mhmat] [macro=val ...]
+#
+# Macro overrides shape the body (all 0..1): gender (0 female → 1 male), age (0 child → 1 old),
+# muscle, weight, height, proportions, and race weights asian/caucasian/african. Examples:
+#   ... human.glb skin.mhmat gender=1.0 height=0.6 muscle=0.6 caucasian=1.0   # an adult man
+#   ... kid.glb   skin.mhmat age=0.16                                          # a child
 #
 # Get the MPFB 2 add-on zip (free/open-source, MakeHuman Community):
 #   curl -L https://files.makehumancommunity.org/plugins/mpfb2-latest.zip -o mpfb2.zip
@@ -22,6 +27,12 @@ zip_path = next(a for a in argv if a.endswith(".zip"))
 out = next(a for a in argv if a.endswith(".glb") or a.endswith(".gltf"))
 skin = next((a for a in argv if a.endswith(".mhmat")), None)
 MAX_TEX = 1024  # downscale skin diffuse to keep the bundled GLB small
+RACES = {"asian", "caucasian", "african"}
+overrides = {}  # macro body shape, e.g. {"gender": 1.0, "age": 0.16, "caucasian": 1.0}
+for a in argv:
+    if "=" in a and not a.endswith((".zip", ".glb", ".gltf", ".mhmat")):
+        k, v = a.split("=", 1)
+        overrides[k.strip()] = float(v)
 
 # start from an empty scene (drop Blender's default Cube/Camera/Light so the GLB is just the human)
 bpy.ops.object.select_all(action='SELECT')
@@ -34,10 +45,34 @@ except Exception as e:
 base = next((m for m in list(sys.modules) if m.endswith(".mpfb") or m == "mpfb"), None)
 if not base: raise SystemExit("MPFB not loaded")
 HumanService = importlib.import_module(base + ".services.humanservice").HumanService
-human = HumanService.create_human()
+if overrides:
+    TargetService = importlib.import_module(base + ".services.targetservice").TargetService
+    macro = TargetService.get_default_macro_info_dict()
+    if any(k in RACES for k in overrides):  # naming a race zeroes the unspecified ones
+        macro["race"] = {r: 0.0 for r in RACES}
+    for k, v in overrides.items():
+        (macro["race"] if k in RACES else macro)[k] = v
+    tot = sum(macro["race"].values()) or 1.0
+    for r in macro["race"]: macro["race"][r] /= tot   # race weights must sum to 1
+    print("MACRO:", macro)
+    human = HumanService.create_human(macro_detail_dict=macro)
+else:
+    human = HumanService.create_human()
 HumanService.add_builtin_rig(human, "game_engine")
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 print("BONES:", [b.name for b in arm.data.bones])
+
+# MakeHuman stores the macro body (gender/age/build) as shape keys (glTF morph targets), but vsim
+# reads only the base mesh — so bake the current shape-key mix into the vertices and drop the keys,
+# making the distinct body the exported geometry.
+if human.data.shape_keys:
+    mix = human.shape_key_add(name="_bake", from_mix=True)
+    coords = [v.co.copy() for v in mix.data]
+    bpy.context.view_layer.objects.active = human
+    bpy.ops.object.shape_key_remove(all=True)
+    for i, v in enumerate(human.data.vertices):
+        v.co = coords[i]
+    print("baked", len(coords), "verts (shape keys applied)")
 
 # --- real skin texture (optional): GAMEENGINE bakes one diffuse map glTF exports as base color ---
 if skin:

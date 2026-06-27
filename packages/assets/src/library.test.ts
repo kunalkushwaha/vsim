@@ -4,7 +4,7 @@ import { listCharacters, loadCharacter } from "./index.js";
 describe("character library", () => {
   it("lists the bundled characters", async () => {
     const ids = (await listCharacters()).map((c) => c.id).sort();
-    expect(ids).toEqual(["figure", "fox", "human", "person"]);
+    expect(ids).toEqual(["figure", "fox", "human", "kid", "man", "person"]);
   });
 
   it("loads the MakeHuman-generated human (realistic rig + clip library + skin texture)", async () => {
@@ -19,6 +19,22 @@ describe("character library", () => {
     const tex = rig.mesh.texture!;
     expect(tex.width).toBeGreaterThan(0);
     expect(tex.data).toHaveLength(tex.width * tex.height * 4);
+  });
+
+  it("provides distinct MakeHuman bodies (man taller than woman taller than child)", async () => {
+    const height = async (id: string) => {
+      const { rig } = await loadCharacter(id, 30);
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 1; i < rig.mesh.positions.length; i += 3) {
+        const y = rig.mesh.positions[i]!;
+        if (y < lo) lo = y;
+        if (y > hi) hi = y;
+      }
+      return hi - lo;
+    };
+    const [man, woman, kid] = await Promise.all([height("man"), height("human"), height("kid")]);
+    expect(man).toBeGreaterThan(woman); // gender/height/muscle macros baked into the mesh
+    expect(woman).toBeGreaterThan(kid); // age macro → child proportions
   });
 
   it("loads the Blender-generated figure (rigged + walk clip)", async () => {
