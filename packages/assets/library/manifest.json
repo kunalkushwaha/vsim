@@ -37,6 +37,18 @@
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
     },
     {
+      "id": "suited",
+      "name": "Man in a suit (MakeHuman)",
+      "file": "suited.glb",
+      "description": "A realistic man wearing real clothing geometry — a casual suit + shoes fitted and skinned to the same rig (three skinned meshes), each with its own CC0 texture. Walk/run/idle/wave clips. Generated with MakeHuman (MPFB 2); see scripts/blender/make-human.py.",
+      "defaultClip": "walk",
+      "clips": ["walk", "run", "idle", "wave"],
+      "scale": 1.0,
+      "rotation": [0, 0, 0],
+      "faces": "+x",
+      "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin + clothing from the makehuman_system_assets pack — all CC0."
+    },
+    {
       "id": "figure",
       "name": "Figure (Blender)",
       "file": "figure.glb",

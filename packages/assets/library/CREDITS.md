@@ -10,12 +10,14 @@ their original licenses (vsim's own code is MIT).
 - The Cesium logo on the model is a **trademark** (our software renderer doesn't load textures, so
   the logo is not displayed; the file is included unmodified).
 
-## `human.glb` / `man.glb` / `kid.glb` — "Human / Man / Child (MakeHuman)"
+## `human.glb` / `man.glb` / `kid.glb` / `suited.glb` — MakeHuman humans
 - Realistic rigged humans generated with **MakeHuman / MPFB 2** (makehumancommunity.org) — a woman,
-  a man, and a child, differing by MakeHuman's gender/age/build macros (baked into the mesh) but
-  sharing the same rig + walk/run/idle/wave clips. MakeHuman output is **CC0** (public domain).
-  Regenerate/customize via `scripts/blender/make-human.py`.
-- The **skin textures** come from MakeHuman's `makehuman_system_assets` pack
+  a man, a child, and a man in a suit, differing by MakeHuman's gender/age/build macros (baked into
+  the mesh) but sharing the same rig + walk/run/idle/wave clips. MakeHuman output is **CC0** (public
+  domain). Regenerate/customize via `scripts/blender/make-human.py`.
+- `suited.glb` adds **real clothing geometry** — a casual suit + shoes from the same CC0 pack, fitted
+  and skin-weighted to the rig (three skinned meshes), with the under-clothing body removed.
+- The **skin + clothing textures** come from MakeHuman's `makehuman_system_assets` pack
   ([CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)) — baked to a single base-color
   map (`skin_type="GAMEENGINE"`) and downscaled to 1024². Pass any skin from that pack to the
   script to change it.

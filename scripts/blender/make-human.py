@@ -26,7 +26,8 @@ argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[-2:
 zip_path = next(a for a in argv if a.endswith(".zip"))
 out = next(a for a in argv if a.endswith(".glb") or a.endswith(".gltf"))
 skin = next((a for a in argv if a.endswith(".mhmat")), None)
-MAX_TEX = 1024  # downscale skin diffuse to keep the bundled GLB small
+clothes = [a for a in argv if a.endswith(".mhclo")]  # garments fitted + rigged to the same skeleton
+MAX_TEX = 1024  # downscale every diffuse to keep the bundled GLB small
 RACES = {"asian", "caucasian", "african"}
 overrides = {}  # macro body shape, e.g. {"gender": 1.0, "age": 0.16, "caucasian": 1.0}
 for a in argv:
@@ -62,6 +63,14 @@ HumanService.add_builtin_rig(human, "game_engine")
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 print("BONES:", [b.name for b in arm.data.bones])
 
+# --- real clothing (optional): fit each garment to the body and copy skin weights onto the SAME
+# game_engine rig, so it exports as an extra skinned mesh that vsim's multi-mesh loader picks up. ---
+for mhclo in clothes:
+    HumanService.add_mhclo_asset(mhclo, human, material_type="GAMEENGINE", subdiv_levels=0,
+                                 set_up_rigging=True, interpolate_weights=True,
+                                 import_subrig=False, import_weights=False)
+    print("CLOTHES:", os.path.basename(mhclo))
+
 # MakeHuman stores the macro body (gender/age/build) as shape keys (glTF morph targets), but vsim
 # reads only the base mesh — so bake the current shape-key mix into the vertices and drop the keys,
 # making the distinct body the exported geometry.
@@ -78,12 +87,6 @@ if human.data.shape_keys:
 if skin:
     HumanService.set_character_skin(skin, human, skin_type="GAMEENGINE")
     print("SKIN:", os.path.basename(skin))
-    for img in list(bpy.data.images):
-        w, h = img.size
-        if max(w, h) > MAX_TEX and w and h:
-            s = MAX_TEX / max(w, h)
-            img.scale(int(w * s), int(h * s))
-            print("scaled", img.name, "->", tuple(img.size))
 
 # --- author a clip LIBRARY (walk / run / idle / wave) on the Unreal-style game_engine rig ---
 # Each clip is its own Action, stashed to its own NLA track, so glTF exports them as separate,
@@ -145,6 +148,29 @@ author("wave", [
 
 bpy.context.scene.frame_start = 1; bpy.context.scene.frame_end = 60
 bpy.ops.object.mode_set(mode='OBJECT')
+
+# With clothes on, remove the body geometry hidden under them (each garment's "delete group") plus
+# MakeHuman's helper geometry, so the body doesn't poke through. Apply only MASK modifiers — never
+# the Armature modifier, which would freeze the pose. (Shape keys were already baked off above.)
+if clothes:
+    bpy.context.view_layer.objects.active = human
+    masks = [md.name for md in human.modifiers if md.type == 'MASK']  # names may hold non-UTF8 bytes
+    applied = 0
+    for name in masks:
+        try:
+            bpy.ops.object.modifier_apply(modifier=name)
+            applied += 1
+        except Exception:
+            pass
+    print("applied", applied, "of", len(masks), "mask modifier(s)")
+
+# downscale every diffuse (skin + each garment) so the bundled GLB stays small
+for img in list(bpy.data.images):
+    w, h = img.size
+    if max(w, h) > MAX_TEX and w and h:
+        s = MAX_TEX / max(w, h)
+        img.scale(int(w * s), int(h * s))
+        print("scaled", img.name, "->", tuple(img.size))
 
 bpy.ops.export_scene.gltf(filepath=out, export_format='GLB', export_animations=True,
                           export_animation_mode='ACTIONS', export_yup=True)

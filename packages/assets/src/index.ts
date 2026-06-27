@@ -80,8 +80,10 @@ export interface RigJointNode {
 
 /** A rigged glTF parsed into vsim's document pieces (joints kept in local space — NOT baked). */
 export interface RiggedGltf {
-  /** Skinned geometry with per-vertex joints/weights, in the mesh's local space. */
+  /** Primary skinned geometry (= `meshes[0]`, the body) with per-vertex joints/weights. */
   mesh: MeshData;
+  /** All skinned meshes sharing the skeleton — body plus any garments — each with its own texture. */
+  meshes: MeshData[];
   /** Joint ids in skin order (matches JOINTS_0 indices and `inverseBindMatrices`). */
   joints: string[];
   jointNodes: RigJointNode[];
@@ -108,15 +110,21 @@ const VALID_INTERP = new Set(["linear", "step", "cubicspline"]);
 const jointIdOf = (json: any, idx: number): string => `${json.nodes[idx]?.name ?? "joint"}_${idx}`;
 
 function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
-  const nodeIdx = (json.nodes ?? []).findIndex((n: any) => n.mesh != null && n.skin != null);
-  if (nodeIdx < 0) throw new Error("glTF rig: no skinned mesh node (a node with both `mesh` and `skin`)");
-  const node = json.nodes[nodeIdx];
+  // Every node with both `mesh` and `skin` is skinned geometry: the body plus any garments. They
+  // share one skeleton, so the first node's skin defines the joints; other meshes' JOINTS_0 are
+  // remapped into that order by joint id (robust even if MPFB emits a separate skin per garment).
+  const skinnedIdxs = (json.nodes ?? [])
+    .map((_: any, i: number) => i)
+    .filter((i: number) => json.nodes[i].mesh != null && json.nodes[i].skin != null);
+  if (skinnedIdxs.length === 0) throw new Error("glTF rig: no skinned mesh node (a node with both `mesh` and `skin`)");
+  const node = json.nodes[skinnedIdxs[0]];
   const skin = json.skins[node.skin];
   const jointSet = new Set<number>(skin.joints);
 
   const joints: string[] = skin.joints.map((ji: number) => jointIdOf(json, ji));
   const ibm = readAccessor(json, buffers, skin.inverseBindMatrices);
   const inverseBindMatrices: Mat4[] = skin.joints.map((_: number, j: number) => ibm.slice(j * 16, j * 16 + 16));
+  const jointIndexById = new Map<string, number>(joints.map((jid, i) => [jid, i]));
 
   // node index → parent node index (from every node's children list)
   const parentOf = new Map<number, number>();
@@ -137,29 +145,38 @@ function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
     };
   });
 
-  const mesh: MeshData = { positions: [], normals: [], indices: [], joints: [], weights: [], uvs: [] };
-  for (const prim of json.meshes[node.mesh].primitives ?? []) {
-    if (prim.attributes?.POSITION == null) continue;
-    const pos = readAccessor(json, buffers, prim.attributes.POSITION);
-    const vcount = pos.length / 3;
-    const nrm = prim.attributes.NORMAL != null ? readAccessor(json, buffers, prim.attributes.NORMAL) : undefined;
-    const jnt = prim.attributes.JOINTS_0 != null ? readAccessor(json, buffers, prim.attributes.JOINTS_0) : undefined;
-    const wgt = prim.attributes.WEIGHTS_0 != null ? readAccessor(json, buffers, prim.attributes.WEIGHTS_0) : undefined;
-    const uv = prim.attributes.TEXCOORD_0 != null ? readAccessor(json, buffers, prim.attributes.TEXCOORD_0) : undefined;
-    const idx = prim.indices != null ? readAccessor(json, buffers, prim.indices) : Array.from({ length: vcount }, (_, i) => i);
-    const base = mesh.positions.length / 3;
-    for (let i = 0; i < vcount; i++) {
-      mesh.positions.push(pos[i * 3]!, pos[i * 3 + 1]!, pos[i * 3 + 2]!);
-      mesh.normals.push(nrm ? nrm[i * 3]! : 0, nrm ? nrm[i * 3 + 1]! : 1, nrm ? nrm[i * 3 + 2]! : 0);
-      mesh.uvs!.push(uv ? uv[i * 2]! : 0, uv ? uv[i * 2 + 1]! : 0);
-      for (let k = 0; k < 4; k++) {
-        mesh.joints!.push(jnt ? jnt[i * 4 + k]! : 0);
-        mesh.weights!.push(wgt ? wgt[i * 4 + k]! : k === 0 ? 1 : 0);
+  const buildMesh = (meshNode: any): MeshData => {
+    // local joint index (this mesh's skin order) → primary joint index
+    const ms = json.skins[meshNode.skin];
+    const remap: number[] = ms.joints.map((ji: number) => jointIndexById.get(jointIdOf(json, ji)) ?? 0);
+    const mesh: MeshData = { positions: [], normals: [], indices: [], joints: [], weights: [], uvs: [] };
+    for (const prim of json.meshes[meshNode.mesh].primitives ?? []) {
+      if (prim.attributes?.POSITION == null) continue;
+      const pos = readAccessor(json, buffers, prim.attributes.POSITION);
+      const vcount = pos.length / 3;
+      const nrm = prim.attributes.NORMAL != null ? readAccessor(json, buffers, prim.attributes.NORMAL) : undefined;
+      const jnt = prim.attributes.JOINTS_0 != null ? readAccessor(json, buffers, prim.attributes.JOINTS_0) : undefined;
+      const wgt = prim.attributes.WEIGHTS_0 != null ? readAccessor(json, buffers, prim.attributes.WEIGHTS_0) : undefined;
+      const uv = prim.attributes.TEXCOORD_0 != null ? readAccessor(json, buffers, prim.attributes.TEXCOORD_0) : undefined;
+      const idx = prim.indices != null ? readAccessor(json, buffers, prim.indices) : Array.from({ length: vcount }, (_, i) => i);
+      const base = mesh.positions.length / 3;
+      for (let i = 0; i < vcount; i++) {
+        mesh.positions.push(pos[i * 3]!, pos[i * 3 + 1]!, pos[i * 3 + 2]!);
+        mesh.normals.push(nrm ? nrm[i * 3]! : 0, nrm ? nrm[i * 3 + 1]! : 1, nrm ? nrm[i * 3 + 2]! : 0);
+        mesh.uvs!.push(uv ? uv[i * 2]! : 0, uv ? uv[i * 2 + 1]! : 0);
+        for (let k = 0; k < 4; k++) {
+          mesh.joints!.push(jnt ? remap[jnt[i * 4 + k]!]! : 0);
+          mesh.weights!.push(wgt ? wgt[i * 4 + k]! : k === 0 ? 1 : 0);
+        }
       }
+      for (const k of idx) mesh.indices.push(base + k);
+      if (!mesh.texture) mesh.texture = primitiveTexture(json, buffers, prim); // first textured primitive wins
     }
-    for (const k of idx) mesh.indices.push(base + k);
-    if (!mesh.texture) mesh.texture = primitiveTexture(json, buffers, prim); // first textured primitive wins
-  }
+    return mesh;
+  };
+
+  const meshes = skinnedIdxs.map((i: number) => buildMesh(json.nodes[i]));
+  const mesh = meshes[0]!;
 
   const clips: Clip[] = (json.animations ?? []).map((anim: any, ai: number) => {
     const channels: ClipChannel[] = [];
@@ -183,7 +200,7 @@ function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
     return { id: anim.name ?? `clip${ai}`, durationFrames, channels };
   });
 
-  return { mesh, joints, jointNodes, inverseBindMatrices, clips };
+  return { mesh, meshes, joints, jointNodes, inverseBindMatrices, clips };
 }
 
 /** A bundled sample character — its rig file plus how to place it (normalized to ~human scale, Y-up). */

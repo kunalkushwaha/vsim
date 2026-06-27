@@ -50,14 +50,15 @@ scene are byte-identical, and the live preview matches the headless render frame
 
 ## Examples & showreel
 
-Fourteen canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
+Fifteen canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
 beat-synced pulse, a procedural **walking character** filmed from three angles, a **kid playing
 soccer** (a hand-animated kick + a ball that launches), an original **cartoon puppy** (a
 procedural quadruped with a trot gait + waggy tail), rigged characters from the bundled
 [character library](./packages/assets/library/CREDITS.md) — a **Fox**, a realistic **person**, and a
 cast of **MakeHuman humans with real skin textures** (a woman, a man, and a child, generated headlessly
-by `scripts/blender/make-human.py`; a **walk/run/idle/wave clip library** in `examples/13-clips` and the
-**body variety** side-by-side in `examples/14-cast`) —
+by `scripts/blender/make-human.py`; a **walk/run/idle/wave clip library** in `examples/13-clips`, the
+**body variety** side-by-side in `examples/14-cast`, and one wearing **real clothing geometry**
+— a suit + shoes as separate skinned meshes — in `examples/15-clothing`) —
 loaded by name with `loadCharacter()` and **rendered with their real glTF textures** (PNG/JPEG
 base-color, sampled in the software renderer), and a **manga** scene (one-flag cel-shading +
 outlines via `style: "manga"`). Render any of them, or build the montage:

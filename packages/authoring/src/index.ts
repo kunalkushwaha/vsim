@@ -12,6 +12,8 @@ type Keyframes = { frame: number; value: number | number[]; easing?: any }[];
  */
 export interface CharacterRig {
   mesh: MeshData;
+  /** All skinned meshes sharing the skeleton (body + garments). Defaults to `[mesh]` if absent. */
+  meshes?: MeshData[];
   joints: string[];
   jointNodes: { id: string; parent?: string; translation: Vec3; rotation: Quat; scale: Vec3 }[];
   inverseBindMatrices: Mat4[];
@@ -181,12 +183,18 @@ export class SceneBuilder {
     }
 
     const clipName = opts.clip ?? rig.clips[0]?.id;
-    this.doc.nodes!.push({
-      id: `${id}__mesh`,
-      // Inline the skinned mesh so the scene document stays self-contained (CLI-renderable).
-      mesh: { geometry: { kind: "mesh", data: rig.mesh }, materialId: opts.material, skinId: `${id}__skin` },
-      clip: clipName ? { clipId: `${id}/${clipName}`, loop: opts.loop, speed: opts.speed, startFrame: opts.startFrame } : undefined,
-    } as any);
+    const clip = clipName ? { clipId: `${id}/${clipName}`, loop: opts.loop, speed: opts.speed, startFrame: opts.startFrame } : undefined;
+    // One mesh node per skinned mesh (body + garments), all bound to the same skin. The clip poses
+    // shared joints, so it rides on the first mesh node only. Each mesh keeps its own texture.
+    const meshes = rig.meshes ?? [rig.mesh];
+    meshes.forEach((meshData, k) => {
+      this.doc.nodes!.push({
+        id: k === 0 ? `${id}__mesh` : `${id}__mesh${k}`,
+        // Inline the skinned mesh so the scene document stays self-contained (CLI-renderable).
+        mesh: { geometry: { kind: "mesh", data: meshData }, materialId: opts.material, skinId: `${id}__skin` },
+        clip: k === 0 ? clip : undefined,
+      } as any);
+    });
     return this;
   }
 

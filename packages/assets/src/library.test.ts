@@ -4,7 +4,7 @@ import { listCharacters, loadCharacter } from "./index.js";
 describe("character library", () => {
   it("lists the bundled characters", async () => {
     const ids = (await listCharacters()).map((c) => c.id).sort();
-    expect(ids).toEqual(["figure", "fox", "human", "kid", "man", "person"]);
+    expect(ids).toEqual(["figure", "fox", "human", "kid", "man", "person", "suited"]);
   });
 
   it("loads the MakeHuman-generated human (realistic rig + clip library + skin texture)", async () => {
@@ -35,6 +35,16 @@ describe("character library", () => {
     const [man, woman, kid] = await Promise.all([height("man"), height("human"), height("kid")]);
     expect(man).toBeGreaterThan(woman); // gender/height/muscle macros baked into the mesh
     expect(woman).toBeGreaterThan(kid); // age macro → child proportions
+  });
+
+  it("loads a clothed character as multiple skinned meshes (body + garments)", async () => {
+    const { rig } = await loadCharacter("suited", 30);
+    expect(rig.meshes.length).toBeGreaterThan(1); // body + suit + shoes
+    expect(rig.mesh).toBe(rig.meshes[0]); // primary mesh is the first
+    for (const m of rig.meshes) {
+      expect(m.joints!.length).toBe((m.positions.length / 3) * 4); // every garment is skinned
+      expect(m.texture).toBeDefined(); // each carries its own base-color texture
+    }
   });
 
   it("loads the Blender-generated figure (rigged + walk clip)", async () => {
