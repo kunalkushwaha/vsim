@@ -103,8 +103,18 @@ export class SoftwareEngine implements Engine {
       const jm = node.skin?.jointMatrices;
       const skinned = jm !== undefined && md.joints !== undefined && md.weights !== undefined;
 
+      // Active morph targets (blend shapes): displace each vertex by Σ weightᵢ·deltaᵢ before skinning.
+      const morphs = md.morphTargets && node.morphWeights
+        ? md.morphTargets.map((t, i) => ({ deltas: t.deltas, w: node.morphWeights![i] ?? 0 })).filter((m) => m.w !== 0)
+        : [];
+
       for (let i = 0; i < vcount; i++) {
         const pos: Vec3 = [md.positions[i * 3]!, md.positions[i * 3 + 1]!, md.positions[i * 3 + 2]!];
+        for (const m of morphs) {
+          pos[0] += m.w * m.deltas[i * 3]!;
+          pos[1] += m.w * m.deltas[i * 3 + 1]!;
+          pos[2] += m.w * m.deltas[i * 3 + 2]!;
+        }
         const nrm: Vec3 = [md.normals[i * 3]!, md.normals[i * 3 + 1]!, md.normals[i * 3 + 2]!];
         const m = skinned ? skinningMatrix(jm!, md.joints!, md.weights!, i) : node.worldMatrix;
         const wp4 = mat4.transformPoint(m, pos);

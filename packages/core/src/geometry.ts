@@ -20,6 +20,9 @@ export interface MeshData {
   uvs?: number[];
   /** Base-color texture (albedo), sampled at `uvs` and multiplied with lighting. */
   texture?: Texture;
+  /** Morph targets (blend shapes): per-target position deltas (x,y,z * n) added to `positions`,
+   *  scaled by each target's weight. Drives facial expressions / lip-sync. */
+  morphTargets?: { name?: string; deltas: number[] }[];
 }
 
 /** Tessellate a primitive into triangles. (glTF meshes are loaded separately.) */

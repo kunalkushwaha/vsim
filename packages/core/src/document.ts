@@ -54,6 +54,8 @@ export const GeometrySchema = z.discriminatedUnion("kind", [
       uvs: z.array(z.number()).optional(),
       // In-memory RGBA texture (not JSON-serializable; reference a glTF asset for that path).
       texture: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
+      // Morph targets (blend shapes): per-target position deltas added to `positions`, weighted.
+      morphTargets: z.array(z.object({ name: z.string().optional(), deltas: z.array(z.number()) })).optional(),
     }),
   }),
 ]);
@@ -63,6 +65,8 @@ export const MeshSchema = z.object({
   materialId: z.string().optional(),
   /** Binds this mesh to a skeleton (`skins[].id`) for skeletal animation. */
   skinId: z.string().optional(),
+  /** Initial morph-target weights keyed by target name; animate via the "morph.<name>" track path. */
+  morphWeights: z.record(z.number()).optional(),
 });
 
 const mat4Schema = z.array(z.number()).length(16); // column-major 4x4

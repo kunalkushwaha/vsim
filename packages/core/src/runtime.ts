@@ -120,6 +120,20 @@ export class SceneRuntime {
       materials.set(m.id, { ...m, color: [...m.color] as Vec3, emissive: [...m.emissive] as Vec3 });
     }
 
+    // Morph-target weights per node (aligned to the mesh's morphTargets order), seeded from the
+    // mesh's `morphWeights` defaults (keyed by name). Animation tracks with a "morph.<name|index>"
+    // path override them; the engine then displaces vertices by Σ weight·delta before skinning.
+    const morphByNode = new Map<string, number[]>();
+    const morphNames = new Map<string, (string | undefined)[]>();
+    for (const n of this.doc.nodes) {
+      const g = n.mesh?.geometry;
+      if (g?.kind !== "mesh" || !g.data.morphTargets) continue;
+      const names = g.data.morphTargets.map((t) => t.name);
+      const defaults = n.mesh!.morphWeights;
+      morphByNode.set(n.id, names.map((nm) => (nm && defaults ? (defaults[nm] ?? 0) : 0)));
+      morphNames.set(n.id, names);
+    }
+
     // Skeletal clips: sample each playing clip and override its joints' local transforms.
     for (const node of this.doc.nodes) {
       if (!node.clip) continue;
@@ -139,7 +153,16 @@ export class SceneRuntime {
     const cameraOverrides = new Map<string, { fov?: number; lookAt?: Vec3 }>();
     for (const track of this.doc.animation) {
       const value = evaluateTrack(track, frame);
-      if (track.target.nodeId) {
+      if (track.target.nodeId && track.target.path.startsWith("morph.")) {
+        const weights = morphByNode.get(track.target.nodeId);
+        const names = morphNames.get(track.target.nodeId);
+        if (weights && typeof value === "number") {
+          const key = track.target.path.slice(6);
+          let idx = names ? names.indexOf(key) : -1;
+          if (idx < 0 && Number.isInteger(Number(key))) idx = Number(key);
+          if (idx >= 0 && idx < weights.length) weights[idx] = value;
+        }
+      } else if (track.target.nodeId) {
         const lt = locals.get(track.target.nodeId);
         if (lt) applyToTransform(lt, track.target.path, value);
       } else if (track.target.materialId) {
@@ -193,7 +216,7 @@ export class SceneRuntime {
           skin = { jointMatrices };
         }
       }
-      nodes.push({ id: n.id, worldMatrix: world, mesh: n.mesh, light: n.light, material, skin });
+      nodes.push({ id: n.id, worldMatrix: world, mesh: n.mesh, light: n.light, material, skin, morphWeights: morphByNode.get(n.id) });
       if (n.light) {
         lights.push({
           type: n.light.type,

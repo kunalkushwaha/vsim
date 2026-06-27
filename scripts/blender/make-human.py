@@ -35,6 +35,7 @@ for a in argv:
         k, v = a.split("=", 1)
         overrides[k.strip()] = float(v)
 MAX_TEX = int(overrides.pop("tex")) if "tex" in overrides else MAX_TEX  # tex=512 for a leaner GLB
+want_mouth = bool(overrides.pop("mouth", 0))  # mouth=1 adds a "mouthOpen" morph target for lip-sync
 
 # start from an empty scene (drop Blender's default Cube/Camera/Light so the GLB is just the human)
 bpy.ops.object.select_all(action='SELECT')
@@ -83,6 +84,16 @@ if human.data.shape_keys:
     for i, v in enumerate(human.data.vertices):
         v.co = coords[i]
     print("baked", len(coords), "verts (shape keys applied)")
+
+# --- mouth-open morph (optional): load MakeHuman's jaw-drop target as a shape key named "mouthOpen".
+# Done AFTER baking the macro keys, so it's the only remaining shape key → one named glTF morph target. ---
+if want_mouth:
+    TargetService = importlib.import_module(base + ".services.targetservice").TargetService
+    data_dir = os.path.join(os.path.dirname(sys.modules[base].__file__), "data")
+    jaw = os.path.join(data_dir, "targets", "chin", "chin-jaw-drop-incr.target.gz")
+    bpy.context.view_layer.objects.active = human
+    TargetService.load_target(human, jaw, weight=0.0, name="mouthOpen")
+    print("MORPH: mouthOpen <-", os.path.basename(jaw))
 
 # --- real skin texture (optional): GAMEENGINE bakes one diffuse map glTF exports as base color ---
 if skin:
@@ -174,5 +185,6 @@ for img in list(bpy.data.images):
         print("scaled", img.name, "->", tuple(img.size))
 
 bpy.ops.export_scene.gltf(filepath=out, export_format='GLB', export_animations=True,
-                          export_animation_mode='ACTIONS', export_yup=True)
+                          export_animation_mode='ACTIONS', export_yup=True,
+                          export_morph=True, export_try_sparse_sk=False)  # dense morph deltas (vsim reads dense)
 print("EXPORTED", out)

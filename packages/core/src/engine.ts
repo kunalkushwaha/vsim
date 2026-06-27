@@ -18,6 +18,9 @@ export interface ResolvedNode {
    * an engine deforms the mesh's bind-pose vertices by these instead of using `worldMatrix`.
    */
   skin?: { jointMatrices: Mat4[] };
+  /** Morph-target weights for this frame, aligned to the mesh's `morphTargets` order. The engine
+   *  displaces each vertex by Σ weightᵢ·deltaᵢ before skinning. */
+  morphWeights?: number[];
 }
 
 export interface ResolvedLight {

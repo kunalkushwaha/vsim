@@ -4,7 +4,7 @@ import { listCharacters, loadCharacter, loadVrm } from "./index.js";
 describe("character library", () => {
   it("lists the bundled characters", async () => {
     const ids = (await listCharacters()).map((c) => c.id).sort();
-    expect(ids).toEqual(["avatar", "figure", "fox", "human", "kid", "man", "person", "suited"]);
+    expect(ids).toEqual(["avatar", "figure", "fox", "human", "kid", "man", "person", "speaker", "suited"]);
   });
 
   it("loads the MakeHuman-generated human (realistic rig + clip library + skin texture)", async () => {
@@ -56,6 +56,16 @@ describe("character library", () => {
     expect(vrm.joints).toContain(vrm.humanoidBones.hips!); // humanoid roles map to real joints
     expect(Object.keys(vrm.humanoidBones).length).toBeGreaterThanOrEqual(15);
     expect(vrm.clips.some((c) => c.id === "walk")).toBe(true);
+  });
+
+  it("loads the speaker's mouth-open morph target (blend shape)", async () => {
+    const { rig } = await loadCharacter("speaker", 30);
+    const mt = rig.mesh.morphTargets!;
+    expect(mt.length).toBe(1);
+    expect(mt[0]!.name).toBe("mouthOpen");
+    expect(mt[0]!.deltas).toHaveLength(rig.mesh.positions.length); // one xyz delta per vertex
+    // a morph that does something: at least one vertex is actually displaced
+    expect(mt[0]!.deltas.some((d) => Math.abs(d) > 1e-4)).toBe(true);
   });
 
   it("loads the Blender-generated figure (rigged + walk clip)", async () => {

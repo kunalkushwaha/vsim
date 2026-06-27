@@ -33,7 +33,8 @@
     "example:clips": "tsx packages/cli/src/index.ts render examples/13-clips/scene.ts -o out/clips.mp4",
     "example:cast": "tsx packages/cli/src/index.ts render examples/14-cast/scene.ts -o out/cast.mp4",
     "example:clothing": "tsx packages/cli/src/index.ts render examples/15-clothing/scene.ts -o out/clothing.mp4",
-    "example:vrm": "tsx packages/cli/src/index.ts render examples/16-vrm/scene.ts -o out/vrm.mp4"
+    "example:vrm": "tsx packages/cli/src/index.ts render examples/16-vrm/scene.ts -o out/vrm.mp4",
+    "example:lipsync": "tsx packages/cli/src/index.ts render examples/17-lipsync/scene.ts -o out/lipsync.mp4"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

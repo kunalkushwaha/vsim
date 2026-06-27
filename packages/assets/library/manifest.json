@@ -49,6 +49,18 @@
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin + clothing from the makehuman_system_assets pack — all CC0."
     },
     {
+      "id": "speaker",
+      "name": "Speaker (MakeHuman + mouth morph)",
+      "file": "speaker.glb",
+      "description": "A realistic human with a 'mouthOpen' morph target (blend shape) for lip-sync, plus the walk/run/idle/wave clips. Drive morph.mouthOpen from audio beats. Generated with MakeHuman (MPFB 2); see scripts/blender/make-human.py.",
+      "defaultClip": "idle",
+      "clips": ["walk", "run", "idle", "wave"],
+      "scale": 1.0,
+      "rotation": [0, 0, 0],
+      "faces": "+x",
+      "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin + jaw-drop morph from MakeHuman data — all CC0."
+    },
+    {
       "id": "avatar",
       "name": "VRM avatar (CC0)",
       "file": "avatar.vrm",

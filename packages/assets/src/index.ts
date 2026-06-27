@@ -95,8 +95,9 @@ export interface RiggedGltf {
 /**
  * Load a rigged glTF/GLB: skin (joints + inverse bind matrices), the skinned mesh with
  * JOINTS_0/WEIGHTS_0, the joint hierarchy, and animation clips. Unlike `loadGltf`, joints are
- * kept in local space so the runtime can pose them. Limitations: joints must use TRS (not a
- * matrix), float WEIGHTS_0, and only translation/rotation/scale channels (no morph targets).
+ * kept in local space so the runtime can pose them. Also reads morph targets (blend shapes) per
+ * mesh. Limitations: joints must use TRS (not a matrix), float WEIGHTS_0, only translation/rotation/
+ * scale animation channels, and morph-target accessors must be dense (not sparse).
  */
 export async function loadGltfRig(path: string, fps: number): Promise<RiggedGltf> {
   const file = await readFile(resolve(path));
@@ -196,8 +197,11 @@ function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
     // local joint index (this mesh's skin order) → primary joint index
     const ms = json.skins[meshNode.skin];
     const remap: number[] = ms.joints.map((ji: number) => jointIndexById.get(jointIdOf(json, ji)) ?? 0);
+    const meshDef = json.meshes[meshNode.mesh];
+    const targetNames: (string | undefined)[] = meshDef.extras?.targetNames ?? [];
     const mesh: MeshData = { positions: [], normals: [], indices: [], joints: [], weights: [], uvs: [] };
-    for (const prim of json.meshes[meshNode.mesh].primitives ?? []) {
+    let morphTargets: { name?: string; deltas: number[] }[] | undefined;
+    for (const prim of meshDef.primitives ?? []) {
       if (prim.attributes?.POSITION == null) continue;
       const pos = readAccessor(json, buffers, prim.attributes.POSITION);
       const vcount = pos.length / 3;
@@ -218,7 +222,21 @@ function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
       }
       for (const k of idx) mesh.indices.push(base + k);
       if (!mesh.texture) mesh.texture = primitiveTexture(json, buffers, prim); // first textured primitive wins
+      // Morph targets: each primitive carries POSITION deltas per target; append them aligned to the
+      // merged vertex order (zero-padding primitives that lack targets keeps every target the same length).
+      const targets = prim.targets ?? [];
+      if (targets.length) {
+        const mts: { name?: string; deltas: number[] }[] =
+          morphTargets ?? (morphTargets = targets.map((_: any, t: number) => ({ name: targetNames[t], deltas: [] as number[] })));
+        for (let t = 0; t < targets.length; t++) {
+          const d = targets[t].POSITION != null ? readAccessor(json, buffers, targets[t].POSITION) : [];
+          for (let i = 0; i < vcount * 3; i++) mts[t]!.deltas.push(d[i] ?? 0);
+        }
+      } else if (morphTargets) {
+        for (const mt of morphTargets) for (let i = 0; i < vcount * 3; i++) mt.deltas.push(0);
+      }
     }
+    if (morphTargets) mesh.morphTargets = morphTargets;
     return mesh;
   };
 
