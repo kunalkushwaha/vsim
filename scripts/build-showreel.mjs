@@ -23,7 +23,13 @@ for (const { name, scene } of CLIPS) {
 
 const inputs = CLIPS.flatMap(({ name }) => ["-i", `out/${name}.mp4`]);
 const n = CLIPS.length;
-const filter = `${CLIPS.map((_, i) => `[${i}:v]`).join("")}concat=n=${n}:v=1:a=0[v]`;
+// Clips may differ in resolution; normalize each to a common 16:9 canvas (letterboxed if needed)
+// before concat — ffmpeg's concat filter requires identical dimensions.
+const W = 1280, H = 720;
+const scale = CLIPS.map(
+  (_, i) => `[${i}:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2,setsar=1[v${i}]`,
+).join(";");
+const filter = `${scale};${CLIPS.map((_, i) => `[v${i}]`).join("")}concat=n=${n}:v=1:a=0[v]`;
 
 console.log(`\n▶ stitching ${n} clips → out/showreel.mp4`);
 execFileSync(
