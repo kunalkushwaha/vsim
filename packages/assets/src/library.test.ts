@@ -4,7 +4,14 @@ import { listCharacters, loadCharacter } from "./index.js";
 describe("character library", () => {
   it("lists the bundled characters", async () => {
     const ids = (await listCharacters()).map((c) => c.id).sort();
-    expect(ids).toEqual(["fox", "person"]);
+    expect(ids).toEqual(["figure", "fox", "person"]);
+  });
+
+  it("loads the Blender-generated figure (rigged + walk clip)", async () => {
+    const { rig, meta } = await loadCharacter("figure", 30);
+    expect(meta.defaultClip).toBe("walk");
+    expect(rig.joints.length).toBeGreaterThan(0);
+    expect(rig.clips.some((c) => c.id === "walk")).toBe(true);
   });
 
   it("loads a character by id with its rig + placement metadata", async () => {
