@@ -1,7 +1,47 @@
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mat4, v3, type Mat4, type MeshData, type Vec3, type Quat, type Clip, type ClipChannel } from "@vsim/core";
+import jpeg from "jpeg-js";
+import { PNG } from "pngjs";
+import { mat4, v3, type Mat4, type MeshData, type Vec3, type Quat, type Clip, type ClipChannel, type Texture } from "@vsim/core";
+
+/** Decode a PNG/JPEG image to RGBA pixels. */
+function decodeImage(bytes: Buffer, mime: string): Texture {
+  if (mime === "image/png") {
+    const png = PNG.sync.read(bytes);
+    return { width: png.width, height: png.height, data: new Uint8Array(png.data) };
+  }
+  if (mime === "image/jpeg") {
+    const img = jpeg.decode(bytes, { useTArray: true, formatAsRGBA: true });
+    return { width: img.width, height: img.height, data: new Uint8Array(img.data.buffer, img.data.byteOffset, img.data.byteLength) };
+  }
+  throw new Error(`Unsupported texture format: ${mime}`);
+}
+
+/** Load + decode a glTF image (by index) from a GLB bufferView or a data: URI. */
+function loadImage(json: any, buffers: Buffer[], imageIndex: number): Texture | undefined {
+  const img = json.images?.[imageIndex];
+  if (!img) return undefined;
+  let bytes: Buffer;
+  if (img.bufferView != null) {
+    const bv = json.bufferViews[img.bufferView];
+    const base = bv.byteOffset ?? 0;
+    bytes = buffers[bv.buffer]!.subarray(base, base + bv.byteLength);
+  } else if (typeof img.uri === "string" && img.uri.startsWith("data:")) {
+    bytes = Buffer.from(img.uri.split(",")[1]!, "base64");
+  } else {
+    return undefined; // external file URIs unsupported here
+  }
+  return decodeImage(bytes, img.mimeType ?? "image/png");
+}
+
+/** The base-color texture for a primitive's material, if any. */
+function primitiveTexture(json: any, buffers: Buffer[], prim: any): Texture | undefined {
+  const bct = json.materials?.[prim.material]?.pbrMetallicRoughness?.baseColorTexture;
+  if (!bct) return undefined;
+  const source = json.textures?.[bct.index]?.source;
+  return source == null ? undefined : loadImage(json, buffers, source);
+}
 
 /**
  * Minimal glTF 2.0 / GLB loader → merged MeshData (the "Blender asset source" pipeline).
@@ -97,7 +137,7 @@ function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
     };
   });
 
-  const mesh: MeshData = { positions: [], normals: [], indices: [], joints: [], weights: [] };
+  const mesh: MeshData = { positions: [], normals: [], indices: [], joints: [], weights: [], uvs: [] };
   for (const prim of json.meshes[node.mesh].primitives ?? []) {
     if (prim.attributes?.POSITION == null) continue;
     const pos = readAccessor(json, buffers, prim.attributes.POSITION);
@@ -105,17 +145,20 @@ function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
     const nrm = prim.attributes.NORMAL != null ? readAccessor(json, buffers, prim.attributes.NORMAL) : undefined;
     const jnt = prim.attributes.JOINTS_0 != null ? readAccessor(json, buffers, prim.attributes.JOINTS_0) : undefined;
     const wgt = prim.attributes.WEIGHTS_0 != null ? readAccessor(json, buffers, prim.attributes.WEIGHTS_0) : undefined;
+    const uv = prim.attributes.TEXCOORD_0 != null ? readAccessor(json, buffers, prim.attributes.TEXCOORD_0) : undefined;
     const idx = prim.indices != null ? readAccessor(json, buffers, prim.indices) : Array.from({ length: vcount }, (_, i) => i);
     const base = mesh.positions.length / 3;
     for (let i = 0; i < vcount; i++) {
       mesh.positions.push(pos[i * 3]!, pos[i * 3 + 1]!, pos[i * 3 + 2]!);
       mesh.normals.push(nrm ? nrm[i * 3]! : 0, nrm ? nrm[i * 3 + 1]! : 1, nrm ? nrm[i * 3 + 2]! : 0);
+      mesh.uvs!.push(uv ? uv[i * 2]! : 0, uv ? uv[i * 2 + 1]! : 0);
       for (let k = 0; k < 4; k++) {
         mesh.joints!.push(jnt ? jnt[i * 4 + k]! : 0);
         mesh.weights!.push(wgt ? wgt[i * 4 + k]! : k === 0 ? 1 : 0);
       }
     }
     for (const k of idx) mesh.indices.push(base + k);
+    if (!mesh.texture) mesh.texture = primitiveTexture(json, buffers, prim); // first textured primitive wins
   }
 
   const clips: Clip[] = (json.animations ?? []).map((anim: any, ai: number) => {

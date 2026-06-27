@@ -1,5 +1,13 @@
 import type { Geometry } from "./document.js";
 
+/** A decoded RGBA image used as a base-color (albedo) texture. */
+export interface Texture {
+  width: number;
+  height: number;
+  /** RGBA8, length width*height*4, row 0 = top. */
+  data: Uint8Array;
+}
+
 /** CPU triangle mesh: flat arrays, indexed. Normals are per-vertex. */
 export interface MeshData {
   positions: number[]; // x,y,z * n
@@ -8,6 +16,10 @@ export interface MeshData {
   /** Skinning attributes (optional): 4 joint indices and 4 weights per vertex. */
   joints?: number[];
   weights?: number[];
+  /** Texture coordinates (u,v) per vertex — present when the mesh has a texture. */
+  uvs?: number[];
+  /** Base-color texture (albedo), sampled at `uvs` and multiplied with lighting. */
+  texture?: Texture;
 }
 
 /** Tessellate a primitive into triangles. (glTF meshes are loaded separately.) */

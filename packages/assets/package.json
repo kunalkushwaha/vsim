@@ -12,7 +12,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vsim/core": "workspace:*"
+    "@vsim/core": "workspace:*",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0"
   },
   "description": "glTF/GLB asset pipeline (load + export) for vsim.",
   "license": "MIT",
@@ -56,5 +58,8 @@
         "import": "./dist/index.js"
       }
     }
+  },
+  "devDependencies": {
+    "@types/pngjs": "^6.0.5"
   }
 }
