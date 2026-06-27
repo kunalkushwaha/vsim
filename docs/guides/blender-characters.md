@@ -52,14 +52,25 @@ Generate + rig + animate in Blender, export `.glb`, and load it exactly as above
 samples the model's base-color texture, so textured exports render with their real surface detail.
 
 **vsim ships a working example of this:** [`scripts/blender/make-human.py`](../../scripts/blender/make-human.py)
-drives **MakeHuman (MPFB 2)** headlessly — it generates a realistic ~19k-vertex human with a
-53-bone rig, adds a walk, and exports glTF. The result is bundled as `library/human.glb` (CC0) and
-shown in `examples/12-makehuman` (`loadCharacter("human")`). Run it yourself:
+drives **MakeHuman (MPFB 2)** headlessly — it generates a realistic ~22k-vertex human with a
+53-bone rig, applies a **real skin texture**, adds a walk, and exports glTF. The result is bundled as
+`library/human.glb` (CC0) and shown in `examples/12-makehuman` (`loadCharacter("human")`). Run it yourself:
 
 ```bash
-curl -L https://files.makehumancommunity.org/plugins/mpfb2-<date>.zip -o mpfb2.zip   # downloads.html for the current name
-blender --background --python scripts/blender/make-human.py -- mpfb2.zip human.glb
+# 1. the add-on
+curl -L https://files.makehumancommunity.org/plugins/mpfb2-latest.zip -o mpfb2.zip
+# 2. a real skin (CC0 system-assets pack — skins/eyes/teeth/clothes, 267 MB)
+curl -L https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip -o skins.zip
+unzip skins.zip 'skins/*' -d assets
+# 3. generate (pass a skin .mhmat for a textured human; omit it for a plain mesh)
+blender --background --python scripts/blender/make-human.py -- \
+  mpfb2.zip human.glb assets/skins/young_caucasian_female_special_suit/young_caucasian_female_special_suit.mhmat
 ```
+
+The skin is baked to a single base-color map (`skin_type="GAMEENGINE"`) and downscaled to 1024² so the
+GLB stays small (~5.7 MB); glTF exports it as a `baseColorTexture` over the mesh's UVs, which vsim's
+software renderer samples per pixel. The pack has 21 skins (age × ethnicity × sex, plus painted-suit
+variants) — pass any of them.
 
 > Note: vsim's glTF loader currently supports TRS joints, float weights, and PNG/JPEG base-color
 > textures (no matrix-transform joints / normalized-integer weights yet).

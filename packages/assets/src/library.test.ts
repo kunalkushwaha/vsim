@@ -7,11 +7,17 @@ describe("character library", () => {
     expect(ids).toEqual(["figure", "fox", "human", "person"]);
   });
 
-  it("loads the MakeHuman-generated human (realistic rig + walk clip)", async () => {
+  it("loads the MakeHuman-generated human (realistic rig + walk clip + skin texture)", async () => {
     const { rig, meta } = await loadCharacter("human", 30);
     expect(meta.defaultClip).toBe("walk");
     expect(rig.joints.length).toBeGreaterThan(20); // full humanoid skeleton
     expect(rig.clips.some((c) => c.id === "walk")).toBe(true);
+    // real skin: a base-color texture sampled over per-vertex UVs
+    const verts = rig.mesh.positions.length / 3;
+    expect(rig.mesh.uvs).toHaveLength(verts * 2);
+    const tex = rig.mesh.texture!;
+    expect(tex.width).toBeGreaterThan(0);
+    expect(tex.data).toHaveLength(tex.width * tex.height * 4);
   });
 
   it("loads the Blender-generated figure (rigged + walk clip)", async () => {

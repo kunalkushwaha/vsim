@@ -1,17 +1,32 @@
 # Generate a REALISTIC rigged + walk-animated human using MakeHuman (the MPFB 2 Blender add-on),
-# headless. Run with:
+# headless — optionally with a real skin TEXTURE. Run with:
 #
-#   blender --background --python scripts/blender/make-human.py -- <mpfb2.zip> <output.glb>
+#   blender --background --python scripts/blender/make-human.py -- <mpfb2.zip> <output.glb> [skin.mhmat]
 #
-# Get the MPFB 2 add-on zip (free/open-source, MakeHuman Community), then run the line above:
-#   curl -L https://files.makehumancommunity.org/plugins/mpfb2-<date>.zip -o mpfb2.zip
+# Get the MPFB 2 add-on zip (free/open-source, MakeHuman Community):
+#   curl -L https://files.makehumancommunity.org/plugins/mpfb2-latest.zip -o mpfb2.zip
 #   (mirror list: https://static.makehumancommunity.org/mpfb/downloads.html)
 #
+# For a real skin, also grab the CC0 "system assets" pack and pass one of its skins:
+#   curl -L https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip -o skins.zip
+#   unzip skins.zip 'skins/*' -d assets
+#   ... -- mpfb2.zip human.glb assets/skins/young_caucasian_female_special_suit/young_caucasian_female_special_suit.mhmat
+#
 # create_human() gives a CC0 realistic human; we add the bundled "game_engine" rig and a simple
-# walk, then export glTF (TRS joints, float weights) which vsim's loadGltfRig reads directly.
-# For skin TEXTURES, also install MPFB's "system assets" pack and set a skin before export.
-import bpy, sys, importlib, math
-zip_path, out = sys.argv[-2], sys.argv[-1]
+# walk. With a skin, set_character_skin(..., skin_type="GAMEENGINE") bakes a single diffuse map that
+# glTF exports as a base-color texture — exactly what vsim's loadGltfRig + software renderer sample.
+import bpy, sys, importlib, math, os
+
+argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[-2:]
+zip_path = next(a for a in argv if a.endswith(".zip"))
+out = next(a for a in argv if a.endswith(".glb") or a.endswith(".gltf"))
+skin = next((a for a in argv if a.endswith(".mhmat")), None)
+MAX_TEX = 1024  # downscale skin diffuse to keep the bundled GLB small
+
+# start from an empty scene (drop Blender's default Cube/Camera/Light so the GLB is just the human)
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
 try:
     bpy.ops.extensions.package_install_files(filepath=zip_path, enable_on_install=True, repo="user_default")
 except Exception as e:
@@ -23,6 +38,17 @@ human = HumanService.create_human()
 HumanService.add_builtin_rig(human, "game_engine")
 arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 print("BONES:", [b.name for b in arm.data.bones])
+
+# --- real skin texture (optional): GAMEENGINE bakes one diffuse map glTF exports as base color ---
+if skin:
+    HumanService.set_character_skin(skin, human, skin_type="GAMEENGINE")
+    print("SKIN:", os.path.basename(skin))
+    for img in list(bpy.data.images):
+        w, h = img.size
+        if max(w, h) > MAX_TEX and w and h:
+            s = MAX_TEX / max(w, h)
+            img.scale(int(w * s), int(h * s))
+            print("scaled", img.name, "->", tuple(img.size))
 
 # --- author a walk by keyframing leg/arm bones (Unreal-style game_engine rig) ---
 bpy.context.view_layer.objects.active = arm

@@ -53,8 +53,9 @@ scene are byte-identical, and the live preview matches the headless render frame
 Ten canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
 beat-synced pulse, a procedural **walking character** filmed from three angles, a **kid playing
 soccer** (a hand-animated kick + a ball that launches), an original **cartoon puppy** (a
-procedural quadruped with a trot gait + waggy tail), two rigged characters from the bundled
-[character library](./packages/assets/library/CREDITS.md) — a **Fox** and a realistic **person** —
+procedural quadruped with a trot gait + waggy tail), rigged characters from the bundled
+[character library](./packages/assets/library/CREDITS.md) — a **Fox**, a realistic **person**, and a
+**MakeHuman human with a real skin texture** (generated headlessly by `scripts/blender/make-human.py`) —
 loaded by name with `loadCharacter()` and **rendered with their real glTF textures** (PNG/JPEG
 base-color, sampled in the software renderer), and a **manga** scene (one-flag cel-shading +
 outlines via `style: "manga"`). Render any of them, or build the montage:
@@ -118,7 +119,7 @@ session.document; // the edited scene so far
 - [Scene document reference](./docs/scene-document.md)
 - [Determinism guide](./docs/determinism.md)
 - [ADR 0001 — render backend & determinism](./docs/decisions/0001-render-backend-and-determinism.md)
-- [Guide: creating characters with Blender / MakeHuman](./docs/guides/blender-characters.md) — generate rigged, animated glTF headlessly (incl. a realistic MakeHuman human) → `loadGltfRig`
+- [Guide: creating characters with Blender / MakeHuman](./docs/guides/blender-characters.md) — generate rigged, animated, **textured** glTF headlessly (incl. a realistic MakeHuman human with real skin) → `loadGltfRig`
 - [Vision & roadmap](./CONCEPT.md) · [`PLAN.md`](./PLAN.md)
 
 `pnpm docs:site` builds a static documentation site (landing page + the docs above) into

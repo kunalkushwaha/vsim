@@ -4,13 +4,13 @@
       "id": "human",
       "name": "Human (MakeHuman)",
       "file": "human.glb",
-      "description": "A realistic rigged human generated with MakeHuman (MPFB 2). See scripts/blender/make-human.py.",
+      "description": "A realistic rigged human with a real skin texture, generated with MakeHuman (MPFB 2). See scripts/blender/make-human.py.",
       "defaultClip": "walk",
       "clips": ["walk"],
       "scale": 1.0,
       "rotation": [0, 0, 0],
       "faces": "+x",
-      "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org) — output is CC0."
+      "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
     },
     {
       "id": "figure",
