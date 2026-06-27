@@ -63,6 +63,7 @@ export async function editViaClaudeCli(
   doc: SceneDocument,
   prompt: string,
   model?: string,
+  history?: string,
 ): Promise<{ operations: EditOperation[]; summary: string }> {
   const fullPrompt = [
     INSTRUCTIONS,
@@ -76,6 +77,9 @@ export async function editViaClaudeCli(
     "Full document (JSON):",
     JSON.stringify(doc),
     "",
+    ...(history && history.trim()
+      ? ["Earlier in this session you already made these changes:", history.trim(), ""]
+      : []),
     `Request: ${prompt}`,
     "",
     "Respond with ONLY a JSON object (no markdown, no commentary) of the form:",

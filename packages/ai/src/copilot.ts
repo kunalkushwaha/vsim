@@ -37,6 +37,12 @@ export interface EditSceneOptions {
   maxTokens?: number;
   /** Which backend to use. Defaults to "auto". */
   provider?: Provider;
+  /**
+   * Optional transcript of earlier turns in a refine session, so a follow-up like
+   * "now make it bigger" can resolve what "it" refers to. Plain text; `CopilotSession`
+   * maintains this automatically across `refine` calls.
+   */
+  history?: string;
 }
 
 export interface EditSceneResult {
@@ -50,8 +56,8 @@ export interface EditSceneResult {
   provider: Exclude<Provider, "auto">;
 }
 
-function buildUserMessage(doc: SceneDocument, prompt: string): string {
-  return [
+function buildUserMessage(doc: SceneDocument, prompt: string, history?: string): string {
+  const parts = [
     "Here is the current scene.",
     "",
     "Summary:",
@@ -60,8 +66,12 @@ function buildUserMessage(doc: SceneDocument, prompt: string): string {
     "Full document (JSON):",
     JSON.stringify(doc),
     "",
-    `Request: ${prompt}`,
-  ].join("\n");
+  ];
+  if (history && history.trim()) {
+    parts.push("Earlier in this session you already made these changes:", history.trim(), "");
+  }
+  parts.push(`Request: ${prompt}`);
+  return parts.join("\n");
 }
 
 /**
@@ -83,7 +93,7 @@ async function editViaSdk(opts: EditSceneOptions): Promise<{ operations: EditOpe
     thinking: { type: "adaptive" },
     system: SYSTEM_PROMPT,
     tools: EDIT_TOOLS,
-    messages: [{ role: "user", content: buildUserMessage(opts.doc, opts.prompt) }],
+    messages: [{ role: "user", content: buildUserMessage(opts.doc, opts.prompt, opts.history) }],
   });
   if (response.stop_reason === "refusal") {
     throw new Error("The request was declined by the model's safety system.");
@@ -105,9 +115,42 @@ export async function editScene(opts: EditSceneOptions): Promise<EditSceneResult
   const provider = resolveProvider(opts);
   const { operations, summary } =
     provider === "claude-cli"
-      ? await editViaClaudeCli(opts.doc, opts.prompt, opts.model)
+      ? await editViaClaudeCli(opts.doc, opts.prompt, opts.model, opts.history)
       : await editViaSdk(opts);
 
   const doc = operations.length > 0 ? applyOperations(opts.doc, operations) : opts.doc;
   return { doc, operations, summary, provider };
+}
+
+/**
+ * A multi-turn refine session. Holds the evolving document and a running transcript so
+ * follow-up prompts ("now make it bigger") resolve against the changes already made. Each
+ * `refine` applies the model's edits, advances the document, and records the turn.
+ */
+export class CopilotSession {
+  private current: SceneDocument;
+  private readonly turns: { prompt: string; summary: string }[] = [];
+  private readonly base: Omit<EditSceneOptions, "doc" | "prompt" | "history">;
+
+  constructor(doc: SceneDocument, base: Omit<EditSceneOptions, "doc" | "prompt" | "history"> = {}) {
+    this.current = doc;
+    this.base = base;
+  }
+
+  /** The document as edited so far. */
+  get document(): SceneDocument {
+    return this.current;
+  }
+
+  /** Apply one natural-language instruction, threading the prior turns as context. */
+  async refine(prompt: string): Promise<EditSceneResult> {
+    const result = await editScene({ ...this.base, doc: this.current, prompt, history: this.transcript() });
+    this.current = result.doc;
+    this.turns.push({ prompt, summary: result.summary });
+    return result;
+  }
+
+  private transcript(): string {
+    return this.turns.map((t, i) => `${i + 1}. "${t.prompt}" → ${t.summary}`).join("\n");
+  }
 }
