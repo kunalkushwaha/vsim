@@ -18,7 +18,8 @@
   },
   "devDependencies": {
     "@vsim/authoring": "workspace:*",
-    "@vsim/physics-rapier": "workspace:*"
+    "@vsim/physics-rapier": "workspace:*",
+    "@vsim/player": "workspace:*"
   },
   "description": "Headless frame capture → ffmpeg → MP4 (with audio mux) for vsim.",
   "license": "MIT",

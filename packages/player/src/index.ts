@@ -1,8 +1,15 @@
-import { SceneRuntime, type FrameState, type PhysicsAdapter, type SceneDocument } from "@vsim/core";
+import { SceneRuntime, type Engine, type FrameState, type PhysicsAdapter, type SceneDocument } from "@vsim/core";
 import { ThreeEngine } from "@vsim/engine-three";
 
 export interface PlayerOptions {
-  canvas: HTMLCanvasElement;
+  /** Canvas for the default ThreeEngine. Optional if you inject your own `engine`. */
+  canvas?: HTMLCanvasElement;
+  /**
+   * Renderer to drive. Defaults to a ThreeEngine bound to `canvas`. Inject another Engine to
+   * preview with a different backend — or to drive the player headlessly (e.g. the parity test
+   * runs it with the SoftwareEngine to prove scrubbing matches the offline render frame-for-frame).
+   */
+  engine?: Engine;
   /** Optional physics backend (e.g. a browser RapierPhysics). */
   physics?: PhysicsAdapter;
   autoplay?: boolean;
@@ -15,7 +22,7 @@ export interface PlayerOptions {
  * seeking backwards replays from the start (required for reproducible physics).
  */
 export class Player {
-  readonly engine: ThreeEngine;
+  readonly engine: Engine;
   readonly runtime: SceneRuntime;
   private doc: SceneDocument;
   private frame = 0;
@@ -31,7 +38,7 @@ export class Player {
 
   constructor(doc: SceneDocument, private opts: PlayerOptions) {
     this.doc = doc;
-    this.engine = new ThreeEngine(doc.meta.width, doc.meta.height, { canvas: opts.canvas });
+    this.engine = opts.engine ?? new ThreeEngine(doc.meta.width, doc.meta.height, { canvas: opts.canvas });
     this.runtime = new SceneRuntime(doc, { physics: opts.physics });
   }
 
@@ -47,7 +54,7 @@ export class Player {
 
   async init(): Promise<void> {
     await this.runtime.init();
-    this.engine.init(this.doc);
+    await this.engine.init(this.doc);
     this.present(0);
     if (this.opts.autoplay) this.play();
   }
