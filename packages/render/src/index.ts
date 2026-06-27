@@ -3,7 +3,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
   SceneRuntime, parseDocument,
-  type Engine, type PhysicsAdapter, type SceneDocument,
+  type Engine, type MeshData, type PhysicsAdapter, type SceneDocument,
 } from "@vsim/core";
 import { SoftwareEngine } from "@vsim/engine-software";
 import { loadGltf } from "@vsim/assets";
@@ -11,8 +11,8 @@ import { encodePNG } from "./png.js";
 
 export { encodePNG } from "./png.js";
 
-/** Load any glTF assets referenced by gltf-geometry nodes and inject them into the engine. */
-async function loadAssets(doc: SceneDocument, engine: Engine): Promise<void> {
+/** Load glTF-geometry assets, then apply any pre-loaded meshes (e.g. authored character rigs). */
+async function loadAssets(doc: SceneDocument, engine: Engine, meshes?: Map<string, MeshData>): Promise<void> {
   if (!engine.loadMesh) return;
   const assets = new Map(doc.assets.map((a) => [a.id, a]));
   for (const node of doc.nodes) {
@@ -21,6 +21,8 @@ async function loadAssets(doc: SceneDocument, engine: Engine): Promise<void> {
     if (!asset) throw new Error(`Missing asset '${node.mesh.geometry.assetId}' for node '${node.id}'`);
     engine.loadMesh(node.id, await loadGltf(asset.uri));
   }
+  // Injected meshes (skinned characters carry their data directly) override file-loaded geometry.
+  if (meshes) for (const [nodeId, md] of meshes) engine.loadMesh(nodeId, md);
 }
 
 export interface RenderOptions {
@@ -28,6 +30,8 @@ export interface RenderOptions {
   /** Renderer to use. Defaults to the pure-TS SoftwareEngine. */
   engine?: Engine;
   physics?: PhysicsAdapter;
+  /** Pre-loaded meshes to inject by node id (e.g. `SceneBuilder.characterMeshes()`). */
+  meshes?: Map<string, MeshData>;
   /** Path to an audio file to mux in. */
   audioPath?: string;
   audioGain?: number;
@@ -57,7 +61,7 @@ export async function renderToVideo(input: unknown, opts: RenderOptions): Promis
   const { doc, engine, runtime } = prepare(input, opts);
   await runtime.init();
   await engine.init(doc);
-  await loadAssets(doc, engine);
+  await loadAssets(doc, engine, opts.meshes);
   await mkdir(dirname(opts.output), { recursive: true });
 
   const { width, height, fps, durationFrames } = doc.meta;
@@ -107,7 +111,7 @@ export async function renderStill(input: unknown, frame: number, output: string,
   const { doc, engine, runtime } = prepare(input, opts as RenderOptions);
   await runtime.init();
   await engine.init(doc);
-  await loadAssets(doc, engine);
+  await loadAssets(doc, engine, opts.meshes);
   await mkdir(dirname(output), { recursive: true });
   // forward-step to the requested frame
   for (let f = 0; f <= frame; f++) engine.renderFrame(runtime.computeFrameState(f));

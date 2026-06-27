@@ -108,6 +108,7 @@ export class SceneRuntime {
         position: [...n.position] as Vec3,
         rotation: [...n.rotation] as Vec3,
         scale: [...n.scale] as Vec3,
+        quat: n.quaternion ? ([...n.quaternion] as Quat) : undefined,
       });
     }
 

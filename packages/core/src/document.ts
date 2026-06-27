@@ -94,6 +94,8 @@ export const NodeSchema = z.object({
   parent: z.string().optional(),
   position: vec3.default([0, 0, 0]),
   rotation: vec3.default([0, 0, 0]), // euler radians, XYZ
+  /** Optional bind rotation as a quaternion [x,y,z,w]; overrides `rotation` (used by skeleton joints). */
+  quaternion: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional(),
   scale: vec3.default([1, 1, 1]),
   mesh: MeshSchema.optional(),
   light: LightSchema.optional(),

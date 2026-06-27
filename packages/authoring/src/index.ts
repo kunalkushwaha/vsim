@@ -1,10 +1,31 @@
 import {
   parseDocument,
   type SceneDocument, type SceneDocumentInput,
-  type GeometryInput, type Vec3,
+  type GeometryInput, type Vec3, type Quat, type Mat4, type MeshData, type Clip,
 } from "@vsim/core";
 
 type Keyframes = { frame: number; value: number | number[]; easing?: any }[];
+
+/**
+ * A loaded character rig (structurally `RiggedGltf` from `@vsim/assets`). Pass the result of
+ * `loadGltfRig()` to `SceneBuilder.character()`.
+ */
+export interface CharacterRig {
+  mesh: MeshData;
+  joints: string[];
+  jointNodes: { id: string; parent?: string; translation: Vec3; rotation: Quat; scale: Vec3 }[];
+  inverseBindMatrices: Mat4[];
+  clips: Clip[];
+}
+
+interface CharacterInput extends TransformInput {
+  /** Clip to play (by its id in the rig). Defaults to the first clip. */
+  clip?: string;
+  loop?: boolean;
+  speed?: number;
+  startFrame?: number;
+  material?: string;
+}
 
 interface MetaInput {
   fps?: number;
@@ -65,6 +86,7 @@ interface BodyInput {
 export class SceneBuilder {
   private doc: SceneDocumentInput;
   private lightCount = 0;
+  private charMeshes = new Map<string, MeshData>();
 
   constructor(meta: MetaInput) {
     this.doc = {
@@ -114,6 +136,55 @@ export class SceneBuilder {
   mesh(id: string, m: MeshInput): this {
     this.node(id, m, { mesh: { geometry: m.geometry, materialId: m.material } });
     return this;
+  }
+
+  /**
+   * Add a rigged character from a loaded rig (see `loadGltfRig`). Creates a group node `id` you can
+   * position/animate (move it to make the character walk across the scene), the joint hierarchy, the
+   * skin, the clips, and a skinned mesh node `${id}__mesh`. The mesh vertices are returned by
+   * `characterMeshes()` — pass them to the renderer via `RenderOptions.meshes`.
+   */
+  character(id: string, rig: CharacterRig, opts: CharacterInput = {}): this {
+    const jid = (j: string) => `${id}/${j}`;
+    // Group node: the character handle. Animate its position to walk the whole skeleton.
+    this.node(id, opts, {});
+
+    for (const j of rig.jointNodes) {
+      this.doc.nodes!.push({
+        id: jid(j.id),
+        parent: j.parent ? jid(j.parent) : id, // root joints hang off the group
+        position: j.translation,
+        quaternion: j.rotation,
+        scale: j.scale,
+      } as any);
+    }
+
+    this.doc.skins = this.doc.skins ?? [];
+    this.doc.skins.push({ id: `${id}__skin`, joints: rig.joints.map(jid), inverseBindMatrices: rig.inverseBindMatrices });
+
+    this.doc.clips = this.doc.clips ?? [];
+    for (const c of rig.clips) {
+      this.doc.clips.push({
+        id: `${id}/${c.id}`,
+        durationFrames: c.durationFrames,
+        channels: c.channels.map((ch) => ({ ...ch, jointNodeId: jid(ch.jointNodeId) })),
+      });
+    }
+
+    const meshNodeId = `${id}__mesh`;
+    const clipName = opts.clip ?? rig.clips[0]?.id;
+    this.doc.nodes!.push({
+      id: meshNodeId,
+      mesh: { geometry: { kind: "box", size: [1, 1, 1] }, materialId: opts.material, skinId: `${id}__skin` },
+      clip: clipName ? { clipId: `${id}/${clipName}`, loop: opts.loop, speed: opts.speed, startFrame: opts.startFrame } : undefined,
+    } as any);
+    this.charMeshes.set(meshNodeId, rig.mesh);
+    return this;
+  }
+
+  /** Skinned mesh data for characters added via `character()`, keyed by node id — pass to `RenderOptions.meshes`. */
+  characterMeshes(): Map<string, MeshData> {
+    return this.charMeshes;
   }
 
   light(props: LightInput, id?: string): this {
