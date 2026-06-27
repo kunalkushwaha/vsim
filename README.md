@@ -54,8 +54,9 @@ Nine canonical scenes live in [`examples/`](./examples): cube, collapsing box st
 beat-synced pulse, a procedural **walking character** filmed from three angles, a **kid playing
 soccer** (a hand-animated kick + a ball that launches), two rigged characters from the bundled
 [character library](./packages/assets/library/CREDITS.md) — a **Fox** and a realistic **person** —
-loaded by name with `loadCharacter()`, and a **manga** scene (one-flag cel-shading + outlines via
-`style: "manga"`). Render any of them, or build the montage:
+loaded by name with `loadCharacter()` and **rendered with their real glTF textures** (PNG/JPEG
+base-color, sampled in the software renderer), and a **manga** scene (one-flag cel-shading +
+outlines via `style: "manga"`). Render any of them, or build the montage:
 
 ```bash
 pnpm install
