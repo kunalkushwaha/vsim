@@ -1,5 +1,5 @@
 import {
-  mat4, v3, tessellate,
+  mat4, v3, tessellate, skinningMatrix,
   type Engine, type FrameState, type SceneDocument,
   type Material, type MeshData, type ResolvedLight, type Vec3,
 } from "@vsim/core";
@@ -90,12 +90,18 @@ export class SoftwareEngine implements Engine {
       const cg = new Float64Array(vcount);
       const cb = new Float64Array(vcount);
 
+      // Skinned meshes deform per-vertex by blended joint matrices (CPU linear-blend skinning);
+      // static meshes use the node's world matrix.
+      const jm = node.skin?.jointMatrices;
+      const skinned = jm !== undefined && md.joints !== undefined && md.weights !== undefined;
+
       for (let i = 0; i < vcount; i++) {
         const pos: Vec3 = [md.positions[i * 3]!, md.positions[i * 3 + 1]!, md.positions[i * 3 + 2]!];
         const nrm: Vec3 = [md.normals[i * 3]!, md.normals[i * 3 + 1]!, md.normals[i * 3 + 2]!];
-        const wp4 = mat4.transformPoint(node.worldMatrix, pos);
+        const m = skinned ? skinningMatrix(jm!, md.joints!, md.weights!, i) : node.worldMatrix;
+        const wp4 = mat4.transformPoint(m, pos);
         const wp: Vec3 = [wp4[0], wp4[1], wp4[2]];
-        const wn = v3.normalize(mat4.transformDir(node.worldMatrix, nrm));
+        const wn = v3.normalize(mat4.transformDir(m, nrm));
         const col = shade(wp, wn, material, state.lights);
         cr[i] = col[0]; cg[i] = col[1]; cb[i] = col[2];
 

@@ -1,9 +1,10 @@
 import { Clock } from "./clock.js";
 import { Rng } from "./rng.js";
 import { evaluateTrack } from "./animation.js";
+import { evaluateClip } from "./clip.js";
 import { mat4, quatFromEuler, v3, DEG2RAD } from "./math.js";
 import type { Mat4, Quat, Vec3 } from "./math.js";
-import type { Material, Node, SceneDocument } from "./document.js";
+import type { Clip, Material, Node, SceneDocument, Skin } from "./document.js";
 import type {
   FrameState,
   PhysicsAdapter,
@@ -37,6 +38,21 @@ function applyToTransform(lt: LocalTransform, path: string, value: number | numb
   }
 }
 
+/**
+ * Map a scene frame to a clip-local frame. Returns null before the clip starts; after the end it
+ * holds the last frame (non-loop) or wraps (loop). Frame-based → reproducible.
+ */
+function clipLocalFrame(
+  pb: { startFrame: number; speed: number; loop: boolean },
+  frame: number,
+  durationFrames: number,
+): number | null {
+  const local = (frame - pb.startFrame) * pb.speed;
+  if (local < 0) return null;
+  if (pb.loop) return durationFrames > 0 ? local % durationFrames : 0;
+  return Math.min(local, durationFrames);
+}
+
 function applyToMaterial(mat: Material, path: string, value: number | number[]): void {
   if ((path === "color" || path === "emissive") && Array.isArray(value)) {
     mat[path] = [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0];
@@ -56,6 +72,8 @@ export class SceneRuntime {
   readonly rng: Rng;
   private physics?: PhysicsAdapter;
   private nodeMap = new Map<string, Node>();
+  private skinMap = new Map<string, Skin>();
+  private clipMap = new Map<string, Clip>();
 
   constructor(doc: SceneDocument, opts: { physics?: PhysicsAdapter } = {}) {
     this.doc = doc;
@@ -63,6 +81,8 @@ export class SceneRuntime {
     this.clock = new Clock({ fps: doc.meta.fps, substeps: doc.meta.substeps });
     this.rng = new Rng(doc.meta.seed);
     for (const n of doc.nodes) this.nodeMap.set(n.id, n);
+    for (const s of doc.skins) this.skinMap.set(s.id, s);
+    for (const c of doc.clips) this.clipMap.set(c.id, c);
   }
 
   async init(): Promise<void> {
@@ -94,6 +114,22 @@ export class SceneRuntime {
     const materials = new Map<string, Material>();
     for (const m of this.doc.materials) {
       materials.set(m.id, { ...m, color: [...m.color] as Vec3, emissive: [...m.emissive] as Vec3 });
+    }
+
+    // Skeletal clips: sample each playing clip and override its joints' local transforms.
+    for (const node of this.doc.nodes) {
+      if (!node.clip) continue;
+      const clip = this.clipMap.get(node.clip.clipId);
+      if (!clip) continue;
+      const local = clipLocalFrame(node.clip, frame, clip.durationFrames);
+      if (local === null) continue; // not yet started
+      for (const [jointId, pose] of evaluateClip(clip, local)) {
+        const lt = locals.get(jointId);
+        if (!lt) continue;
+        if (pose.translation) lt.position = pose.translation;
+        if (pose.scale) lt.scale = pose.scale;
+        if (pose.rotation) lt.quat = pose.rotation;
+      }
     }
 
     for (const track of this.doc.animation) {
@@ -135,7 +171,19 @@ export class SceneRuntime {
     for (const n of this.doc.nodes) {
       const world = computeWorld(n.id);
       const material = n.mesh?.materialId ? materials.get(n.mesh.materialId) : undefined;
-      nodes.push({ id: n.id, worldMatrix: world, mesh: n.mesh, light: n.light, material });
+      let skin: { jointMatrices: Mat4[] } | undefined;
+      if (n.mesh?.skinId) {
+        const sk = this.skinMap.get(n.mesh.skinId);
+        if (sk) {
+          // glTF skinning: jointMatrix = jointWorld · inverseBind. The skinned mesh's own node
+          // transform is intentionally ignored — joints carry the full transform.
+          const jointMatrices = sk.joints.map((jid, i) =>
+            mat4.multiply(computeWorld(jid), sk.inverseBindMatrices[i]!),
+          );
+          skin = { jointMatrices };
+        }
+      }
+      nodes.push({ id: n.id, worldMatrix: world, mesh: n.mesh, light: n.light, material, skin });
       if (n.light) {
         lights.push({
           type: n.light.type,

@@ -44,6 +44,41 @@ export const GeometrySchema = z.discriminatedUnion("kind", [
 export const MeshSchema = z.object({
   geometry: GeometrySchema,
   materialId: z.string().optional(),
+  /** Binds this mesh to a skeleton (`skins[].id`) for skeletal animation. */
+  skinId: z.string().optional(),
+});
+
+const mat4Schema = z.array(z.number()).length(16); // column-major 4x4
+
+/** A skeleton: an ordered list of joint nodes + their inverse bind matrices. */
+export const SkinSchema = z.object({
+  id: z.string(),
+  joints: z.array(z.string()), // node ids, in skin order
+  inverseBindMatrices: z.array(mat4Schema),
+});
+
+/** One animated joint property over time (glTF animation channel). Times are FRAME indices. */
+export const ClipChannelSchema = z.object({
+  jointNodeId: z.string(),
+  path: z.enum(["translation", "rotation", "scale"]),
+  times: z.array(z.number()), // frame indices (converted from glTF seconds at load)
+  values: z.array(z.number()), // flat: vec3 per key (T/S) or quat per key (R)
+  interpolation: z.enum(["linear", "step", "cubicspline"]).default("linear"),
+});
+
+/** A named animation clip — a bundle of joint channels that play together. */
+export const ClipSchema = z.object({
+  id: z.string(),
+  durationFrames: z.number(),
+  channels: z.array(ClipChannelSchema),
+});
+
+/** Plays a clip on a node's skeleton, positioned on the scene timeline. */
+export const ClipPlaybackSchema = z.object({
+  clipId: z.string(),
+  startFrame: z.number().default(0),
+  speed: z.number().default(1),
+  loop: z.boolean().default(false),
 });
 
 export const LightSchema = z.object({
@@ -62,6 +97,8 @@ export const NodeSchema = z.object({
   scale: vec3.default([1, 1, 1]),
   mesh: MeshSchema.optional(),
   light: LightSchema.optional(),
+  /** Plays an animation clip driving this node's skeleton (for skinned characters). */
+  clip: ClipPlaybackSchema.optional(),
 });
 
 const EasingSchema = z.union([
@@ -129,6 +166,8 @@ export const SceneDocumentSchema = z.object({
   assets: z.array(AssetSchema).default([]),
   materials: z.array(MaterialSchema).default([]),
   nodes: z.array(NodeSchema).default([]),
+  skins: z.array(SkinSchema).default([]),
+  clips: z.array(ClipSchema).default([]),
   animation: z.array(TrackSchema).default([]),
   physics: PhysicsSchema.optional(),
   audio: AudioSchema.optional(),
@@ -143,6 +182,10 @@ export type Material = z.infer<typeof MaterialSchema>;
 export type Geometry = z.infer<typeof GeometrySchema>;
 export type GeometryInput = z.input<typeof GeometrySchema>;
 export type Light = z.infer<typeof LightSchema>;
+export type Skin = z.infer<typeof SkinSchema>;
+export type Clip = z.infer<typeof ClipSchema>;
+export type ClipChannel = z.infer<typeof ClipChannelSchema>;
+export type ClipPlayback = z.infer<typeof ClipPlaybackSchema>;
 export type Track = z.infer<typeof TrackSchema>;
 export type Keyframe = z.infer<typeof KeyframeSchema>;
 export type Body = z.infer<typeof BodySchema>;

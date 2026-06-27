@@ -13,6 +13,11 @@ export interface ResolvedNode {
   light?: Light;
   /** Resolved material for this node's mesh (after material animation), if any. */
   material?: Material;
+  /**
+   * Skinning matrices for a skinned mesh (one per joint, `jointWorld · inverseBind`). When set,
+   * an engine deforms the mesh's bind-pose vertices by these instead of using `worldMatrix`.
+   */
+  skin?: { jointMatrices: Mat4[] };
 }
 
 export interface ResolvedLight {

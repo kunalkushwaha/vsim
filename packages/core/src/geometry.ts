@@ -5,6 +5,9 @@ export interface MeshData {
   positions: number[]; // x,y,z * n
   normals: number[];
   indices: number[];
+  /** Skinning attributes (optional): 4 joint indices and 4 weights per vertex. */
+  joints?: number[];
+  weights?: number[];
 }
 
 /** Tessellate a primitive into triangles. (glTF meshes are loaded separately.) */

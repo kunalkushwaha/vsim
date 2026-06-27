@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import {
-  tessellate,
-  type Engine, type FrameState, type SceneDocument, type ResolvedLight, type Geometry, type MeshData,
+  tessellate, mat4, v3, skinningMatrix,
+  type Engine, type FrameState, type SceneDocument, type ResolvedLight, type Geometry, type MeshData, type Mat4,
 } from "@vsim/core";
 
 export interface ThreeEngineOptions {
@@ -27,6 +27,7 @@ export class ThreeEngine implements Engine {
   readonly renderer: THREE.WebGLRenderer;
 
   private meshes = new Map<string, THREE.Mesh>();
+  private skinnedBind = new Map<string, MeshData>(); // bind-pose data for skinned nodes, re-skinned each frame
   private materials = new Map<string, THREE.MeshStandardMaterial>();
   private lightObjs: { ambient: THREE.AmbientLight; dirs: THREE.DirectionalLight[]; points: THREE.PointLight[] } = {
     ambient: new THREE.AmbientLight(0x000000, 0),
@@ -86,6 +87,9 @@ export class ThreeEngine implements Engine {
     g.setIndex(data.indices);
     mesh.geometry.dispose();
     mesh.geometry = g;
+    // Skinned mesh: keep the bind-pose data so we can re-deform the attributes each frame.
+    if (data.joints && data.weights) this.skinnedBind.set(nodeId, data);
+    else this.skinnedBind.delete(nodeId);
   }
 
   private buildGeometry(geo: Geometry): THREE.BufferGeometry {
@@ -103,8 +107,16 @@ export class ThreeEngine implements Engine {
     for (const node of state.nodes) {
       const mesh = this.meshes.get(node.id);
       if (!mesh) continue;
-      mesh.matrix.fromArray(node.worldMatrix);
-      mesh.matrixWorld.fromArray(node.worldMatrix);
+      const bind = node.skin ? this.skinnedBind.get(node.id) : undefined;
+      if (bind && node.skin) {
+        // CPU skin into the geometry; skinned positions are already world-space, so identity matrix.
+        skinInto(mesh, bind, node.skin.jointMatrices);
+        mesh.matrix.identity();
+        mesh.matrixWorld.identity();
+      } else {
+        mesh.matrix.fromArray(node.worldMatrix);
+        mesh.matrixWorld.fromArray(node.worldMatrix);
+      }
       if (node.material) {
         const mat = this.materials.get(node.material.id);
         if (mat) {
@@ -192,4 +204,20 @@ export class ThreeEngine implements Engine {
 
 function defaultMaterial(): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color: new THREE.Color(0.8, 0.8, 0.8), roughness: 0.8 });
+}
+
+/** CPU linear-blend skinning: deform the bind-pose vertices by the joint matrices into the geometry. */
+function skinInto(mesh: THREE.Mesh, bind: MeshData, jointMatrices: Mat4[]): void {
+  const pos = mesh.geometry.getAttribute("position") as THREE.BufferAttribute;
+  const nrm = mesh.geometry.getAttribute("normal") as THREE.BufferAttribute;
+  const vcount = bind.positions.length / 3;
+  for (let i = 0; i < vcount; i++) {
+    const m = skinningMatrix(jointMatrices, bind.joints!, bind.weights!, i);
+    const p = mat4.transformPoint(m, [bind.positions[i * 3]!, bind.positions[i * 3 + 1]!, bind.positions[i * 3 + 2]!]);
+    pos.setXYZ(i, p[0], p[1], p[2]);
+    const n = v3.normalize(mat4.transformDir(m, [bind.normals[i * 3]!, bind.normals[i * 3 + 1]!, bind.normals[i * 3 + 2]!]));
+    nrm.setXYZ(i, n[0], n[1], n[2]);
+  }
+  pos.needsUpdate = true;
+  nrm.needsUpdate = true;
 }
