@@ -5,6 +5,7 @@ dist/
 .DS_Store
 coverage/
 out/
+site/
 *.mp4
 *.webm
 !test/**/*.png

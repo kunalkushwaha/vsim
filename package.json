@@ -20,10 +20,12 @@
     "example:beat": "tsx packages/cli/src/index.ts render examples/03-beat-sync/scene.ts -o out/beat.mp4",
     "example:gltf": "tsx packages/cli/src/index.ts render examples/04-gltf/scene.ts -o out/gltf.mp4",
     "showreel": "node scripts/build-showreel.mjs",
+    "docs:site": "node scripts/build-docs-site.mjs",
     "release:dry": "pnpm build && pnpm -r --filter \"./packages/*\" publish --dry-run --no-git-checks"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "marked": "^18.0.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
