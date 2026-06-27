@@ -28,7 +28,9 @@ export class ThreeEngine implements Engine {
 
   private meshes = new Map<string, THREE.Mesh>();
   private skinnedBind = new Map<string, MeshData>(); // bind-pose data for skinned nodes, re-skinned each frame
-  private materials = new Map<string, THREE.MeshStandardMaterial>();
+  private materials = new Map<string, THREE.MeshStandardMaterial | THREE.MeshToonMaterial>();
+  private toon = false;
+  private toonGradient?: THREE.DataTexture;
   private lightObjs: {
     ambient: THREE.AmbientLight;
     dirs: THREE.DirectionalLight[];
@@ -55,24 +57,17 @@ export class ThreeEngine implements Engine {
   }
 
   init(doc: SceneDocument): void {
+    // Manga: cel-shade with MeshToonMaterial + a hard banded gradient (mirrors view-simulator).
+    this.toon = doc.meta.style === "manga";
+    if (this.toon) this.toonGradient = makeToonGradient(4);
     for (const m of doc.materials) {
-      const mat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(m.color[0], m.color[1], m.color[2]),
-        emissive: new THREE.Color(m.emissive[0], m.emissive[1], m.emissive[2]),
-        roughness: m.roughness,
-        metalness: m.metalness,
-        opacity: m.opacity,
-        transparent: m.opacity < 1,
-      });
-      this.materials.set(m.id, mat);
+      this.materials.set(m.id, this.makeMaterial(m.color, m.emissive, m.opacity, m.roughness, m.metalness));
     }
 
     for (const node of doc.nodes) {
       if (!node.mesh) continue;
       const geom = this.buildGeometry(node.mesh.geometry);
-      const mat = node.mesh.materialId
-        ? this.materials.get(node.mesh.materialId) ?? defaultMaterial()
-        : defaultMaterial();
+      const mat = (node.mesh.materialId ? this.materials.get(node.mesh.materialId) : undefined) ?? this.defaultMat();
       const mesh = new THREE.Mesh(geom, mat);
       mesh.matrixAutoUpdate = false;
       mesh.matrixWorldAutoUpdate = false;
@@ -96,6 +91,23 @@ export class ThreeEngine implements Engine {
     // Skinned mesh: keep the bind-pose data so we can re-deform the attributes each frame.
     if (data.joints && data.weights) this.skinnedBind.set(nodeId, data);
     else this.skinnedBind.delete(nodeId);
+  }
+
+  /** Build a material — MeshToonMaterial (cel) in manga mode, MeshStandardMaterial otherwise. */
+  private makeMaterial(color: readonly number[], emissive: readonly number[], opacity: number, roughness = 0.8, metalness = 0) {
+    const base = {
+      color: new THREE.Color(color[0]!, color[1]!, color[2]!),
+      emissive: new THREE.Color(emissive[0]!, emissive[1]!, emissive[2]!),
+      opacity,
+      transparent: opacity < 1,
+    };
+    return this.toon
+      ? new THREE.MeshToonMaterial({ ...base, gradientMap: this.toonGradient })
+      : new THREE.MeshStandardMaterial({ ...base, roughness, metalness });
+  }
+
+  private defaultMat() {
+    return this.makeMaterial([0.8, 0.8, 0.8], [0, 0, 0], 1, 0.8, 0);
   }
 
   private buildGeometry(geo: Geometry): THREE.BufferGeometry {
@@ -227,8 +239,22 @@ export class ThreeEngine implements Engine {
   }
 }
 
-function defaultMaterial(): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color: new THREE.Color(0.8, 0.8, 0.8), roughness: 0.8 });
+/** Banded grayscale ramp for MeshToonMaterial.gradientMap — hard cel/manga steps. */
+function makeToonGradient(steps = 4): THREE.DataTexture {
+  const data = new Uint8Array(steps * 4);
+  for (let i = 0; i < steps; i++) {
+    const v = Math.round(Math.pow(i / (steps - 1), 0.8) * 255); // brighter bias, like view-simulator
+    data[i * 4] = v;
+    data[i * 4 + 1] = v;
+    data[i * 4 + 2] = v;
+    data[i * 4 + 3] = 255;
+  }
+  const tex = new THREE.DataTexture(data, steps, 1, THREE.RGBAFormat);
+  tex.minFilter = THREE.NearestFilter;
+  tex.magFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return tex;
 }
 
 /** CPU linear-blend skinning: deform the bind-pose vertices by the joint matrices into the geometry. */

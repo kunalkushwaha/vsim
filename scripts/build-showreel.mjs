@@ -10,6 +10,7 @@ const CLIPS = [
   { name: "character", scene: "examples/05-character/scene.ts" },
   { name: "soccer", scene: "examples/08-soccer/scene.ts" },
   { name: "person", scene: "examples/07-person/scene.ts" },
+  { name: "manga", scene: "examples/09-manga/scene.ts" },
   { name: "fox", scene: "examples/06-fox/scene.ts" },
   { name: "gltf", scene: "examples/04-gltf/scene.ts" },
   { name: "beat", scene: "examples/03-beat-sync/scene.ts" },

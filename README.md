@@ -50,11 +50,12 @@ scene are byte-identical, and the live preview matches the headless render frame
 
 ## Examples & showreel
 
-Eight canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
+Nine canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
 beat-synced pulse, a procedural **walking character** filmed from three angles, a **kid playing
-soccer** (a hand-animated kick + a ball that launches), and two rigged characters from the bundled
+soccer** (a hand-animated kick + a ball that launches), two rigged characters from the bundled
 [character library](./packages/assets/library/CREDITS.md) — a **Fox** and a realistic **person** —
-loaded by name with `loadCharacter()`. Render any of them, or build the montage:
+loaded by name with `loadCharacter()`, and a **manga** scene (one-flag cel-shading + outlines via
+`style: "manga"`). Render any of them, or build the montage:
 
 ```bash
 pnpm install
