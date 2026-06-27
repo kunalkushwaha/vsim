@@ -1,9 +1,10 @@
-// Example 05 — a procedural walking character on grass under a blue sky.
+// Example 05 — a procedural walking character on grass under a blue sky, filmed from three angles.
 //
 // No external assets: the character is a small articulated figure (box limbs bound to a 7-joint
 // skeleton) with a hand-authored walk clip, all built in code. It demonstrates the skeletal
-// pipeline end to end — rig → clip → CPU skinning → deterministic render — with the figure
-// striding across the field, filmed from a 3/4 angle.
+// pipeline end to end — rig → clip → CPU skinning → deterministic render — plus cinematography:
+// the figure strides across the field while the shot cuts from a wide establishing angle to a
+// camera that tracks the character to a low close-up.
 import {
   scene, tessellate, quatFromEuler, mat4,
   type CharacterRig, type MeshData, type Vec3, type Quat,
@@ -79,7 +80,7 @@ function buildFigure(): CharacterRig {
   };
 }
 
-export default scene({ fps: 30, duration: 90, width: 480, height: 270, background: [0.53, 0.74, 0.96] })
+export default scene({ fps: 30, duration: 90, width: 640, height: 360, background: [0.53, 0.74, 0.96] })
   .material("grass", { color: [0.27, 0.55, 0.24] })
   .material("skin", { color: [0.85, 0.62, 0.45] })
   .light({ type: "ambient", intensity: 0.55 })
@@ -88,5 +89,16 @@ export default scene({ fps: 30, duration: 90, width: 480, height: 270, backgroun
   .character("hero", buildFigure(), { clip: "walk", loop: true, material: "skin" })
   // Walk the whole figure across the field.
   .animate("hero", "position.x", [{ frame: 0, value: -3 }, { frame: 90, value: 3 }])
-  .camera({ position: [4, 2.6, 6], lookAt: [0, 1.2, 0], fov: 42 })
+  // An aim point at chest height that rides along with the character, so tracking cameras frame
+  // the body rather than the feet (the hero group's origin is at ground level).
+  .group("heroAim", { parent: "hero", position: [0, 1.3, 0] })
+  // Three camera angles: a wide establishing shot, a medium camera that tracks the character,
+  // then a low close-up that also tracks it.
+  .addCamera("wide", { position: [5, 3.2, 9], lookAt: [0, 1.2, 0], fov: 38 })
+  .addCamera("track", { position: [0, 1.7, 5.5], lookAtNodeId: "heroAim", fov: 42 })
+  .addCamera("close", { position: [2.2, 1.1, 3.4], lookAtNodeId: "heroAim", fov: 50 })
+  .shot("wide", 0, 29)
+  .shot("track", 30, 59)
+  .shot("close", 60, 89)
+  .camera({ position: [4, 2.6, 6], lookAt: [0, 1.2, 0], fov: 42 }) // fallback
   .build();
