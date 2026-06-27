@@ -40,6 +40,8 @@ export const GeometrySchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("box"), size: vec3.default([1, 1, 1]) }),
   z.object({ kind: z.literal("sphere"), radius: z.number().default(0.5), segments: z.number().int().min(3).default(16) }),
   z.object({ kind: z.literal("plane"), size: z.tuple([z.number(), z.number()]).default([10, 10]) }),
+  z.object({ kind: z.literal("cylinder"), radius: z.number().default(0.5), height: z.number().default(1), segments: z.number().int().min(3).default(16) }),
+  z.object({ kind: z.literal("cone"), radius: z.number().default(0.5), height: z.number().default(1), segments: z.number().int().min(3).default(16) }),
   z.object({ kind: z.literal("gltf"), assetId: z.string() }),
   // Inline mesh data carried in the document (e.g. a procedurally-built rig) — keeps the scene
   // self-contained. Includes optional skinning attributes.

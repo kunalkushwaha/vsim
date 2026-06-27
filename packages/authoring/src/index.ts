@@ -95,6 +95,7 @@ interface BodyInput {
  * produces is just a SceneDocument, so timeline/AI tooling can read & round-trip it.
  */
 export class SceneBuilder {
+  private propMats = new Set<string>();
   private doc: SceneDocumentInput;
   private lightCount = 0;
 
@@ -146,6 +147,42 @@ export class SceneBuilder {
 
   mesh(id: string, m: MeshInput): this {
     this.node(id, m, { mesh: { geometry: m.geometry, materialId: m.material } });
+    return this;
+  }
+
+  /** Add a shared prop material once (idempotent by id), so prop builders don't duplicate it. */
+  private ensureMaterial(id: string, color: Vec3): void {
+    if (this.propMats.has(id) || this.doc.materials!.some((m) => m.id === id)) return;
+    this.doc.materials!.push({ id, color } as any);
+    this.propMats.add(id);
+  }
+
+  /**
+   * A simple low-poly tree prop: a cylinder trunk + a cone of foliage, parented to a group `id` you
+   * can position/scale. `position` is the tree's base on the ground. Deterministic — vary `height`
+   * per call for a believable stand of trees. Adds shared "prop_bark"/"prop_leaves" materials.
+   */
+  tree(id: string, opts: TransformInput & { height?: number; trunkColor?: Vec3; leafColor?: Vec3 } = {}): this {
+    const h = opts.height ?? 2.4;
+    const trunkH = h * 0.42, leafH = h * 0.74, trunkR = h * 0.05, leafR = h * 0.28;
+    this.ensureMaterial("prop_bark", opts.trunkColor ?? [0.40, 0.26, 0.13]);
+    this.ensureMaterial("prop_leaves", opts.leafColor ?? [0.16, 0.42, 0.17]);
+    this.group(id, opts);
+    this.node(`${id}__trunk`, { parent: id, position: [0, trunkH / 2, 0] },
+      { mesh: { geometry: { kind: "cylinder", radius: trunkR, height: trunkH, segments: 10 }, materialId: "prop_bark" } });
+    this.node(`${id}__leaves`, { parent: id, position: [0, trunkH + leafH / 2 - h * 0.05, 0] },
+      { mesh: { geometry: { kind: "cone", radius: leafR, height: leafH, segments: 12 }, materialId: "prop_leaves" } });
+    return this;
+  }
+
+  /** A faceted boulder prop: a squashed low-poly sphere. `position` is its base on the ground. */
+  rock(id: string, opts: TransformInput & { radius?: number; color?: Vec3 } = {}): this {
+    const r = opts.radius ?? 0.5;
+    const sy = opts.scale?.[1] ?? 0.65;
+    const [px, py, pz] = opts.position ?? [0, 0, 0];
+    this.ensureMaterial("prop_stone", opts.color ?? [0.5, 0.5, 0.52]);
+    this.node(id, { ...opts, position: [px, py + r * sy, pz], scale: [opts.scale?.[0] ?? 1, sy, opts.scale?.[2] ?? 1] },
+      { mesh: { geometry: { kind: "sphere", radius: r, segments: 6 }, materialId: "prop_stone" } });
     return this;
   }
 

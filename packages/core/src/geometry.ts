@@ -31,9 +31,72 @@ export function tessellate(geo: Geometry): MeshData {
     case "box": return box(geo.size);
     case "sphere": return sphere(geo.radius, geo.segments);
     case "plane": return planeXZ(geo.size);
+    case "cylinder": return cylinder(geo.radius, geo.height, geo.segments);
+    case "cone": return cone(geo.radius, geo.height, geo.segments);
     case "gltf": return { positions: [], normals: [], indices: [] }; // filled by loader
     case "mesh": return geo.data; // inline mesh data carried in the document
   }
+}
+
+/** Cylinder: axis along Y, centered at origin (y ∈ [-h/2, h/2]). Side + both caps. */
+function cylinder(r: number, h: number, seg: number): MeshData {
+  const positions: number[] = [], normals: number[] = [], indices: number[] = [];
+  const hy = h / 2;
+  // side: a ring of seg+1 vertices at top and bottom, radial normals
+  for (let j = 0; j <= seg; j++) {
+    const th = (2 * Math.PI * j) / seg, cx = Math.cos(th), cz = Math.sin(th);
+    positions.push(r * cx, hy, r * cz); normals.push(cx, 0, cz);
+    positions.push(r * cx, -hy, r * cz); normals.push(cx, 0, cz);
+  }
+  for (let j = 0; j < seg; j++) {
+    const a = j * 2;
+    indices.push(a, a + 1, a + 2, a + 2, a + 1, a + 3);
+  }
+  // caps: a center vertex + a fan, per cap
+  const cap = (y: number, ny: number) => {
+    const center = positions.length / 3;
+    positions.push(0, y, 0); normals.push(0, ny, 0);
+    for (let j = 0; j <= seg; j++) {
+      const th = (2 * Math.PI * j) / seg;
+      positions.push(r * Math.cos(th), y, r * Math.sin(th)); normals.push(0, ny, 0);
+    }
+    for (let j = 0; j < seg; j++) {
+      const a = center + 1 + j;
+      if (ny > 0) indices.push(center, a + 1, a);
+      else indices.push(center, a, a + 1);
+    }
+  };
+  cap(hy, 1); cap(-hy, -1);
+  return { positions, normals, indices };
+}
+
+/** Cone: apex at top (y=h/2), base circle at bottom (y=-h/2), centered at origin. Side + base cap. */
+function cone(r: number, h: number, seg: number): MeshData {
+  const positions: number[] = [], normals: number[] = [], indices: number[] = [];
+  const hy = h / 2;
+  const slant = Math.hypot(r, h);
+  // side: base ring + apex; the side normal tilts up by r/slant (axial) and out by h/slant (radial)
+  for (let j = 0; j <= seg; j++) {
+    const th = (2 * Math.PI * j) / seg, cx = Math.cos(th), cz = Math.sin(th);
+    positions.push(r * cx, -hy, r * cz); normals.push((h * cx) / slant, r / slant, (h * cz) / slant);
+    positions.push(0, hy, 0); normals.push((h * cx) / slant, r / slant, (h * cz) / slant); // apex (per-sector normal)
+  }
+  for (let j = 0; j < seg; j++) {
+    const a = j * 2;
+    indices.push(a, a + 2, a + 1); // base[j], base[j+1], apex
+  }
+  // base cap (faces down)
+  const center = positions.length / 3;
+  positions.push(0, -hy, 0); normals.push(0, -1, 0);
+  for (let j = 0; j <= seg; j++) {
+    const th = (2 * Math.PI * j) / seg;
+    positions.push(r * Math.cos(th), -hy, r * Math.sin(th)); normals.push(0, -1, 0);
+  }
+  for (let j = 0; j < seg; j++) {
+    const a = center + 1 + j;
+    indices.push(center, a, a + 1);
+  }
+  return { positions, normals, indices };
 }
 
 function box([sx, sy, sz]: [number, number, number]): MeshData {

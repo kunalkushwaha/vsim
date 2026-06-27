@@ -42,6 +42,8 @@ Node {
 - `{ kind: "box", size: [x,y,z] }`
 - `{ kind: "sphere", radius, segments }`
 - `{ kind: "plane", size: [w,d] }` — lies on XZ, normal +Y
+- `{ kind: "cylinder", radius, height, segments }` — axis +Y, centered, capped
+- `{ kind: "cone", radius, height, segments }` — apex +Y, base at −height/2
 - `{ kind: "gltf", assetId }` — mesh loaded from an `Asset`
 
 ## Animation Track
