@@ -1,0 +1,23 @@
+{
+  "name": "@vsim/studio",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vsim/authoring": "workspace:*",
+    "@vsim/core": "workspace:*",
+    "@vsim/engine-three": "workspace:*",
+    "@vsim/player": "workspace:*",
+    "three": "^0.171.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0"
+  }
+}

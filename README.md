@@ -120,6 +120,21 @@ await session.refine("now spin it twice as fast"); // "it" = the cube
 session.document; // the edited scene so far
 ```
 
+## vsim Studio (preview — the visual editor)
+
+The first slice of the **visual editor** (surface 2). A browser app on top of the same engine:
+load a scene, **play/scrub** the timeline, **select** an object, and **edit** its transform/colour
+live — the preview updates instantly because the runtime reads the scene document every frame, so
+*preview == render*. Export the edited document as JSON and `vsim render` it.
+
+```bash
+pnpm studio          # vite dev server → http://localhost:5173
+pnpm studio:build    # bundle the editor
+```
+
+Built with Vite + vanilla TS (no UI framework), reusing `@vsim/player` + `@vsim/engine-three`. See
+[`docs/plan-platform-studio.md`](./docs/plan-platform-studio.md) for the roadmap to a full platform.
+
 ## Docs
 
 - [Quickstart](./docs/quickstart.md)

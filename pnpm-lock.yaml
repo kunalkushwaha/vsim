@@ -28,6 +28,31 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.0)
 
+  apps/studio:
+    dependencies:
+      '@vsim/authoring':
+        specifier: workspace:*
+        version: link:../../packages/authoring
+      '@vsim/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@vsim/engine-three':
+        specifier: workspace:*
+        version: link:../../packages/engine-three
+      '@vsim/player':
+        specifier: workspace:*
+        version: link:../../packages/player
+      three:
+        specifier: ^0.171.0
+        version: 0.171.0
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vite:
+        specifier: ^5.4.0
+        version: 5.4.21(@types/node@22.20.0)
+
   examples/01-cube:
     dependencies:
       '@vsim/authoring':

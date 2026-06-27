@@ -36,7 +36,9 @@
     "example:vrm": "tsx packages/cli/src/index.ts render examples/16-vrm/scene.ts -o out/vrm.mp4",
     "example:lipsync": "tsx packages/cli/src/index.ts render examples/17-lipsync/scene.ts -o out/lipsync.mp4",
     "example:park": "tsx packages/cli/src/index.ts render examples/18-park/scene.ts -o out/park.mp4",
-    "example:dog": "tsx packages/cli/src/index.ts render examples/19-dog/scene.ts -o out/dog.mp4"
+    "example:dog": "tsx packages/cli/src/index.ts render examples/19-dog/scene.ts -o out/dog.mp4",
+    "studio": "pnpm --filter @vsim/studio dev",
+    "studio:build": "pnpm --filter @vsim/studio build"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
