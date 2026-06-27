@@ -69,7 +69,8 @@ export class SoftwareEngine implements Engine {
   }
 
   renderFrame(state: FrameState): void {
-    this.fb.clear(state.background);
+    if (state.sky) this.fb.clearGradient(state.sky.top, state.sky.bottom);
+    else this.fb.clear(state.background);
     const viewProj = mat4.multiply(state.camera.projMatrix, state.camera.viewMatrix);
     const { width, height } = this;
 
@@ -168,6 +169,16 @@ function shade(worldPos: Vec3, n: Vec3, mat: Material, lights: ResolvedLight[]):
       r += mat.color[0] * light.color[0] * light.intensity;
       g += mat.color[1] * light.color[1] * light.intensity;
       b += mat.color[2] * light.color[2] * light.intensity;
+      continue;
+    }
+    if (light.type === "hemisphere") {
+      // Blend ground→sky tint by how upward-facing the surface is.
+      const f = n[1] * 0.5 + 0.5;
+      const sky = light.skyColor ?? [1, 1, 1];
+      const ground = light.groundColor ?? [0.3, 0.3, 0.3];
+      r += mat.color[0] * (ground[0] + (sky[0] - ground[0]) * f) * light.intensity;
+      g += mat.color[1] * (ground[1] + (sky[1] - ground[1]) * f) * light.intensity;
+      b += mat.color[2] * (ground[2] + (sky[2] - ground[2]) * f) * light.intensity;
       continue;
     }
     const L =

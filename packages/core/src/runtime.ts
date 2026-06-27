@@ -203,6 +203,8 @@ export class SceneRuntime {
           direction: n.light.direction
             ? v3.normalize(n.light.direction)
             : v3.normalize(mat4.transformDir(world, [0, 0, -1])),
+          skyColor: n.light.skyColor,
+          groundColor: n.light.groundColor,
         });
       }
     }
@@ -213,6 +215,10 @@ export class SceneRuntime {
       width: this.doc.meta.width,
       height: this.doc.meta.height,
       background: this.doc.meta.background,
+      sky:
+        this.doc.environment?.sky?.type === "gradient"
+          ? { top: this.doc.environment.sky.top, bottom: this.doc.environment.sky.bottom }
+          : undefined,
       nodes,
       lights,
       camera: this.resolveCamera(frame, computeWorld, cameraOverrides),

@@ -94,11 +94,28 @@ export const ClipPlaybackSchema = z.object({
 });
 
 export const LightSchema = z.object({
-  type: z.enum(["ambient", "directional", "point"]),
+  type: z.enum(["ambient", "directional", "point", "hemisphere"]),
   color: color.default([1, 1, 1]),
   intensity: z.number().default(1),
   /** World-space direction a directional light travels (e.g. [0,-1,0] = straight down). */
   direction: vec3.optional(),
+  /** Hemisphere light only: sky tint (lights upward-facing surfaces). */
+  skyColor: color.optional(),
+  /** Hemisphere light only: ground tint (lights downward-facing surfaces). */
+  groundColor: color.optional(),
+});
+
+/** Scene environment: sky background and (later) fog. */
+export const EnvironmentSchema = z.object({
+  sky: z
+    .object({
+      type: z.enum(["flat", "gradient"]).default("gradient"),
+      /** Gradient: color at the top of the frame. */
+      top: color.default([0.35, 0.55, 0.92]),
+      /** Gradient: color at the horizon. */
+      bottom: color.default([0.72, 0.83, 0.96]),
+    })
+    .optional(),
 });
 
 export const NodeSchema = z.object({
@@ -198,6 +215,7 @@ export const SceneDocumentSchema = z.object({
   animation: z.array(TrackSchema).default([]),
   physics: PhysicsSchema.optional(),
   audio: AudioSchema.optional(),
+  environment: EnvironmentSchema.optional(),
   camera: CameraSchema,
   /** Additional named cameras (each needs an `id`); the active one per frame is chosen by `shots`. */
   cameras: z.array(CameraSchema).default([]),
@@ -213,6 +231,7 @@ export type Material = z.infer<typeof MaterialSchema>;
 export type Geometry = z.infer<typeof GeometrySchema>;
 export type GeometryInput = z.input<typeof GeometrySchema>;
 export type Light = z.infer<typeof LightSchema>;
+export type Environment = z.infer<typeof EnvironmentSchema>;
 export type Skin = z.infer<typeof SkinSchema>;
 export type Clip = z.infer<typeof ClipSchema>;
 export type ClipChannel = z.infer<typeof ClipChannelSchema>;

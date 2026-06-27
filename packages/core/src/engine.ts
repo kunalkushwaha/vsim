@@ -27,6 +27,9 @@ export interface ResolvedLight {
   /** World position (point) or normalized direction (directional). */
   position: Vec3;
   direction: Vec3;
+  /** Hemisphere light only. */
+  skyColor?: Vec3;
+  groundColor?: Vec3;
 }
 
 export interface ResolvedCamera {
@@ -41,6 +44,8 @@ export interface FrameState {
   width: number;
   height: number;
   background: Vec3;
+  /** Resolved gradient sky (top→horizon). When set, engines fill the background with it. */
+  sky?: { top: Vec3; bottom: Vec3 };
   nodes: ResolvedNode[];
   lights: ResolvedLight[];
   camera: ResolvedCamera;

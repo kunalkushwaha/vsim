@@ -51,10 +51,13 @@ interface MeshInput extends TransformInput {
 }
 
 interface LightInput extends TransformInput {
-  type: "ambient" | "directional" | "point";
+  type: "ambient" | "directional" | "point" | "hemisphere";
   color?: Vec3;
   intensity?: number;
   direction?: Vec3;
+  /** Hemisphere light: sky/ground tints. */
+  skyColor?: Vec3;
+  groundColor?: Vec3;
 }
 
 interface CameraInput extends TransformInput {
@@ -187,8 +190,21 @@ export class SceneBuilder {
   light(props: LightInput, id?: string): this {
     const nid = id ?? `__light${this.lightCount++}`;
     this.node(nid, props, {
-      light: { type: props.type, color: props.color, intensity: props.intensity, direction: props.direction },
+      light: {
+        type: props.type,
+        color: props.color,
+        intensity: props.intensity,
+        direction: props.direction,
+        skyColor: props.skyColor,
+        groundColor: props.groundColor,
+      },
     });
+    return this;
+  }
+
+  /** Set a gradient sky background (top color → horizon color). */
+  sky(top: Vec3, bottom: Vec3): this {
+    this.doc.environment = { ...(this.doc.environment ?? {}), sky: { type: "gradient", top, bottom } };
     return this;
   }
 

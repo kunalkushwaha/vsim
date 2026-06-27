@@ -81,10 +81,12 @@ function buildFigure(): CharacterRig {
 }
 
 export default scene({ fps: 30, duration: 90, width: 640, height: 360, background: [0.53, 0.74, 0.96] })
+  .sky([0.32, 0.52, 0.92], [0.74, 0.85, 0.97]) // deep blue overhead → pale at the horizon
   .material("grass", { color: [0.27, 0.55, 0.24] })
   .material("skin", { color: [0.85, 0.62, 0.45] })
-  .light({ type: "ambient", intensity: 0.55 })
-  .light({ type: "directional", intensity: 1.0, direction: [-0.4, -1, -0.3] })
+  // Hemisphere fill (sky blue from above, grass green bounce from below) + a key directional.
+  .light({ type: "hemisphere", intensity: 0.7, skyColor: [0.55, 0.72, 0.95], groundColor: [0.3, 0.45, 0.22] })
+  .light({ type: "directional", intensity: 0.9, direction: [-0.4, -1, -0.3] })
   .mesh("ground", { geometry: { kind: "plane", size: [40, 40] }, material: "grass", position: [0, 0, 0] })
   .character("hero", buildFigure(), { clip: "walk", loop: true, material: "skin" })
   // Walk the whole figure across the field.

@@ -28,6 +28,25 @@ export class Framebuffer {
     }
   }
 
+  /** Clear to a vertical gradient (top color at row 0 → bottom color at the last row). */
+  clearGradient(top: Vec3, bottom: Vec3): void {
+    const { width, height, color, depth } = this;
+    for (let y = 0; y < height; y++) {
+      const t = height === 1 ? 0 : y / (height - 1);
+      const r = encodeGamma(top[0] + (bottom[0] - top[0]) * t);
+      const g = encodeGamma(top[1] + (bottom[1] - top[1]) * t);
+      const b = encodeGamma(top[2] + (bottom[2] - top[2]) * t);
+      for (let x = 0; x < width; x++) {
+        const p = (y * width + x) * 4;
+        color[p] = r;
+        color[p + 1] = g;
+        color[p + 2] = b;
+        color[p + 3] = 255;
+      }
+    }
+    depth.fill(Infinity);
+  }
+
   /**
    * Rasterize a screen-space triangle. Each vertex is [x, y, ndcZ] with a linear RGB color;
    * color and depth are interpolated affinely (screen-space) — fine for our scene scale.

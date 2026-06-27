@@ -29,10 +29,16 @@ export class ThreeEngine implements Engine {
   private meshes = new Map<string, THREE.Mesh>();
   private skinnedBind = new Map<string, MeshData>(); // bind-pose data for skinned nodes, re-skinned each frame
   private materials = new Map<string, THREE.MeshStandardMaterial>();
-  private lightObjs: { ambient: THREE.AmbientLight; dirs: THREE.DirectionalLight[]; points: THREE.PointLight[] } = {
+  private lightObjs: {
+    ambient: THREE.AmbientLight;
+    dirs: THREE.DirectionalLight[];
+    points: THREE.PointLight[];
+    hemis: THREE.HemisphereLight[];
+  } = {
     ambient: new THREE.AmbientLight(0x000000, 0),
     dirs: [],
     points: [],
+    hemis: [],
   };
   private readPixelBuf?: Uint8Array;
 
@@ -102,7 +108,11 @@ export class ThreeEngine implements Engine {
   }
 
   renderFrame(state: FrameState): void {
-    this.scene.background = new THREE.Color(state.background[0], state.background[1], state.background[2]);
+    // Flat WebGL background; approximate a gradient sky with its mid color (fidelity path).
+    const bg: [number, number, number] = state.sky
+      ? [(state.sky.top[0] + state.sky.bottom[0]) / 2, (state.sky.top[1] + state.sky.bottom[1]) / 2, (state.sky.top[2] + state.sky.bottom[2]) / 2]
+      : state.background;
+    this.scene.background = new THREE.Color(bg[0], bg[1], bg[2]);
 
     for (const node of state.nodes) {
       const mesh = this.meshes.get(node.id);
@@ -141,9 +151,11 @@ export class ThreeEngine implements Engine {
     let ambient = new THREE.Color(0, 0, 0);
     const dirs: ResolvedLight[] = [];
     const points: ResolvedLight[] = [];
+    const hemis: ResolvedLight[] = [];
     for (const l of lights) {
       if (l.type === "ambient") ambient.add(new THREE.Color(l.color[0] * l.intensity, l.color[1] * l.intensity, l.color[2] * l.intensity));
       else if (l.type === "directional") dirs.push(l);
+      else if (l.type === "hemisphere") hemis.push(l);
       else points.push(l);
     }
     this.lightObjs.ambient.color.copy(ambient);
@@ -173,6 +185,19 @@ export class ThreeEngine implements Engine {
       p.color.setRGB(l.color[0], l.color[1], l.color[2]);
       p.intensity = l.intensity;
       p.position.set(l.position[0], l.position[1], l.position[2]);
+    });
+    this.ensure(this.lightObjs.hemis, hemis.length, () => {
+      const h = new THREE.HemisphereLight();
+      this.scene.add(h);
+      return h;
+    });
+    hemis.forEach((l, i) => {
+      const h = this.lightObjs.hemis[i]!;
+      const sky = l.skyColor ?? [1, 1, 1];
+      const ground = l.groundColor ?? [0.3, 0.3, 0.3];
+      h.color.setRGB(sky[0], sky[1], sky[2]);
+      h.groundColor.setRGB(ground[0], ground[1], ground[2]);
+      h.intensity = l.intensity;
     });
   }
 
