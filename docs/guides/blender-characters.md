@@ -74,3 +74,18 @@ variants) — pass any of them.
 
 > Note: vsim's glTF loader currently supports TRS joints, float weights, and PNG/JPEG base-color
 > textures (no matrix-transform joints / normalized-integer weights yet).
+
+## Photoreal rendering (Cycles)
+
+The pure-TS software renderer is the fast, deterministic *draft*. For a **photoreal final**,
+[`scripts/blender/render-cycles.py`](../../scripts/blender/render-cycles.py) path-traces a character
+glTF with Blender's Cycles: it adds **subsurface scattering** to skin materials, a studio 3-point
+light rig, a framed camera, AgX tone mapping, and a shadow-catching floor.
+
+```bash
+blender --background --python scripts/blender/render-cycles.py -- character.glb out.png samples=64 res=800
+```
+
+This is the seed of vsim's photoreal backend (see [`docs/plan-photoreal.md`](../plan-photoreal.md)) —
+the model is *preview fast in the editor, render the final in Cycles*. A bundled `suited` character
+renders photoreal (real skin + a fabric suit + soft shadows) in a few seconds on CPU.
