@@ -17,6 +17,8 @@ their original licenses (vsim's own code is MIT).
   domain). Regenerate/customize via `scripts/blender/make-human.py`.
 - `suited.glb` adds **real clothing geometry** — a casual suit + shoes from the same CC0 pack, fitted
   and skin-weighted to the rig (three skinned meshes), with the under-clothing body removed.
+- `avatar.vrm` is a **VRM 1.0** avatar built CC0 from a MakeHuman human, with the `VRMC_vrm`
+  humanoid/meta extension injected by `scripts/make-vrm.mjs` (the file declares CC0 in its VRM meta).
 - The **skin + clothing textures** come from MakeHuman's `makehuman_system_assets` pack
   ([CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)) — baked to a single base-color
   map (`skin_type="GAMEENGINE"`) and downscaled to 1024². Pass any skin from that pack to the

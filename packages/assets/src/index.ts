@@ -106,6 +106,53 @@ export async function loadGltfRig(path: string, fps: number): Promise<RiggedGltf
   return parseRig(json, buffers, fps);
 }
 
+/** VRM avatar metadata — notably the license, which VRM bakes into the file. */
+export interface VrmMeta {
+  spec: "0.0" | "1.0";
+  title?: string;
+  authors?: string[];
+  license?: string;
+}
+
+/** A VRM avatar: a rigged glTF plus the VRM humanoid bone map and meta/license. */
+export interface VrmAvatar extends RiggedGltf {
+  /** VRM humanoid role (e.g. "leftUpperArm") → joint id in `joints`. Address the avatar by role. */
+  humanoidBones: Record<string, string>;
+  meta: VrmMeta;
+}
+
+/**
+ * Load a VRM avatar (.vrm or VRM-extended GLB). VRM is glTF + a humanoid extension, so the mesh,
+ * skin, and any clips load through the normal rig path; on top we parse the VRM `humanoid` bone map
+ * and `meta` (both VRM 0.x `VRM` and 1.0 `VRMC_vrm`). Drop in any VRM 0.x/1.0 avatar.
+ */
+export async function loadVrm(path: string, fps: number): Promise<VrmAvatar> {
+  const file = await readFile(resolve(path));
+  const isGlb = file.readUInt32LE(0) === 0x46546c67;
+  const { json, glbBin } = isGlb ? parseGLB(file) : { json: JSON.parse(file.toString("utf8")), glbBin: undefined };
+  const buffers = await loadBuffers(json, glbBin, dirname(resolve(path)));
+  const rig = parseRig(json, buffers, fps);
+  const ext = json.extensions ?? {};
+  const humanoidBones: Record<string, string> = {};
+  if (ext.VRMC_vrm) {
+    // VRM 1.0: humanBones is a map role → { node }
+    for (const [role, v] of Object.entries<any>(ext.VRMC_vrm.humanoid?.humanBones ?? {})) {
+      if (v?.node != null) humanoidBones[role] = jointIdOf(json, v.node);
+    }
+    const m = ext.VRMC_vrm.meta ?? {};
+    return { ...rig, humanoidBones, meta: { spec: "1.0", title: m.name, authors: m.authors, license: m.licenseUrl } };
+  }
+  if (ext.VRM) {
+    // VRM 0.x: humanBones is an array of { bone, node }
+    for (const e of ext.VRM.humanoid?.humanBones ?? []) {
+      if (e?.bone && e?.node != null) humanoidBones[e.bone] = jointIdOf(json, e.node);
+    }
+    const m = ext.VRM.meta ?? {};
+    return { ...rig, humanoidBones, meta: { spec: "0.0", title: m.title, authors: m.author ? [m.author] : undefined, license: m.licenseName } };
+  }
+  throw new Error("not a VRM: missing the VRM (0.x) or VRMC_vrm (1.0) extension");
+}
+
 const VALID_INTERP = new Set(["linear", "step", "cubicspline"]);
 const jointIdOf = (json: any, idx: number): string => `${json.nodes[idx]?.name ?? "joint"}_${idx}`;
 
@@ -232,7 +279,8 @@ export async function listCharacters(): Promise<CharacterMeta[]> {
 export async function loadCharacter(id: string, fps: number): Promise<{ rig: RiggedGltf; meta: CharacterMeta }> {
   const meta = (await listCharacters()).find((c) => c.id === id);
   if (!meta) throw new Error(`Unknown character "${id}". Available: ${(await listCharacters()).map((c) => c.id).join(", ")}`);
-  const rig = await loadGltfRig(resolve(libraryDir, meta.file), fps);
+  const file = resolve(libraryDir, meta.file);
+  const rig = meta.file.endsWith(".vrm") ? await loadVrm(file, fps) : await loadGltfRig(file, fps);
   return { rig, meta };
 }
 

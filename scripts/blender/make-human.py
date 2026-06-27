@@ -34,6 +34,7 @@ for a in argv:
     if "=" in a and not a.endswith((".zip", ".glb", ".gltf", ".mhmat")):
         k, v = a.split("=", 1)
         overrides[k.strip()] = float(v)
+MAX_TEX = int(overrides.pop("tex")) if "tex" in overrides else MAX_TEX  # tex=512 for a leaner GLB
 
 # start from an empty scene (drop Blender's default Cube/Camera/Light so the GLB is just the human)
 bpy.ops.object.select_all(action='SELECT')

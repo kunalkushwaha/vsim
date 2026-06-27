@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { listCharacters, loadCharacter } from "./index.js";
+import { listCharacters, loadCharacter, loadVrm } from "./index.js";
 
 describe("character library", () => {
   it("lists the bundled characters", async () => {
     const ids = (await listCharacters()).map((c) => c.id).sort();
-    expect(ids).toEqual(["figure", "fox", "human", "kid", "man", "person", "suited"]);
+    expect(ids).toEqual(["avatar", "figure", "fox", "human", "kid", "man", "person", "suited"]);
   });
 
   it("loads the MakeHuman-generated human (realistic rig + clip library + skin texture)", async () => {
@@ -45,6 +45,17 @@ describe("character library", () => {
       expect(m.joints!.length).toBe((m.positions.length / 3) * 4); // every garment is skinned
       expect(m.texture).toBeDefined(); // each carries its own base-color texture
     }
+  });
+
+  it("loads a VRM avatar (humanoid bone map + license parsed)", async () => {
+    const { rig } = await loadCharacter("avatar", 30); // .vrm → dispatched to loadVrm
+    const vrm = rig as Awaited<ReturnType<typeof loadVrm>>;
+    expect(vrm.meta.spec).toBe("1.0");
+    expect(vrm.meta.license).toMatch(/creativecommons/);
+    expect(vrm.humanoidBones.leftUpperArm).toBeDefined();
+    expect(vrm.joints).toContain(vrm.humanoidBones.hips!); // humanoid roles map to real joints
+    expect(Object.keys(vrm.humanoidBones).length).toBeGreaterThanOrEqual(15);
+    expect(vrm.clips.some((c) => c.id === "walk")).toBe(true);
   });
 
   it("loads the Blender-generated figure (rigged + walk clip)", async () => {

@@ -49,6 +49,18 @@
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin + clothing from the makehuman_system_assets pack — all CC0."
     },
     {
+      "id": "avatar",
+      "name": "VRM avatar (CC0)",
+      "file": "avatar.vrm",
+      "description": "A VRM 1.0 avatar (the web-3D humanoid format) — loaded via loadVrm, which parses the VRM humanoid bone map + license. Built CC0 from a MakeHuman human; walk/run/idle/wave clips. Drop in any VRM 0.x/1.0 file to load your own.",
+      "defaultClip": "walk",
+      "clips": ["walk", "run", "idle", "wave"],
+      "scale": 1.0,
+      "rotation": [0, 0, 0],
+      "faces": "+x",
+      "credit": "VRM 1.0 avatar generated CC0 by vsim from a MakeHuman / MPFB 2 human (makehumancommunity.org); VRM extension injected by scripts/make-vrm.mjs."
+    },
+    {
       "id": "figure",
       "name": "Figure (Blender)",
       "file": "figure.glb",
