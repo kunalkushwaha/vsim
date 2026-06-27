@@ -4,7 +4,14 @@ import { listCharacters, loadCharacter } from "./index.js";
 describe("character library", () => {
   it("lists the bundled characters", async () => {
     const ids = (await listCharacters()).map((c) => c.id).sort();
-    expect(ids).toEqual(["figure", "fox", "person"]);
+    expect(ids).toEqual(["figure", "fox", "human", "person"]);
+  });
+
+  it("loads the MakeHuman-generated human (realistic rig + walk clip)", async () => {
+    const { rig, meta } = await loadCharacter("human", 30);
+    expect(meta.defaultClip).toBe("walk");
+    expect(rig.joints.length).toBeGreaterThan(20); // full humanoid skeleton
+    expect(rig.clips.some((c) => c.id === "walk")).toBe(true);
   });
 
   it("loads the Blender-generated figure (rigged + walk clip)", async () => {

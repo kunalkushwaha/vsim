@@ -51,5 +51,15 @@ add-on and export glTF the same way — all free/open-source:
 Generate + rig + animate in Blender, export `.glb`, and load it exactly as above. vsim now also
 samples the model's base-color texture, so textured exports render with their real surface detail.
 
+**vsim ships a working example of this:** [`scripts/blender/make-human.py`](../../scripts/blender/make-human.py)
+drives **MakeHuman (MPFB 2)** headlessly — it generates a realistic ~19k-vertex human with a
+53-bone rig, adds a walk, and exports glTF. The result is bundled as `library/human.glb` (CC0) and
+shown in `examples/12-makehuman` (`loadCharacter("human")`). Run it yourself:
+
+```bash
+curl -L https://files.makehumancommunity.org/plugins/mpfb2-<date>.zip -o mpfb2.zip   # downloads.html for the current name
+blender --background --python scripts/blender/make-human.py -- mpfb2.zip human.glb
+```
+
 > Note: vsim's glTF loader currently supports TRS joints, float weights, and PNG/JPEG base-color
 > textures (no matrix-transform joints / normalized-integer weights yet).

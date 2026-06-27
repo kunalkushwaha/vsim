@@ -26,6 +26,7 @@
     "example:manga": "tsx packages/cli/src/index.ts render examples/09-manga/scene.ts -o out/manga.mp4",
     "example:puppy": "tsx packages/cli/src/index.ts render examples/10-puppy/scene.ts -o out/puppy.mp4",
     "example:blender": "tsx packages/cli/src/index.ts render examples/11-blender/scene.ts -o out/blender.mp4",
+    "example:makehuman": "tsx packages/cli/src/index.ts render examples/12-makehuman/scene.ts -o out/makehuman.mp4",
     "showreel": "node scripts/build-showreel.mjs",
     "docs:site": "node scripts/build-docs-site.mjs",
     "release:dry": "pnpm build && pnpm -r --filter \"./packages/*\" publish --dry-run --no-git-checks"

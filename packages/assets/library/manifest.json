@@ -1,6 +1,18 @@
 {
   "characters": [
     {
+      "id": "human",
+      "name": "Human (MakeHuman)",
+      "file": "human.glb",
+      "description": "A realistic rigged human generated with MakeHuman (MPFB 2). See scripts/blender/make-human.py.",
+      "defaultClip": "walk",
+      "clips": ["walk"],
+      "scale": 1.0,
+      "rotation": [0, 0, 0],
+      "faces": "+x",
+      "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org) — output is CC0."
+    },
+    {
       "id": "figure",
       "name": "Figure (Blender)",
       "file": "figure.glb",

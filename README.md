@@ -118,7 +118,7 @@ session.document; // the edited scene so far
 - [Scene document reference](./docs/scene-document.md)
 - [Determinism guide](./docs/determinism.md)
 - [ADR 0001 — render backend & determinism](./docs/decisions/0001-render-backend-and-determinism.md)
-- [Guide: creating characters with Blender](./docs/guides/blender-characters.md) — generate rigged, animated glTF (headless) → `loadGltfRig`
+- [Guide: creating characters with Blender / MakeHuman](./docs/guides/blender-characters.md) — generate rigged, animated glTF headlessly (incl. a realistic MakeHuman human) → `loadGltfRig`
 - [Vision & roadmap](./CONCEPT.md) · [`PLAN.md`](./PLAN.md)
 
 `pnpm docs:site` builds a static documentation site (landing page + the docs above) into
