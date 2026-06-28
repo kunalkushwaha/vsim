@@ -120,7 +120,25 @@ forearmL=find("lowerarm_l"); forearmR=find("lowerarm_r")
 spine=find("spine_02","spine_01"); head=find("head")
 print("rig bones:", thighL, thighR, calfL, calfR, footL, footR, armL, armR, spine, head)
 
+# Relaxed hands: the mocap has no finger data, so the fingers would sit in MakeHuman's spread bind
+# pose ("starfish hands"). Gently curl each finger (more at the tips) so hands look natural in every
+# clip. CURL_AXIS/sign verified by render. The thumb is left near-neutral.
+CURL_AXIS = 2  # 0=X 1=Y 2=Z — which local axis curls a finger toward the palm
+CURL = {"01": -0.25, "02": -0.55, "03": -0.45}
+relax = {}
+for side in ("l", "r"):
+    for fng in ("index", "middle", "ring", "pinky"):
+        for seg, amt in CURL.items():
+            bn = f"{fng}_{seg}_{side}"
+            if bn in pb:
+                e = [0.0, 0.0, 0.0]; e[CURL_AXIS] = amt; relax[bn] = tuple(e)
+
 ad = arm.animation_data_create()
+def key_relax(at):
+    """Keyframe the relaxed-hand finger curl (constant) into the current action at frame `at`."""
+    for bn, eu in relax.items():
+        pb[bn].rotation_euler = eu
+        pb[bn].keyframe_insert("rotation_euler", frame=at)
 def author(name, keys):
     """keys: list of (frame, {bone: (rx,ry,rz)}). Bones not mentioned stay at bind pose."""
     for b in pb: b.rotation_mode = 'XYZ'; b.rotation_euler = (0, 0, 0)
@@ -130,6 +148,7 @@ def author(name, keys):
             if not bn: continue
             pb[bn].rotation_euler = eu
             pb[bn].keyframe_insert("rotation_euler", frame=f)
+    key_relax(keys[0][0])  # curl fingers (held constant across the clip)
     trk = ad.nla_tracks.new(); trk.name = name
     trk.strips.new(name, 1, act)   # stash → its own track (gives the action a user + a clean name)
     ad.action = None
@@ -171,6 +190,7 @@ def retarget(bvh_path, name, fstart, fend, fstep):
             bpy.context.view_layer.update()  # so children read the updated parent pose
             p.keyframe_insert("rotation_euler", frame=of)
         of += 1
+    key_relax(1)  # relaxed (curled) fingers — the mocap has no finger data
     trk = ad.nla_tracks.new(); trk.name = name; trk.strips.new(name, 1, act); ad.action = None
     bpy.data.objects.remove(src, do_unlink=True)
     if imp_act:
