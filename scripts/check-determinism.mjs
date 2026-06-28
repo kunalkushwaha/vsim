@@ -5,7 +5,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const RUNTIME_PKGS = ["core", "engine-software", "physics-rapier", "authoring", "assets", "render"];
+const RUNTIME_PKGS = ["core", "engine-software", "physics-rapier", "authoring", "assets", "render", "text"];
 const BANNED = [/Math\.random\b/, /\bDate\.now\b/, /performance\.now\b/];
 
 const violations = [];

@@ -164,7 +164,9 @@ export const TrackSchema = z.object({
     materialId: z.string().optional(),
     /** A camera (by id) — animate its "fov" (number) or "lookAt" (vec3). */
     cameraId: z.string().optional(),
-    /** Dot path, e.g. "position", "position.y", "rotation", "color", "fov", "lookAt". */
+    /** A text overlay (by id) — animate "opacity", "x", "y", "size" (numbers) or "color" (vec3). */
+    overlayId: z.string().optional(),
+    /** Dot path, e.g. "position", "position.y", "rotation", "color", "fov", "lookAt", "opacity". */
     path: z.string(),
   }),
   keyframes: z.array(KeyframeSchema).min(1),
@@ -219,6 +221,32 @@ export const ShotSchema = z.object({
   endFrame: z.number(),
 });
 
+/**
+ * A screen-space text overlay (title / caption / lower-third), composited on top of the 3D after
+ * rendering. Position is normalized [0..1] with origin top-left; `align` anchors it horizontally and
+ * `y` is the vertical center of the line. Animate `opacity`/`x`/`y`/`size`/`color` via a track whose
+ * target is `{ overlayId, path }` (e.g. fade a title in and out).
+ */
+export const TextOverlaySchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  x: z.number().default(0.5),
+  y: z.number().default(0.5),
+  /** Font size in output pixels (at the document resolution). */
+  size: z.number().positive().default(64),
+  color: color.default([1, 1, 1]),
+  opacity: z.number().min(0).max(1).default(1),
+  align: z.enum(["left", "center", "right"]).default("center"),
+  /** Optional filled box behind the text — for lower-thirds / captions. */
+  box: z
+    .object({
+      color: color.default([0, 0, 0]),
+      opacity: z.number().min(0).max(1).default(0.5),
+      padding: z.number().min(0).default(16),
+    })
+    .optional(),
+});
+
 export const SceneDocumentSchema = z.object({
   version: z.literal("0.1").default("0.1"),
   meta: MetaSchema,
@@ -236,6 +264,8 @@ export const SceneDocumentSchema = z.object({
   cameras: z.array(CameraSchema).default([]),
   /** Camera timeline — which camera films each frame range. Empty = always the default `camera`. */
   shots: z.array(ShotSchema).default([]),
+  /** Screen-space text overlays (titles / captions / lower-thirds), drawn on top of the render. */
+  overlays: z.array(TextOverlaySchema).default([]),
 });
 
 export type SceneDocument = z.infer<typeof SceneDocumentSchema>;
@@ -256,6 +286,7 @@ export type Keyframe = z.infer<typeof KeyframeSchema>;
 export type Body = z.infer<typeof BodySchema>;
 export type Camera = z.infer<typeof CameraSchema>;
 export type Shot = z.infer<typeof ShotSchema>;
+export type TextOverlay = z.infer<typeof TextOverlaySchema>;
 export type Asset = z.infer<typeof AssetSchema>;
 
 /** Validate + apply defaults. Throws a readable error on invalid input. */

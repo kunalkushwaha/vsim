@@ -4,6 +4,7 @@ import {
   type Material, type MeshData, type ResolvedLight, type Vec3,
 } from "@vsim/core";
 import { Framebuffer } from "./raster.js";
+import { compositeOverlays } from "./overlay.js";
 
 const DEFAULT_MATERIAL: Material = {
   id: "__default",
@@ -194,6 +195,8 @@ export class SoftwareEngine implements Engine {
     }
 
     if (toon) this.fb.outline([0.04, 0.05, 0.08]); // manga: dark silhouette/edge lines
+
+    if (state.overlays.length) compositeOverlays(this.fb, state.overlays, width, height); // screen-space text
   }
 
   readPixels(): Uint8ClampedArray {
@@ -279,3 +282,4 @@ function lightingAt(worldPos: Vec3, n: Vec3, lights: ResolvedLight[], toon = fal
 }
 
 export { Framebuffer } from "./raster.js";
+export { compositeOverlays } from "./overlay.js";

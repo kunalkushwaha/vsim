@@ -1,0 +1,13 @@
+{
+  "name": "@vsim/text",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "publishConfig": { "main": "./dist/index.js", "types": "./dist/index.d.ts", "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } } },
+  "files": ["dist", "fonts"],
+  "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit" },
+  "dependencies": { "opentype.js": "^1.3.4" },
+  "devDependencies": { "@types/opentype.js": "^1.3.8" }
+}

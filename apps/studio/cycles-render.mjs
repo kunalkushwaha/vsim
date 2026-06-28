@@ -34,6 +34,8 @@ export async function renderCycles(scenePath, { output, samples = 40, step = 1, 
     const renderManifest = join(dir, "render.json");
     await writeFile(renderManifest, JSON.stringify({ items }));
     await run(blender, ["--background", "--python", join(ROOT, "scripts/blender/render-scene-cycles.py"), "--", `manifest=${renderManifest}`, `samples=${samples}`]);
+    // 2b) composite screen-space text overlays onto the path-traced PNGs (same compositor as draft)
+    await run("pnpm", ["exec", "tsx", join(HERE, "cycles-overlay.ts"), framesDir, pngDir], { cwd: ROOT });
     // 3) ffmpeg → MP4 (play at srcFps/step so the clip keeps real-time duration)
     const outFps = fps ?? Math.max(1, Math.round(srcFps / step));
     await run("ffmpeg", ["-y", "-framerate", String(outFps), "-i", join(pngDir, "f_%04d.png"),

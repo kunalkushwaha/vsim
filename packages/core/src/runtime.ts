@@ -4,7 +4,7 @@ import { evaluateTrack } from "./animation.js";
 import { evaluateClip } from "./clip.js";
 import { mat4, quatFromEuler, v3, DEG2RAD } from "./math.js";
 import type { Mat4, Quat, Vec3 } from "./math.js";
-import type { Camera, Clip, Material, Node, SceneDocument, Skin } from "./document.js";
+import type { Camera, Clip, Material, Node, SceneDocument, Skin, TextOverlay } from "./document.js";
 import type {
   FrameState,
   PhysicsAdapter,
@@ -58,6 +58,14 @@ function applyToMaterial(mat: Material, path: string, value: number | number[]):
     mat[path] = [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0];
   } else if ((path === "opacity" || path === "roughness" || path === "metalness") && typeof value === "number") {
     mat[path] = value;
+  }
+}
+
+function applyToOverlay(ov: TextOverlay, path: string, value: number | number[]): void {
+  if (path === "color" && Array.isArray(value)) {
+    ov.color = [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0];
+  } else if ((path === "opacity" || path === "x" || path === "y" || path === "size") && typeof value === "number") {
+    ov[path] = value;
   }
 }
 
@@ -120,6 +128,12 @@ export class SceneRuntime {
       materials.set(m.id, { ...m, color: [...m.color] as Vec3, emissive: [...m.emissive] as Vec3 });
     }
 
+    // Text overlays: clone so animation tracks can override per-frame values without mutating the doc.
+    const overlays = new Map<string, TextOverlay>();
+    for (const o of this.doc.overlays) {
+      overlays.set(o.id, { ...o, color: [...o.color] as Vec3, box: o.box ? { ...o.box, color: [...o.box.color] as Vec3 } : undefined });
+    }
+
     // Morph-target weights per node (aligned to the mesh's morphTargets order), seeded from the
     // mesh's `morphWeights` defaults (keyed by name). Animation tracks with a "morph.<name|index>"
     // path override them; the engine then displaces vertices by Σ weight·delta before skinning.
@@ -173,6 +187,9 @@ export class SceneRuntime {
         if (track.target.path === "fov" && typeof value === "number") o.fov = value;
         else if (track.target.path === "lookAt" && Array.isArray(value)) o.lookAt = [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0];
         cameraOverrides.set(track.target.cameraId, o);
+      } else if (track.target.overlayId) {
+        const ov = overlays.get(track.target.overlayId);
+        if (ov) applyToOverlay(ov, track.target.path, value);
       }
     }
 
@@ -246,6 +263,7 @@ export class SceneRuntime {
       nodes,
       lights,
       camera: this.resolveCamera(frame, computeWorld, cameraOverrides),
+      overlays: this.doc.overlays.map((o) => overlays.get(o.id)!),
     };
   }
 

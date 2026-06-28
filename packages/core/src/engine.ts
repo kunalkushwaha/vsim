@@ -1,6 +1,9 @@
 import type { Mat4, Quat, Vec3 } from "./math.js";
-import type { Material, Light, Mesh, SceneDocument } from "./document.js";
+import type { Material, Light, Mesh, SceneDocument, TextOverlay } from "./document.js";
 import type { MeshData } from "./geometry.js";
+
+/** A text overlay with its animated properties resolved for the current frame. */
+export type ResolvedTextOverlay = TextOverlay;
 
 /**
  * A renderer-agnostic frame snapshot produced by the runtime. World matrices are already
@@ -54,6 +57,8 @@ export interface FrameState {
   nodes: ResolvedNode[];
   lights: ResolvedLight[];
   camera: ResolvedCamera;
+  /** Screen-space text overlays for this frame (animation already applied). */
+  overlays: ResolvedTextOverlay[];
 }
 
 /**

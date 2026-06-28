@@ -64,8 +64,10 @@ and **morph-target lip-sync** — a face whose mouth opens on every audio beat �
 and a character walking through a **park of procedural props** (`.tree()`/`.rock()` from cylinder/cone
 primitives) in `examples/18-park`, and a procedural **quadruped** trotting in `examples/19-dog` —
 loaded by name with `loadCharacter()` and **rendered with their real glTF textures** (PNG/JPEG
-base-color, sampled in the software renderer), and a **manga** scene (one-flag cel-shading +
-outlines via `style: "manga"`). Render any of them, or build the montage:
+base-color, sampled in the software renderer), a **manga** scene (one-flag cel-shading +
+outlines via `style: "manga"`), and **text & titles** — a title card, a sliding lower-third, and a
+caption, as true vector type composited on top of the 3D — in `examples/20-titles`. Render any of
+them, or build the montage:
 
 ```bash
 pnpm install
@@ -82,6 +84,7 @@ pnpm showreel         # renders all examples → out/showreel.mp4
 | `@vsim/core` | Scene document schema, fixed-timestep clock, seeded RNG, animation eval, math, engine interface — **zero engine deps** |
 | `@vsim/engine-software` | Pure-TS reference rasterizer. Runs anywhere (no GPU), bit-identical — the determinism oracle & default renderer |
 | `@vsim/engine-three` | Three.js production renderer (GPU, high fidelity) |
+| `@vsim/text` | Deterministic vector text rasterizer (bundled font → glyph fill) for screen-space titles/captions |
 | `@vsim/physics-rapier` | Deterministic Rapier physics adapter |
 | `@vsim/render` | Headless frame capture → ffmpeg → MP4 (+ audio mux) |
 | `@vsim/authoring` | Declarative builder API: code → scene document |

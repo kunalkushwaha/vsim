@@ -12,7 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vsim/core": "workspace:*"
+    "@vsim/core": "workspace:*",
+    "@vsim/text": "workspace:*"
   },
   "description": "Pure-TypeScript reference rasterizer for vsim — the deterministic render oracle, runs anywhere without a GPU.",
   "license": "MIT",

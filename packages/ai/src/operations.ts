@@ -31,13 +31,16 @@ export type EditOperation =
   | { op: "addCamera"; id: string; position?: Vec3; lookAt?: Vec3; lookAtNodeId?: string; fov?: number }
   | { op: "setShot"; cameraId: string; startFrame: number; endFrame: number }
   | { op: "setEnvironment"; skyTop?: Vec3; skyBottom?: Vec3 }
-  | { op: "addAnimation"; nodeId: string; path: string; keyframes: Keyframe[] };
+  | { op: "addText"; id: string; text: string; x?: number; y?: number; size?: number; color?: Vec3; opacity?: number; align?: "left" | "center" | "right"; box?: { color?: Vec3; opacity?: number; padding?: number } }
+  | { op: "removeText"; id: string }
+  | { op: "addAnimation"; nodeId?: string; overlayId?: string; path: string; keyframes: Keyframe[] };
 
 type Draft = {
   meta: Record<string, unknown>;
   materials: Record<string, unknown>[];
   nodes: Record<string, unknown>[];
-  animation: { target: { nodeId?: string; materialId?: string; cameraId?: string; path: string }; keyframes: Keyframe[] }[];
+  animation: { target: { nodeId?: string; materialId?: string; cameraId?: string; overlayId?: string; path: string }; keyframes: Keyframe[] }[];
+  overlays?: Record<string, unknown>[];
   physics?: { gravity?: Vec3; bodies: { nodeId: string }[] };
   camera: { nodeId: string; fov?: number; lookAt?: Vec3; near?: number; far?: number };
   cameras?: Record<string, unknown>[];
@@ -151,8 +154,25 @@ function applyOne(draft: Draft, op: EditOperation): void {
       draft.environment = { ...(draft.environment ?? {}), sky };
       break;
     }
+    case "addText": {
+      draft.overlays ??= [];
+      let ov = draft.overlays.find((o) => o.id === op.id);
+      if (!ov) {
+        ov = { id: op.id };
+        draft.overlays.push(ov);
+      }
+      ov.text = op.text;
+      assignDefined(ov, op, ["x", "y", "size", "color", "opacity", "align", "box"]);
+      break;
+    }
+    case "removeText": {
+      draft.overlays = (draft.overlays ?? []).filter((o) => o.id !== op.id);
+      draft.animation = draft.animation.filter((t) => t.target.overlayId !== op.id);
+      break;
+    }
     case "addAnimation": {
-      draft.animation.push({ target: { nodeId: op.nodeId, path: op.path }, keyframes: op.keyframes });
+      const target = op.overlayId ? { overlayId: op.overlayId, path: op.path } : { nodeId: op.nodeId!, path: op.path };
+      draft.animation.push({ target, keyframes: op.keyframes });
       break;
     }
   }

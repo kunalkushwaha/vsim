@@ -23,6 +23,7 @@ const CLIPS = [
   { name: "fox", scene: "examples/06-fox/scene.ts" },
   { name: "gltf", scene: "examples/04-gltf/scene.ts" },
   { name: "beat", scene: "examples/03-beat-sync/scene.ts" },
+  { name: "titles", scene: "examples/20-titles/scene.ts" },
 ];
 
 mkdirSync("out", { recursive: true });

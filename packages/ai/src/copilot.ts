@@ -22,6 +22,7 @@ Conventions:
 - Reuse the ids already present in the scene when editing existing objects — do not duplicate them.
 - Outdoor scenes: set a gradient sky with set_environment (e.g. skyTop [0.32,0.52,0.92], skyBottom [0.74,0.85,0.97]), add a large plane as ground, and use a hemisphere light for natural fill.
 - Different camera angles: add named cameras with add_camera (use lookAtNodeId to track a moving object), then cut between them with set_shot over frame ranges.
+- Titles, captions, and lower-thirds: add screen-space text with add_text (position normalized 0..1, origin top-left; use a box for captions/lower-thirds). Make a title fade in/out or slide by animating it with add_animation using overlayId (opacity for fades, x/y for slides).
 
 Make every change by calling the edit tools. Do not describe a change in prose without also performing it with a tool call. When the request asks to build or describe a whole scene, compose it from these tools (geometry + materials + lights + environment + cameras/shots). Otherwise make only the changes the request asks for; don't redesign the scene. After the edits, give a one-sentence summary of what you changed.`;
 

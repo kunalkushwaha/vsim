@@ -68,6 +68,8 @@ function bakeFrame(frame: number) {
     camera: { position: f.camera.position, forward, up, fovY },
     lights: f.lights.map((l) => ({ type: l.type, color: l.color, intensity: l.intensity, position: l.position, direction: l.direction, skyColor: l.skyColor ?? null, groundColor: l.groundColor ?? null })),
     meshes,
+    // Screen-space text overlays, composited onto the path-traced PNG afterward (cycles-overlay.ts).
+    overlays: f.overlays,
   };
 }
 

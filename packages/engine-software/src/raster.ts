@@ -83,6 +83,46 @@ export class Framebuffer {
     }
   }
 
+  /** Alpha-blend a filled rectangle (gamma-space src color over dst). For overlay backgrounds. */
+  fillRectBlend(x0: number, y0: number, w: number, h: number, rgb: [number, number, number], alpha: number): void {
+    if (alpha <= 0) return;
+    const { width, height, color } = this;
+    const xa = Math.max(0, Math.floor(x0)), xb = Math.min(width, Math.ceil(x0 + w));
+    const ya = Math.max(0, Math.floor(y0)), yb = Math.min(height, Math.ceil(y0 + h));
+    for (let y = ya; y < yb; y++) {
+      for (let x = xa; x < xb; x++) {
+        const p = (y * width + x) * 4;
+        color[p] = rgb[0] * alpha + color[p]! * (1 - alpha);
+        color[p + 1] = rgb[1] * alpha + color[p + 1]! * (1 - alpha);
+        color[p + 2] = rgb[2] * alpha + color[p + 2]! * (1 - alpha);
+      }
+    }
+  }
+
+  /**
+   * Composite a coverage bitmap (`cov`, `cw`×`ch`, 0..255) at top-left (`dx`,`dy`) using a
+   * gamma-space color, scaled by `opacity`. Used to paint anti-aliased text over the render.
+   */
+  blitCoverage(cov: Uint8Array, cw: number, ch: number, dx: number, dy: number, rgb: [number, number, number], opacity: number): void {
+    if (opacity <= 0) return;
+    const { width, height, color } = this;
+    const x0 = Math.round(dx), y0 = Math.round(dy);
+    for (let y = 0; y < ch; y++) {
+      const ty = y0 + y;
+      if (ty < 0 || ty >= height) continue;
+      for (let x = 0; x < cw; x++) {
+        const tx = x0 + x;
+        if (tx < 0 || tx >= width) continue;
+        const a = (cov[y * cw + x]! / 255) * opacity;
+        if (a <= 0) continue;
+        const p = (ty * width + tx) * 4;
+        color[p] = rgb[0] * a + color[p]! * (1 - a);
+        color[p + 1] = rgb[1] * a + color[p + 1]! * (1 - a);
+        color[p + 2] = rgb[2] * a + color[p + 2]! * (1 - a);
+      }
+    }
+  }
+
   /**
    * Rasterize a screen-space triangle. Each vertex is [x, y, ndcZ] with a linear RGB color;
    * color and depth are interpolated affinely (screen-space) — fine for our scene scale.
@@ -199,6 +239,11 @@ function edge(ax: number, ay: number, bx: number, by: number, cx: number, cy: nu
 }
 
 /** Linear RGB [0,1] → gamma-encoded 8-bit. */
-function encodeGamma(c: number): number {
+export function encodeGamma(c: number): number {
   return Math.round(clamp(Math.pow(clamp(c, 0, 1), 1 / 2.2), 0, 1) * 255);
+}
+
+/** Linear RGB triple → gamma-encoded 8-bit triple (matches what the rasterizer writes). */
+export function gammaRgb(rgb: Vec3): [number, number, number] {
+  return [encodeGamma(rgb[0]), encodeGamma(rgb[1]), encodeGamma(rgb[2])];
 }

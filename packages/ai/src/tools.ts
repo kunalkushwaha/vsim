@@ -179,16 +179,49 @@ export const EDIT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
-    name: "add_animation",
-    description: "Animate a node property over frames. `path` is a dot path like 'position.y', 'rotation.y', 'position', or 'scale'. Keyframe `value` is a number for a single axis or an array for a whole vector.",
+    name: "add_text",
+    description: "Add a screen-space text overlay (title, caption, or lower-third) drawn on top of the 3D. Position is normalized [0..1], origin top-left; `align` anchors horizontally and `y` is the line's vertical center. For a caption/lower-third, set a `box` (filled background). Animate it with add_animation using overlayId (fade=opacity, slide=x/y). Defaults: x 0.5, y 0.5, size 64, white, centered.",
     input_schema: {
       type: "object",
       properties: {
-        nodeId: { type: "string" },
+        id: { type: "string" },
+        text: { type: "string" },
+        x: { type: "number", description: "0..1 left→right" },
+        y: { type: "number", description: "0..1 top→bottom (vertical center of the line)" },
+        size: { type: "number", description: "font size in output pixels" },
+        color,
+        opacity: { type: "number" },
+        align: { type: "string", enum: ["left", "center", "right"] },
+        box: {
+          type: "object",
+          description: "optional filled background box behind the text (lower-thirds / captions)",
+          properties: { color, opacity: { type: "number" }, padding: { type: "number" } },
+        },
+      },
+      required: ["id", "text"],
+    },
+  },
+  {
+    name: "remove_text",
+    description: "Delete a text overlay by id, along with any animation tracks targeting it.",
+    input_schema: {
+      type: "object",
+      properties: { id: { type: "string" } },
+      required: ["id"],
+    },
+  },
+  {
+    name: "add_animation",
+    description: "Animate a property over frames. Target a node with `nodeId` (path like 'position.y', 'rotation.y', 'position', 'scale') OR a text overlay with `overlayId` (path 'opacity', 'x', 'y', 'size', or 'color'). Keyframe `value` is a number for a single axis or an array for a whole vector.",
+    input_schema: {
+      type: "object",
+      properties: {
+        nodeId: { type: "string", description: "id of a node to animate" },
+        overlayId: { type: "string", description: "id of a text overlay to animate (use instead of nodeId)" },
         path: { type: "string" },
         keyframes,
       },
-      required: ["nodeId", "path", "keyframes"],
+      required: ["path", "keyframes"],
     },
   },
 ];
@@ -248,6 +281,10 @@ export function toolUseToOperation(name: string, input: unknown): EditOperation 
       return { op: "setShot", ...i } as EditOperation;
     case "set_environment":
       return { op: "setEnvironment", ...i } as EditOperation;
+    case "add_text":
+      return { op: "addText", ...i } as EditOperation;
+    case "remove_text":
+      return { op: "removeText", ...i } as EditOperation;
     case "add_animation":
       return { op: "addAnimation", ...i } as EditOperation;
     default:

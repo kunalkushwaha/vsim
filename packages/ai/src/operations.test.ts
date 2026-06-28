@@ -124,6 +124,39 @@ describe("toolUseToOperation", () => {
   });
 });
 
+describe("text overlay operations", () => {
+  it("addText adds a titled overlay with defaults filled", () => {
+    const out = applyOperations(baseDoc(), [{ op: "addText", id: "title", text: "Hello" }]);
+    const ov = out.overlays.find((o) => o.id === "title");
+    expect(ov?.text).toBe("Hello");
+    expect(ov?.align).toBe("center"); // default
+    expect(ov?.size).toBe(64); // default
+  });
+
+  it("addText supports a lower-third box and addAnimation fades it via overlayId", () => {
+    const out = applyOperations(baseDoc(), [
+      { op: "addText", id: "cap", text: "Caption", x: 0.05, y: 0.85, align: "left", box: { opacity: 0.6 } },
+      { op: "addAnimation", overlayId: "cap", path: "opacity", keyframes: [{ frame: 0, value: 0 }, { frame: 10, value: 1 }] },
+    ]);
+    expect(out.overlays.find((o) => o.id === "cap")?.box?.opacity).toBe(0.6);
+    expect(out.animation[0]?.target).toEqual({ overlayId: "cap", path: "opacity" });
+  });
+
+  it("removeText deletes the overlay and its animation tracks", () => {
+    const withText = applyOperations(baseDoc(), [
+      { op: "addText", id: "t", text: "x" },
+      { op: "addAnimation", overlayId: "t", path: "opacity", keyframes: [{ frame: 0, value: 1 }] },
+    ]);
+    const out = applyOperations(withText, [{ op: "removeText", id: "t" }]);
+    expect(out.overlays.find((o) => o.id === "t")).toBeUndefined();
+    expect(out.animation).toHaveLength(0);
+  });
+
+  it("maps the add_text tool_use block to an operation", () => {
+    expect(toolUseToOperation("add_text", { id: "t", text: "Hi", y: 0.2 })).toEqual({ op: "addText", id: "t", text: "Hi", y: 0.2 });
+  });
+});
+
 describe("environment & cinematography operations", () => {
   it("setEnvironment sets a gradient sky", () => {
     const out = applyOperations(baseDoc(), [{ op: "setEnvironment", skyTop: [0, 0, 1], skyBottom: [1, 1, 1] }]);

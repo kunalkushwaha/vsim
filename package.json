@@ -37,6 +37,7 @@
     "example:lipsync": "tsx packages/cli/src/index.ts render examples/17-lipsync/scene.ts -o out/lipsync.mp4",
     "example:park": "tsx packages/cli/src/index.ts render examples/18-park/scene.ts -o out/park.mp4",
     "example:dog": "tsx packages/cli/src/index.ts render examples/19-dog/scene.ts -o out/dog.mp4",
+    "example:titles": "tsx packages/cli/src/index.ts render examples/20-titles/scene.ts -o out/titles.mp4",
     "studio": "pnpm --filter @vsim/studio dev",
     "studio:build": "pnpm --filter @vsim/studio build",
     "studio:server": "tsx apps/studio/server.ts"

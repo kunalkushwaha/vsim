@@ -75,6 +75,19 @@ interface CameraInput extends TransformInput {
   lookAtNodeId?: string;
 }
 
+interface TextInput {
+  /** Normalized screen position [0..1], origin top-left (default center 0.5, 0.5). */
+  x?: number;
+  y?: number;
+  /** Font size in output pixels. */
+  size?: number;
+  color?: Vec3;
+  opacity?: number;
+  align?: "left" | "center" | "right";
+  /** Optional background box (lower-thirds / captions). */
+  box?: { color?: Vec3; opacity?: number; padding?: number };
+}
+
 type ColliderInput =
   | { shape: "box"; halfExtents?: Vec3 }
   | { shape: "sphere"; radius?: number }
@@ -313,6 +326,44 @@ export class SceneBuilder {
 
   animateMaterial(materialId: string, path: string, keyframes: Keyframes): this {
     this.doc.animation!.push({ target: { materialId, path }, keyframes });
+    return this;
+  }
+
+  /**
+   * Add a screen-space text overlay (title / caption / lower-third), drawn on top of the render.
+   * Position is normalized [0..1] (origin top-left); `align` anchors horizontally, `y` is the line's
+   * vertical center. Animate it with `animateOverlay(id, "opacity"|"x"|"y"|"size"|"color", …)`.
+   */
+  text(id: string, text: string, opts: TextInput = {}): this {
+    this.doc.overlays = this.doc.overlays ?? [];
+    this.doc.overlays.push({ id, text, ...opts });
+    return this;
+  }
+
+  /** Animate a text overlay property: "opacity" | "x" | "y" | "size" (numbers) or "color" (vec3). */
+  animateOverlay(overlayId: string, path: string, keyframes: Keyframes): this {
+    this.doc.animation!.push({ target: { overlayId, path }, keyframes });
+    return this;
+  }
+
+  /**
+   * Title-card preset: centered text that fades in over `fade` frames at `startFrame`, holds, then
+   * fades out by `endFrame` (defaults to the scene end). Any `TextInput` overrides the look.
+   */
+  title(
+    id: string,
+    text: string,
+    opts: TextInput & { startFrame?: number; endFrame?: number; fade?: number } = {},
+  ): this {
+    const { startFrame = 0, endFrame, fade = 8, ...look } = opts;
+    const end = endFrame ?? this.doc.meta.durationFrames;
+    this.text(id, text, { y: 0.5, size: 96, align: "center", ...look });
+    this.animateOverlay(id, "opacity", [
+      { frame: startFrame, value: 0 },
+      { frame: Math.min(startFrame + fade, end), value: 1, easing: "easeOut" },
+      { frame: Math.max(end - fade, startFrame + fade), value: 1 },
+      { frame: end, value: 0, easing: "easeIn" },
+    ]);
     return this;
   }
 
