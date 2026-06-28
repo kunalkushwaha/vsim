@@ -68,6 +68,15 @@ describe("character library", () => {
     expect(mt[0]!.deltas.some((d) => Math.abs(d) > 1e-4)).toBe(true);
   });
 
+  it("reads PBR maps (a normal map) from the suited character's clothing", async () => {
+    const { rig } = await loadCharacter("suited", 30);
+    const withNormal = rig.meshes.find((m) => m.normalMap); // the casual suit ships a normal map
+    expect(withNormal).toBeDefined();
+    const n = withNormal!.normalMap!;
+    expect(n.width).toBeGreaterThan(0);
+    expect(n.data).toHaveLength(n.width * n.height * 4); // decoded RGBA
+  });
+
   it("loads the procedural quadruped (multi-bone rig + walk/trot gaits)", async () => {
     const { rig, meta } = await loadCharacter("dog", 30);
     expect(meta.defaultClip).toBe("walk");

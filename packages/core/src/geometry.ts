@@ -20,6 +20,12 @@ export interface MeshData {
   uvs?: number[];
   /** Base-color texture (albedo), sampled at `uvs` and multiplied with lighting. */
   texture?: Texture;
+  /** Additional PBR maps (loaded from glTF) for photoreal/preview rendering, sampled at `uvs`. */
+  normalMap?: Texture;
+  /** glTF packing: R=occlusion (unused here), G=roughness, B=metalness. */
+  metallicRoughnessMap?: Texture;
+  occlusionMap?: Texture;
+  emissiveMap?: Texture;
   /** Morph targets (blend shapes): per-target position deltas (x,y,z * n) added to `positions`,
    *  scaled by each target's weight. Drives facial expressions / lip-sync. */
   morphTargets?: { name?: string; deltas: number[] }[];

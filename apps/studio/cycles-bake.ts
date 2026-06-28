@@ -55,11 +55,14 @@ for (const n of fs.nodes) {
     positions.push(wp[0], wp[1], wp[2]); normals.push(wn[0], wn[1], wn[2]);
   }
   const mat = n.material;
+  const enc = (t?: { width: number; height: number; data: Uint8Array }) =>
+    t ? { width: t.width, height: t.height, rgba: Buffer.from(t.data).toString("base64") } : null;
   meshes.push({
     name: n.id, positions, normals, indices: md.indices, uvs: md.uvs ?? null,
     color: mat?.color ?? [0.8, 0.8, 0.8], roughness: mat?.roughness ?? 0.8, metalness: mat?.metalness ?? 0,
     emissive: mat?.emissive ?? [0, 0, 0], skin: skinned,
-    texture: md.texture ? { width: md.texture.width, height: md.texture.height, rgba: Buffer.from(md.texture.data).toString("base64") } : null,
+    texture: enc(md.texture), normalMap: enc(md.normalMap), metallicRoughnessMap: enc(md.metallicRoughnessMap),
+    occlusionMap: enc(md.occlusionMap), emissiveMap: enc(md.emissiveMap),
   });
 }
 

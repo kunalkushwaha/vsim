@@ -54,10 +54,27 @@ for m in data["meshes"]:
     if any(em):
         if "Emission Color" in b.inputs: b.inputs["Emission Color"].default_value = (em[0], em[1], em[2], 1)
         if "Emission Strength" in b.inputs: b.inputs["Emission Strength"].default_value = 1.0
+    nt = mat.node_tree
+    def teximg(mapdef, name, non_color=False):
+        img = image_from_rgba(name, mapdef["width"], mapdef["height"], mapdef["rgba"])
+        if non_color: img.colorspace_settings.name = 'Non-Color'
+        node = nt.nodes.new("ShaderNodeTexImage"); node.image = img
+        return node
     if m.get("texture"):
-        t = m["texture"]; img = image_from_rgba(m["name"], t["width"], t["height"], t["rgba"])
-        tx = mat.node_tree.nodes.new("ShaderNodeTexImage"); tx.image = img
-        mat.node_tree.links.new(tx.outputs["Color"], b.inputs["Base Color"])
+        tx = teximg(m["texture"], m["name"] + "_base")
+        nt.links.new(tx.outputs["Color"], b.inputs["Base Color"])
+    if m.get("normalMap"):  # tangent-space normal map → Normal Map node → Principled Normal
+        nx = teximg(m["normalMap"], m["name"] + "_n", non_color=True)
+        nm = nt.nodes.new("ShaderNodeNormalMap")
+        nt.links.new(nx.outputs["Color"], nm.inputs["Color"]); nt.links.new(nm.outputs["Normal"], b.inputs["Normal"])
+    if m.get("metallicRoughnessMap"):  # glTF packs roughness=G, metalness=B
+        mr = teximg(m["metallicRoughnessMap"], m["name"] + "_mr", non_color=True)
+        sep = nt.nodes.new("ShaderNodeSeparateColor"); nt.links.new(mr.outputs["Color"], sep.inputs["Color"])
+        nt.links.new(sep.outputs["Green"], b.inputs["Roughness"]); nt.links.new(sep.outputs["Blue"], b.inputs["Metallic"])
+    if m.get("emissiveMap"):
+        ex = teximg(m["emissiveMap"], m["name"] + "_e")
+        if "Emission Color" in b.inputs:
+            nt.links.new(ex.outputs["Color"], b.inputs["Emission Color"]); b.inputs["Emission Strength"].default_value = 1.0
     if m.get("skin"):
         if "Subsurface Weight" in b.inputs: b.inputs["Subsurface Weight"].default_value = 0.15
         if "Subsurface Radius" in b.inputs: b.inputs["Subsurface Radius"].default_value = (0.36, 0.18, 0.12)

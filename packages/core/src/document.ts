@@ -54,8 +54,12 @@ export const GeometrySchema = z.discriminatedUnion("kind", [
       joints: z.array(z.number()).optional(),
       weights: z.array(z.number()).optional(),
       uvs: z.array(z.number()).optional(),
-      // In-memory RGBA texture (not JSON-serializable; reference a glTF asset for that path).
+      // In-memory RGBA textures (not JSON-serializable; reference a glTF asset for that path).
       texture: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
+      normalMap: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
+      metallicRoughnessMap: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
+      occlusionMap: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
+      emissiveMap: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
       // Morph targets (blend shapes): per-target position deltas added to `positions`, weighted.
       morphTargets: z.array(z.object({ name: z.string().optional(), deltas: z.array(z.number()) })).optional(),
     }),

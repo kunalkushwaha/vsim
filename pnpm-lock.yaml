@@ -33,6 +33,9 @@ importers:
       '@vsim/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@vsim/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
       '@vsim/authoring':
         specifier: workspace:*
         version: link:../../packages/authoring

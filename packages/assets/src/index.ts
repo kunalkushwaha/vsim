@@ -36,11 +36,23 @@ function loadImage(json: any, buffers: Buffer[], imageIndex: number): Texture | 
 }
 
 /** The base-color texture for a primitive's material, if any. */
-function primitiveTexture(json: any, buffers: Buffer[], prim: any): Texture | undefined {
-  const bct = json.materials?.[prim.material]?.pbrMetallicRoughness?.baseColorTexture;
-  if (!bct) return undefined;
-  const source = json.textures?.[bct.index]?.source;
+function texRef(json: any, buffers: Buffer[], ref: any): Texture | undefined {
+  if (!ref) return undefined;
+  const source = json.textures?.[ref.index]?.source;
   return source == null ? undefined : loadImage(json, buffers, source);
+}
+
+/** All PBR maps on a primitive's glTF material: base colour + normal/metal-rough/occlusion/emissive. */
+function primitiveMaps(json: any, buffers: Buffer[], prim: any) {
+  const m = json.materials?.[prim.material];
+  const pbr = m?.pbrMetallicRoughness ?? {};
+  return {
+    texture: texRef(json, buffers, pbr.baseColorTexture),
+    normalMap: texRef(json, buffers, m?.normalTexture),
+    metallicRoughnessMap: texRef(json, buffers, pbr.metallicRoughnessTexture),
+    occlusionMap: texRef(json, buffers, m?.occlusionTexture),
+    emissiveMap: texRef(json, buffers, m?.emissiveTexture),
+  };
 }
 
 /**
@@ -221,7 +233,12 @@ function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
         }
       }
       for (const k of idx) mesh.indices.push(base + k);
-      if (!mesh.texture) mesh.texture = primitiveTexture(json, buffers, prim); // first textured primitive wins
+      if (!mesh.texture && !mesh.normalMap) { // first textured primitive wins; load its full map set
+        const maps = primitiveMaps(json, buffers, prim);
+        mesh.texture = maps.texture; mesh.normalMap = maps.normalMap;
+        mesh.metallicRoughnessMap = maps.metallicRoughnessMap;
+        mesh.occlusionMap = maps.occlusionMap; mesh.emissiveMap = maps.emissiveMap;
+      }
       // Morph targets: each primitive carries POSITION deltas per target; append them aligned to the
       // merged vertex order (zero-padding primitives that lack targets keeps every target the same length).
       const targets = prim.targets ?? [];
