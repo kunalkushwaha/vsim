@@ -6,9 +6,18 @@
       "file": "human.glb",
       "description": "A realistic rigged human with a real skin texture and a clip library (walk/run/idle/wave), generated with MakeHuman (MPFB 2). See scripts/blender/make-human.py.",
       "defaultClip": "walk",
-      "clips": ["walk", "run", "idle", "wave"],
-      "scale": 1.0,
-      "rotation": [0, 0, 0],
+      "clips": [
+        "walk",
+        "run",
+        "idle",
+        "wave"
+      ],
+      "scale": 1,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
       "faces": "+x",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
     },
@@ -18,9 +27,18 @@
       "file": "man.glb",
       "description": "A realistic adult male (gender=1.0, taller/broader build) with a real skin texture and the walk/run/idle/wave clip library. Generated with MakeHuman (MPFB 2); see scripts/blender/make-human.py.",
       "defaultClip": "walk",
-      "clips": ["walk", "run", "idle", "wave"],
-      "scale": 1.0,
-      "rotation": [0, 0, 0],
+      "clips": [
+        "walk",
+        "run",
+        "idle",
+        "wave"
+      ],
+      "scale": 1,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
       "faces": "+x",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
     },
@@ -30,9 +48,18 @@
       "file": "kid.glb",
       "description": "A realistic child (age=0.16, shorter child proportions) with a real skin texture and the walk/run/idle/wave clip library. Generated with MakeHuman (MPFB 2); see scripts/blender/make-human.py.",
       "defaultClip": "walk",
-      "clips": ["walk", "run", "idle", "wave"],
-      "scale": 1.0,
-      "rotation": [0, 0, 0],
+      "clips": [
+        "walk",
+        "run",
+        "idle",
+        "wave"
+      ],
+      "scale": 1,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
       "faces": "+x",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
     },
@@ -42,9 +69,18 @@
       "file": "suited.glb",
       "description": "A realistic man wearing real clothing geometry — a casual suit + shoes fitted and skinned to the same rig (three skinned meshes), each with its own CC0 texture. Walk/run/idle/wave clips. Generated with MakeHuman (MPFB 2); see scripts/blender/make-human.py.",
       "defaultClip": "walk",
-      "clips": ["walk", "run", "idle", "wave"],
-      "scale": 1.0,
-      "rotation": [0, 0, 0],
+      "clips": [
+        "walk",
+        "run",
+        "idle",
+        "wave"
+      ],
+      "scale": 1,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
       "faces": "+x",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin + clothing from the makehuman_system_assets pack — all CC0."
     },
@@ -54,9 +90,18 @@
       "file": "speaker.glb",
       "description": "A realistic human with a 'mouthOpen' morph target (blend shape) for lip-sync, plus the walk/run/idle/wave clips. Drive morph.mouthOpen from audio beats. Generated with MakeHuman (MPFB 2); see scripts/blender/make-human.py.",
       "defaultClip": "idle",
-      "clips": ["walk", "run", "idle", "wave"],
-      "scale": 1.0,
-      "rotation": [0, 0, 0],
+      "clips": [
+        "walk",
+        "run",
+        "idle",
+        "wave"
+      ],
+      "scale": 1,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
       "faces": "+x",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin + jaw-drop morph from MakeHuman data — all CC0."
     },
@@ -66,9 +111,18 @@
       "file": "avatar.vrm",
       "description": "A VRM 1.0 avatar (the web-3D humanoid format) — loaded via loadVrm, which parses the VRM humanoid bone map + license. Built CC0 from a MakeHuman human; walk/run/idle/wave clips. Drop in any VRM 0.x/1.0 file to load your own.",
       "defaultClip": "walk",
-      "clips": ["walk", "run", "idle", "wave"],
-      "scale": 1.0,
-      "rotation": [0, 0, 0],
+      "clips": [
+        "walk",
+        "run",
+        "idle",
+        "wave"
+      ],
+      "scale": 1,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
       "faces": "+x",
       "credit": "VRM 1.0 avatar generated CC0 by vsim from a MakeHuman / MPFB 2 human (makehumancommunity.org); VRM extension injected by scripts/make-vrm.mjs."
     },
@@ -78,9 +132,16 @@
       "file": "dog.glb",
       "description": "A rigged four-legged creature (13-bone spine + neck/head + tail + four two-bone legs) with walk/trot gaits. vsim's own asset, generated headlessly by scripts/blender/make-quadruped.py — no third-party content.",
       "defaultClip": "walk",
-      "clips": ["walk", "trot"],
-      "scale": 1.0,
-      "rotation": [0, 0, 0],
+      "clips": [
+        "walk",
+        "trot"
+      ],
+      "scale": 1,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
       "faces": "-z",
       "credit": "Generated by vsim's scripts/blender/make-quadruped.py — MIT (no third-party assets)."
     },
@@ -90,9 +151,15 @@
       "file": "figure.glb",
       "description": "A rigged humanoid generated by scripts/blender/make-character.py (Blender, headless). Our own asset.",
       "defaultClip": "walk",
-      "clips": ["walk"],
-      "scale": 1.0,
-      "rotation": [0, 0, 0],
+      "clips": [
+        "walk"
+      ],
+      "scale": 1,
+      "rotation": [
+        0,
+        0,
+        0
+      ],
       "faces": "+x",
       "credit": "Generated by vsim's scripts/blender/make-character.py — MIT (no third-party assets)."
     },
@@ -102,9 +169,15 @@
       "file": "cesium-man.glb",
       "description": "A realistic walking human (the glTF CesiumMan sample).",
       "defaultClip": "clip0",
-      "clips": ["clip0"],
-      "scale": 1.0,
-      "rotation": [-1.5708, 0, 0],
+      "clips": [
+        "clip0"
+      ],
+      "scale": 1,
+      "rotation": [
+        -1.5708,
+        0,
+        0
+      ],
       "faces": "-x",
       "credit": "CesiumMan from glTF Sample Assets — CC BY 4.0 (© 2017 Cesium). The Cesium logo is a trademark."
     },
@@ -114,9 +187,17 @@
       "file": "fox.glb",
       "description": "A four-legged fox with Walk/Run/Survey animations (the glTF Fox sample).",
       "defaultClip": "Walk",
-      "clips": ["Walk", "Run", "Survey"],
+      "clips": [
+        "Walk",
+        "Run",
+        "Survey"
+      ],
       "scale": 0.02,
-      "rotation": [0, 0, 0],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
       "faces": "-x",
       "credit": "Fox from glTF Sample Assets — CC0 model (© 2014 PixelMannen) + CC BY 4.0 rig/animation (© 2014 tomkranis; © 2017 AsoboStudio, scurest)."
     }

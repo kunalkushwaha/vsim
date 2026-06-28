@@ -20,13 +20,14 @@
 # create_human() gives a CC0 realistic human; we add the bundled "game_engine" rig and a simple
 # walk. With a skin, set_character_skin(..., skin_type="GAMEENGINE") bakes a single diffuse map that
 # glTF exports as a base-color texture — exactly what vsim's loadGltfRig + software renderer sample.
-import bpy, sys, importlib, math, os
+import bpy, sys, importlib, math, os, mathutils
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[-2:]
 zip_path = next(a for a in argv if a.endswith(".zip"))
 out = next(a for a in argv if a.endswith(".glb") or a.endswith(".gltf"))
 skin = next((a for a in argv if a.endswith(".mhmat")), None)
 clothes = [a for a in argv if a.endswith(".mhclo")]  # garments fitted + rigged to the same skeleton
+walk_bvh = next((a for a in argv if a.endswith(".bvh")), None)  # retarget this mocap as the "walk" clip
 MAX_TEX = 1024  # downscale every diffuse to keep the bundled GLB small
 RACES = {"asian", "caucasian", "african"}
 overrides = {}  # macro body shape, e.g. {"gender": 1.0, "age": 0.16, "caucasian": 1.0}
@@ -122,7 +123,7 @@ print("rig bones:", thighL, thighR, calfL, calfR, footL, footR, armL, armR, spin
 ad = arm.animation_data_create()
 def author(name, keys):
     """keys: list of (frame, {bone: (rx,ry,rz)}). Bones not mentioned stay at bind pose."""
-    for b in pb: b.rotation_euler = (0, 0, 0)
+    for b in pb: b.rotation_mode = 'XYZ'; b.rotation_euler = (0, 0, 0)
     act = bpy.data.actions.new(name); ad.action = act
     for f, poses in keys:
         for bn, eu in poses.items():
@@ -133,20 +134,67 @@ def author(name, keys):
     trk.strips.new(name, 1, act)   # stash → its own track (gives the action a user + a clean name)
     ad.action = None
 
-# A real walk cycle: per side a thigh swing + KNEE BEND on the swing leg + foot roll, arms counter-
-# swinging with bent elbows. `pose()` sets a full body pose (right-leg args, left-leg args, arms).
+# Retarget a CMU mocap BVH onto the game_engine rig: copy each source bone's rotation RELATIVE TO ITS
+# REST onto the matching target bone relative to ITS rest (handles different rest poses). Rotations
+# only → an in-place clip (the scene translates the character).
+BVH_MAP = {
+    "pelvis": "Hips", "spine_01": "LowerBack", "spine_02": "Spine", "spine_03": "Spine1", "neck_01": "Neck", "head": "Head",
+    "clavicle_l": "LeftShoulder", "upperarm_l": "LeftArm", "lowerarm_l": "LeftForeArm", "hand_l": "LeftHand",
+    "clavicle_r": "RightShoulder", "upperarm_r": "RightArm", "lowerarm_r": "RightForeArm", "hand_r": "RightHand",
+    "thigh_l": "LeftUpLeg", "calf_l": "LeftLeg", "foot_l": "LeftFoot", "ball_l": "LeftToeBase",
+    "thigh_r": "RightUpLeg", "calf_r": "RightLeg", "foot_r": "RightFoot", "ball_r": "RightToeBase",
+}
+def _depth(b):
+    d = 0
+    while b.parent: b = b.parent; d += 1
+    return d
+def retarget(bvh_path, name, fstart, fend, fstep):
+    before = set(bpy.data.objects)
+    bpy.ops.import_anim.bvh(filepath=bvh_path, axis_forward='-Z', axis_up='Y', use_fps_scale=False)
+    src = next(o for o in bpy.data.objects if o not in before and o.type == 'ARMATURE')
+    imp_act = src.animation_data.action if src.animation_data else None  # the raw BVH action (drop later)
+    pairs = {tb: sb for tb, sb in BVH_MAP.items() if tb in pb and sb in src.pose.bones}
+    tgt_rest = {tb: arm.data.bones[tb].matrix_local.to_3x3() for tb in pairs}
+    src_rest = {tb: src.data.bones[sb].matrix_local.to_3x3() for tb, sb in pairs.items()}
+    order = sorted(pairs, key=lambda b: _depth(arm.data.bones[b]))  # parents first
+    for b in pb: b.rotation_mode = 'XYZ'  # keyframe euler (matches the other clips' mode at export time)
+    act = bpy.data.actions.new(name + "_rt"); ad.action = act  # temp name so it won't collide with the BVH action
+    bpy.context.view_layer.objects.active = arm
+    of = 1
+    for f in range(fstart, fend + 1, fstep):
+        bpy.context.scene.frame_set(f)
+        se = src.evaluated_get(bpy.context.evaluated_depsgraph_get())  # animated pose lives on the evaluated copy
+        for tb in order:
+            Rw = se.pose.bones[pairs[tb]].matrix.to_3x3() @ src_rest[tb].inverted() @ tgt_rest[tb]
+            p = pb[tb]
+            p.matrix = mathutils.Matrix.Translation(p.matrix.to_translation()) @ Rw.to_4x4()
+            bpy.context.view_layer.update()  # so children read the updated parent pose
+            p.keyframe_insert("rotation_euler", frame=of)
+        of += 1
+    trk = ad.nla_tracks.new(); trk.name = name; trk.strips.new(name, 1, act); ad.action = None
+    bpy.data.objects.remove(src, do_unlink=True)
+    if imp_act:
+        try: bpy.data.actions.remove(imp_act)  # free the raw BVH action's name
+        except Exception: pass
+    act.name = name  # now safe to claim "walk"
+    print(f"RETARGET {name}: {len(pairs)} bones, {of - 1} frames from {os.path.basename(bvh_path)}")
+
+# A hand-keyed walk cycle (fallback): thigh swing + knee bend + foot roll, counter-swinging bent arms.
 def pose(rt, rc, rf, lt, lc, lf, ra, la, el=0.18):
     return {thighR:(rt,0,0), calfR:(rc,0,0), footR:(rf,0,0),
             thighL:(lt,0,0), calfL:(lc,0,0), footL:(lf,0,0),
             armR:(ra,0,0), armL:(la,0,0), forearmR:(el,0,0), forearmL:(el,0,0)}
-A = 0.5  # walk: ~32-frame cycle (contact → passing → contact → passing → loop)
-author("walk", [
-    (1,  pose( A, -0.05,  0.20,  -A, -0.25, -0.35,  -A * 0.8,  A * 0.8)),  # R heel-strike front; L toe-off back
-    (9,  pose( 0, -0.05,  0.00,   0, -0.95,  0.15,   0.0,      0.0)),      # R stance; L knee-up, foot lifted (swing)
-    (17, pose(-A, -0.25, -0.35,   A, -0.05,  0.20,   A * 0.8, -A * 0.8)),  # L heel-strike front; R toe-off back
-    (25, pose( 0, -0.95,  0.15,   0, -0.05,  0.00,   0.0,      0.0)),      # L stance; R knee-up swing
-    (33, pose( A, -0.05,  0.20,  -A, -0.25, -0.35,  -A * 0.8,  A * 0.8)),  # = frame 1 → seamless loop
-])
+if walk_bvh:
+    retarget(walk_bvh, "walk", 30, 150, 4)  # a steady stride window of the mocap, 120fps → 30fps
+else:
+    A = 0.5
+    author("walk", [
+        (1,  pose( A, -0.05,  0.20,  -A, -0.25, -0.35,  -A * 0.8,  A * 0.8)),
+        (9,  pose( 0, -0.05,  0.00,   0, -0.95,  0.15,   0.0,      0.0)),
+        (17, pose(-A, -0.25, -0.35,   A, -0.05,  0.20,   A * 0.8, -A * 0.8)),
+        (25, pose( 0, -0.95,  0.15,   0, -0.05,  0.00,   0.0,      0.0)),
+        (33, pose( A, -0.05,  0.20,  -A, -0.25, -0.35,  -A * 0.8,  A * 0.8)),
+    ])
 R = 0.85  # run: longer stride, deeper knee bend, forward lean, faster (~24-frame) cycle, bent elbows
 author("run", [
     (1,  {**pose( R, -0.35,  0.10,  -R, -0.7, -0.25,  -R * 0.9,  R * 0.9, 0.7), spine: (0.30, 0, 0)}),

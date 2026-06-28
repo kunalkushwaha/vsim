@@ -17,20 +17,18 @@ const run = (cmd, args, opts = {}) =>
     p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${cmd} exited ${code}`))));
   });
 
-/** @param docJsonPath path to a scene-document JSON. opts: { output, samples, step, fps, blender } */
-export async function renderCycles(docJsonPath, { output, samples = 40, step = 1, fps, blender } = {}) {
+/** @param scenePath path to a scene-document .json OR a scene .ts module. opts: { output, samples, step, fps, blender } */
+export async function renderCycles(scenePath, { output, samples = 40, step = 1, fps, blender } = {}) {
   blender = blender || process.env.VSIM_BLENDER || "blender";
-  const doc = JSON.parse(await readFile(docJsonPath, "utf8"));
-  const last = (doc.meta?.durationFrames ?? 1) - 1;
-  const srcFps = doc.meta?.fps ?? 30;
-
   const dir = await mkdtemp(join(tmpdir(), "vsim-cycles-"));
   const framesDir = join(dir, "frames"), pngDir = join(dir, "png");
   await mkdir(pngDir, { recursive: true });
   try {
-    // 1) bake all frames (one tsx process reuses the runtime)
-    await run("pnpm", ["exec", "tsx", join(HERE, "cycles-bake.ts"), docJsonPath, framesDir, "0", String(last), String(step)], { cwd: ROOT });
+    // 1) bake all frames (one tsx process reuses the runtime). A big `to` is clamped to the last
+    //    frame by the baker — so .ts scenes (with inline textures that can't round-trip JSON) work too.
+    await run("pnpm", ["exec", "tsx", join(HERE, "cycles-bake.ts"), scenePath, framesDir, "0", "1000000000", String(step)], { cwd: ROOT });
     const man = JSON.parse(await readFile(join(framesDir, "manifest.json"), "utf8"));
+    const srcFps = man.fps ?? 30;
     // 2) path-trace every frame in a single Blender session
     const items = man.frames.map((f, i) => ({ in: join(framesDir, f), out: join(pngDir, `f_${String(i).padStart(4, "0")}.png`) }));
     const renderManifest = join(dir, "render.json");

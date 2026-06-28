@@ -77,7 +77,8 @@ if (outPath!.endsWith(".json")) {
 } else {
   const dir = resolve(outPath!);
   await mkdir(dir, { recursive: true });
-  const from = Number(fromArg ?? 0), to = Number(toArg ?? doc.meta.durationFrames - 1), step = Number(stepArg ?? 1);
+  const last = doc.meta.durationFrames - 1;
+  const from = Number(fromArg ?? 0), to = Math.min(Number(toArg ?? last), last), step = Number(stepArg ?? 1);
   const frames: string[] = [];
   for (let fr = from; fr <= to; fr += step) {
     const name = `frame_${String(frames.length).padStart(4, "0")}.json`;
