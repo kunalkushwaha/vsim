@@ -1,7 +1,8 @@
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import {
   tessellate, mat4, v3, skinningMatrix,
-  type Engine, type FrameState, type SceneDocument, type ResolvedLight, type Geometry, type MeshData, type Mat4,
+  type Engine, type FrameState, type SceneDocument, type ResolvedLight, type MeshData, type Mat4, type Texture, type Material,
 } from "@vsim/core";
 
 export interface ThreeEngineOptions {
@@ -51,6 +52,10 @@ export class ThreeEngine implements Engine {
       opts.renderer ??
       new THREE.WebGLRenderer({ canvas: opts.canvas as HTMLCanvasElement, antialias: true, preserveDrawingBuffer: true });
     this.renderer.setSize(width, height, false);
+    // Fidelity: soft shadows + filmic tone mapping + correct output colour space.
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene.matrixWorldAutoUpdate = false;
     this.camera.matrixAutoUpdate = false;
     this.camera.matrixWorldAutoUpdate = false;
@@ -59,35 +64,66 @@ export class ThreeEngine implements Engine {
   init(doc: SceneDocument): void {
     // Manga: cel-shade with MeshToonMaterial + a hard banded gradient (mirrors view-simulator).
     this.toon = doc.meta.style === "manga";
-    if (this.toon) this.toonGradient = makeToonGradient(4);
+    this.renderer.toneMapping = this.toon ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.0;
+    if (this.toon) {
+      this.toonGradient = makeToonGradient(4);
+    } else {
+      // Image-based lighting: a neutral studio environment for soft ambient + PBR reflections.
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      this.scene.environmentIntensity = 0.5;
+      pmrem.dispose();
+    }
     for (const m of doc.materials) {
       this.materials.set(m.id, this.makeMaterial(m.color, m.emissive, m.opacity, m.roughness, m.metalness));
     }
 
     for (const node of doc.nodes) {
       if (!node.mesh) continue;
-      const geom = this.buildGeometry(node.mesh.geometry);
-      const mat = (node.mesh.materialId ? this.materials.get(node.mesh.materialId) : undefined) ?? this.defaultMat();
+      const data = tessellate(node.mesh.geometry);
+      const geom = bufferFromData(data);
+      const docMat = node.mesh.materialId ? doc.materials.find((m) => m.id === node.mesh!.materialId) : undefined;
+      // PBR-textured per-node material when the mesh carries maps; else the shared doc material.
+      let mat: THREE.Material;
+      if (!this.toon && (data.texture || data.normalMap || data.emissiveMap || data.metallicRoughnessMap)) {
+        mat = this.texturedMaterial(docMat, data);
+      } else {
+        mat = (node.mesh.materialId ? this.materials.get(node.mesh.materialId) : undefined) ?? this.defaultMat();
+      }
       const mesh = new THREE.Mesh(geom, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
       mesh.matrixWorldAutoUpdate = false;
       this.meshes.set(node.id, mesh);
+      if (data.joints && data.weights) this.skinnedBind.set(node.id, data); // inline skinned mesh → deform each frame
       this.scene.add(mesh);
     }
 
     this.scene.add(this.lightObjs.ambient);
   }
 
+  /** A PBR material carrying the mesh's glTF maps (base colour / normal / metal-rough / emissive). */
+  private texturedMaterial(docMat: Material | undefined, data: MeshData): THREE.MeshStandardMaterial {
+    const m = new THREE.MeshStandardMaterial({
+      color: data.texture ? new THREE.Color(1, 1, 1) : new THREE.Color(docMat?.color[0] ?? 0.8, docMat?.color[1] ?? 0.8, docMat?.color[2] ?? 0.8),
+      roughness: docMat?.roughness ?? 0.8,
+      metalness: docMat?.metalness ?? 0,
+    });
+    if (data.texture) m.map = dataTex(data.texture, THREE.SRGBColorSpace);
+    if (data.normalMap) m.normalMap = dataTex(data.normalMap, THREE.NoColorSpace);
+    if (data.metallicRoughnessMap) { const t = dataTex(data.metallicRoughnessMap, THREE.NoColorSpace); m.roughnessMap = t; m.metalnessMap = t; }
+    if (data.emissiveMap) { m.emissiveMap = dataTex(data.emissiveMap, THREE.SRGBColorSpace); m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = 1; }
+    return m;
+  }
+
   /** Inject loaded mesh data (e.g. a glTF model) for a node. */
   loadMesh(nodeId: string, data: MeshData): void {
     const mesh = this.meshes.get(nodeId);
     if (!mesh) return;
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(data.positions, 3));
-    g.setAttribute("normal", new THREE.Float32BufferAttribute(data.normals, 3));
-    g.setIndex(data.indices);
     mesh.geometry.dispose();
-    mesh.geometry = g;
+    mesh.geometry = bufferFromData(data);
     // Skinned mesh: keep the bind-pose data so we can re-deform the attributes each frame.
     if (data.joints && data.weights) this.skinnedBind.set(nodeId, data);
     else this.skinnedBind.delete(nodeId);
@@ -108,15 +144,6 @@ export class ThreeEngine implements Engine {
 
   private defaultMat() {
     return this.makeMaterial([0.8, 0.8, 0.8], [0, 0, 0], 1, 0.8, 0);
-  }
-
-  private buildGeometry(geo: Geometry): THREE.BufferGeometry {
-    const data = tessellate(geo);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(data.positions, 3));
-    g.setAttribute("normal", new THREE.Float32BufferAttribute(data.normals, 3));
-    g.setIndex(data.indices);
-    return g;
   }
 
   renderFrame(state: FrameState): void {
@@ -140,12 +167,10 @@ export class ThreeEngine implements Engine {
         mesh.matrixWorld.fromArray(node.worldMatrix);
       }
       if (node.material) {
-        const mat = this.materials.get(node.material.id);
-        if (mat) {
-          mat.color.setRGB(node.material.color[0], node.material.color[1], node.material.color[2]);
-          mat.emissive.setRGB(node.material.emissive[0], node.material.emissive[1], node.material.emissive[2]);
-          mat.opacity = node.material.opacity;
-        }
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (!mat.map) mat.color.setRGB(node.material.color[0], node.material.color[1], node.material.color[2]); // textures own colour
+        if (!mat.emissiveMap) mat.emissive.setRGB(node.material.emissive[0], node.material.emissive[1], node.material.emissive[2]);
+        mat.opacity = node.material.opacity;
       }
     }
 
@@ -174,6 +199,11 @@ export class ThreeEngine implements Engine {
     this.lightObjs.ambient.intensity = 1;
     this.ensure(this.lightObjs.dirs, dirs.length, () => {
       const d = new THREE.DirectionalLight();
+      d.castShadow = true;
+      d.shadow.mapSize.set(2048, 2048);
+      const c = d.shadow.camera;
+      c.near = 0.1; c.far = 60; c.left = -14; c.right = 14; c.top = 14; c.bottom = -14;
+      d.shadow.bias = -0.0005;
       d.target.matrixAutoUpdate = false;
       this.scene.add(d);
       this.scene.add(d.target);
@@ -181,6 +211,9 @@ export class ThreeEngine implements Engine {
     });
     this.ensure(this.lightObjs.points, points.length, () => {
       const p = new THREE.PointLight();
+      p.castShadow = true;
+      p.shadow.mapSize.set(1024, 1024);
+      p.shadow.bias = -0.0005;
       this.scene.add(p);
       return p;
     });
@@ -188,7 +221,8 @@ export class ThreeEngine implements Engine {
       const d = this.lightObjs.dirs[i]!;
       d.color.setRGB(l.color[0], l.color[1], l.color[2]);
       d.intensity = l.intensity;
-      d.position.set(-l.direction[0], -l.direction[1], -l.direction[2]);
+      // place the light back along its direction so the shadow camera covers the scene
+      d.position.set(-l.direction[0] * 12, -l.direction[1] * 12, -l.direction[2] * 12);
       d.target.position.set(0, 0, 0);
       d.updateMatrix?.();
     });
@@ -233,10 +267,33 @@ export class ThreeEngine implements Engine {
   }
 
   dispose(): void {
-    this.meshes.forEach((m) => m.geometry.dispose());
+    this.meshes.forEach((m) => { m.geometry.dispose(); (m.material as THREE.Material).dispose(); });
     this.materials.forEach((m) => m.dispose());
+    this.scene.environment?.dispose();
     this.renderer.dispose();
   }
+}
+
+/** A BufferGeometry from vsim MeshData (positions/normals/uvs/indices). */
+function bufferFromData(data: MeshData): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(data.positions, 3));
+  g.setAttribute("normal", new THREE.Float32BufferAttribute(data.normals, 3));
+  if (data.uvs && data.uvs.length) g.setAttribute("uv", new THREE.Float32BufferAttribute(data.uvs, 2));
+  g.setIndex(data.indices);
+  return g;
+}
+
+/** A THREE texture from a decoded RGBA map; glTF convention (flipY off, set colour space per map). */
+function dataTex(t: Texture, colorSpace: THREE.ColorSpace): THREE.DataTexture {
+  const tex = new THREE.DataTexture(new Uint8Array(t.data), t.width, t.height, THREE.RGBAFormat, THREE.UnsignedByteType);
+  tex.colorSpace = colorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
+  return tex;
 }
 
 /** Banded grayscale ramp for MeshToonMaterial.gradientMap — hard cel/manga steps. */
