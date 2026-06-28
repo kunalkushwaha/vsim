@@ -39,13 +39,22 @@ const server = createServer(async (req, res) => {
       console.log(`edit "${prompt}" → ${result.operations.length} op(s) via ${result.provider}`);
       return json(res, 200, { doc: result.doc, summary: result.summary, operations: result.operations, provider: result.provider });
     }
-    // Headless deterministic render → MP4 (the same path `vsim render` uses).
+    // Render → MP4. "draft" = the deterministic SoftwareEngine (same as `vsim render`); "photoreal"
+    // = the Cycles backend (needs a Blender binary via VSIM_BLENDER).
     if (req.method === "POST" && req.url === "/api/render") {
-      const { doc } = await readBody(req);
+      const { doc, photoreal } = await readBody(req);
       const dir = await mkdtemp(join(tmpdir(), "vsim-studio-"));
       const out = join(dir, "scene.mp4");
-      const r = await renderToVideo(parseDocument(doc), { output: out });
-      console.log(`rendered ${r.frames} frames → ${out}`);
+      if (photoreal) {
+        const docPath = join(dir, "doc.json");
+        await writeFile(docPath, JSON.stringify(doc));
+        const { renderCycles } = await import("./cycles-render.mjs");
+        await renderCycles(docPath, { output: out, samples: Number(process.env.VSIM_CYCLES_SAMPLES || 32), step: Number(process.env.VSIM_CYCLES_STEP || 4) });
+        console.log(`photoreal render → ${out}`);
+      } else {
+        const r = await renderToVideo(parseDocument(doc), { output: out });
+        console.log(`rendered ${r.frames} frames → ${out}`);
+      }
       res.writeHead(200, { "content-type": "video/mp4", "content-disposition": 'attachment; filename="scene.mp4"' });
       return res.end(await readFile(out));
     }

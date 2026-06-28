@@ -215,13 +215,15 @@ async function applyPrompt() {
 applyBtn.onclick = applyPrompt;
 promptInp.onkeydown = (e) => { if (e.key === "Enter") applyPrompt(); };
 
-// ---------- render to MP4 (server: POST /api/render) ----------
+// ---------- render to MP4 (server: POST /api/render) — draft (software) or photoreal (Cycles) ----------
 const renderBtn = $<HTMLButtonElement>("render");
-renderBtn.onclick = async () => {
-  stop(); renderBtn.disabled = true; const label = renderBtn.textContent; renderBtn.textContent = "Rendering…";
+const renderPhotoBtn = $<HTMLButtonElement>("renderPhoto");
+async function doRender(btn: HTMLButtonElement, photoreal: boolean) {
+  stop(); btn.disabled = true; const label = btn.textContent;
+  btn.textContent = photoreal ? "Path-tracing…" : "Rendering…";
   try {
     const res = await fetch("/api/render", {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc }),
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc, photoreal }),
     });
     if (!res.ok) throw new Error((await res.json()).error ?? "render failed");
     const blob = await res.blob();
@@ -229,9 +231,11 @@ renderBtn.onclick = async () => {
   } catch (e: any) {
     aistatus.className = "aistatus err"; aistatus.textContent = "✗ render: " + (e?.message ?? e);
   } finally {
-    renderBtn.disabled = false; renderBtn.textContent = label;
+    btn.disabled = false; btn.textContent = label;
   }
-};
+}
+renderBtn.onclick = () => doRender(renderBtn, false);
+renderPhotoBtn.onclick = () => doRender(renderPhotoBtn, true);
 
 // ---------- export the document as JSON ----------
 $("export").onclick = () => {
