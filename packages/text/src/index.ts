@@ -1,17 +1,28 @@
 // Deterministic vector text rasterizer: parse a bundled font with opentype.js, fill the glyph paths
 // (supersampled scanline, nonzero winding) into a coverage bitmap. No platform font engine → the same
 // pixels everywhere. Used by the renderers to composite screen-space text overlays (titles/captions).
-import opentype from "opentype.js";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+//
+// This entry is environment-agnostic: the caller supplies the font via `setFont()`. In Node, import
+// "@vsim/text/node" instead — it reads the bundled font and calls `setFont` for you. In a browser,
+// fetch the bundled .ttf and pass its ArrayBuffer to `setFont`.
+// Named imports (not a default) so this bundles in both the browser ESM build and Node.
+import { parse, Path, type Font } from "opentype.js";
 
-let _font: opentype.Font | undefined;
-function font(): opentype.Font {
-  if (!_font) {
-    const p = fileURLToPath(new URL("../fonts/DejaVuSans-Bold.ttf", import.meta.url));
-    const b = readFileSync(p);
-    _font = opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
-  }
+let _font: Font | undefined;
+
+/** Load the font from a .ttf/.otf buffer. Call once before rasterizing (Node: import "@vsim/text/node"). */
+export function setFont(data: ArrayBuffer | Uint8Array): void {
+  const ab = data instanceof Uint8Array ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) : data;
+  _font = parse(ab);
+}
+
+/** Whether a font has been loaded (so callers can skip text rather than throw). */
+export function hasFont(): boolean {
+  return _font !== undefined;
+}
+
+function font(): Font {
+  if (!_font) throw new Error('@vsim/text: no font loaded — call setFont(), or import "@vsim/text/node" in Node.');
   return _font;
 }
 
@@ -53,7 +64,7 @@ export function rasterizeText(text: string, sizePx: number): TextBitmap {
   const hi = Math.max(1, Math.round(sizePx)) * SS;
   // y is baseline; opentype returns screen-space (y down) path commands.
   const { commands } = layout(text || " ", hi);
-  const path = new opentype.Path();
+  const path = new Path();
   path.commands = commands;
   const bb = path.getBoundingBox();
   const padHi = SS; // a little margin so AA edges aren't clipped

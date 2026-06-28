@@ -14,6 +14,7 @@
   "dependencies": {
     "@vsim/core": "workspace:*",
     "@vsim/engine-three": "workspace:*",
+    "@vsim/text": "workspace:*",
     "three": "^0.171.0"
   },
   "description": "Browser real-time preview component for vsim scenes.",

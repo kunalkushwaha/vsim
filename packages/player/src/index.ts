@@ -1,9 +1,16 @@
 import { SceneRuntime, type Engine, type FrameState, type PhysicsAdapter, type SceneDocument } from "@vsim/core";
 import { ThreeEngine } from "@vsim/engine-three";
+import { paintOverlays } from "./overlay-canvas.js";
 
 export interface PlayerOptions {
   /** Canvas for the default ThreeEngine. Optional if you inject your own `engine`. */
   canvas?: HTMLCanvasElement;
+  /**
+   * Optional transparent 2D canvas stacked over `canvas`, onto which screen-space text overlays
+   * (titles/captions) are painted each frame — so the live preview shows titles, matching the
+   * render. Requires a font (`setFont` from @vsim/text); silently skips text until one is loaded.
+   */
+  overlayCanvas?: HTMLCanvasElement;
   /**
    * Renderer to drive. Defaults to a ThreeEngine bound to `canvas`. Inject another Engine to
    * preview with a different backend — or to drive the player headlessly (e.g. the parity test
@@ -116,6 +123,7 @@ export class Player {
     this.frame = frame;
     this.rendered = true;
     this.engine.renderFrame(this.last);
+    if (this.opts.overlayCanvas) paintOverlays(this.opts.overlayCanvas, this.last.overlays, this.doc.meta.width, this.doc.meta.height);
     this.onFrame?.(frame, this.totalFrames);
   }
 
@@ -129,3 +137,5 @@ export class Player {
 export function createPlayer(doc: SceneDocument, opts: PlayerOptions): Player {
   return new Player(doc, opts);
 }
+
+export { paintOverlays, overlayDraw, type OverlayDraw } from "./overlay-canvas.js";

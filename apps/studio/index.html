@@ -32,6 +32,10 @@
         background: #0e1014 radial-gradient(circle at 50% 40%, #1b1f27, #0e1014); overflow: hidden; }
       canvas { max-width: 100%; max-height: 100%; background: #000; border-radius: 6px;
         box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+      /* Stage tightly wraps the preview canvas so the text-overlay canvas can sit exactly on top. */
+      #stage { position: relative; display: flex; max-width: 100%; max-height: 100%; }
+      #preview-overlay { position: absolute; inset: 0; width: 100%; height: 100%;
+        background: transparent; box-shadow: none; pointer-events: none; }
       footer { grid-column: 1 / 3; background: var(--panel); border-top: 1px solid var(--line);
         display: flex; align-items: center; gap: 14px; padding: 0 16px; }
       footer button.play { width: 40px; height: 40px; border-radius: 50%; font-size: 16px;
@@ -84,7 +88,7 @@
           <div id="aistatus" class="aistatus"></div>
         </div>
       </aside>
-      <main><canvas id="preview"></canvas></main>
+      <main><div id="stage"><canvas id="preview"></canvas><canvas id="preview-overlay"></canvas></div></main>
       <footer>
         <button class="play" id="play">▶</button>
         <div class="timeline">

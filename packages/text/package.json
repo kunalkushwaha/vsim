@@ -4,8 +4,20 @@
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "publishConfig": { "main": "./dist/index.js", "types": "./dist/index.d.ts", "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } } },
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts",
+    "./fonts/*": "./fonts/*"
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+      "./node": { "types": "./dist/node.d.ts", "import": "./dist/node.js" },
+      "./fonts/*": "./fonts/*"
+    }
+  },
   "files": ["dist", "fonts"],
   "scripts": { "build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit" },
   "dependencies": { "opentype.js": "^1.3.4" },

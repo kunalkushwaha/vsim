@@ -4,6 +4,8 @@
 // reads it every frame, so preview == render and what you see is what the server renders.
 import { Player } from "@vsim/player";
 import type { SceneDocument } from "@vsim/core";
+import { setFont } from "@vsim/text";
+import fontUrl from "@vsim/text/fonts/DejaVuSans-Bold.ttf?url";
 import { sampleScene } from "./sample-scene.js";
 
 let doc: SceneDocument = sampleScene();
@@ -11,6 +13,16 @@ let player: Player;
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const canvas = $<HTMLCanvasElement>("preview");
+const overlayCanvas = $<HTMLCanvasElement>("preview-overlay");
+
+// Load the overlay font once so the live preview can draw titles/captions (matching the render).
+async function loadFont(): Promise<void> {
+  try {
+    setFont(await (await fetch(fontUrl)).arrayBuffer());
+  } catch (e) {
+    console.warn("vsim Studio: overlay font failed to load — preview text disabled", e);
+  }
+}
 const playBtn = $<HTMLButtonElement>("play");
 const scrub = $<HTMLInputElement>("scrub");
 const frameLbl = $<HTMLSpanElement>("frame");
@@ -174,7 +186,9 @@ async function mount(next: SceneDocument) {
   doc = next;
   canvas.width = doc.meta.width;
   canvas.height = doc.meta.height;
-  player = new Player(doc, { canvas, loop: true });
+  overlayCanvas.width = doc.meta.width;
+  overlayCanvas.height = doc.meta.height;
+  player = new Player(doc, { canvas, overlayCanvas, loop: true });
   player.onFrame = (f, total) => { scrub.value = String(f); frameLbl.textContent = `${f} / ${total - 1}`; refreshValues(f); };
   scrub.max = String(doc.meta.durationFrames - 1);
   scrub.value = "0";
@@ -243,4 +257,4 @@ $("export").onclick = () => {
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "scene.json"; a.click();
 };
 
-void mount(doc);
+void loadFont().then(() => mount(doc));

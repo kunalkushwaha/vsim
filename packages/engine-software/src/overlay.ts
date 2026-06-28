@@ -1,4 +1,4 @@
-import { rasterizeText } from "@vsim/text";
+import { rasterizeText } from "@vsim/text/node"; // node entry auto-loads the bundled font
 import type { ResolvedTextOverlay } from "@vsim/core";
 import { Framebuffer, gammaRgb } from "./raster.js";
 

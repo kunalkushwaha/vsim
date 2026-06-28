@@ -54,6 +54,9 @@ importers:
       '@vsim/render':
         specifier: workspace:*
         version: link:../../packages/render
+      '@vsim/text':
+        specifier: workspace:*
+        version: link:../../packages/text
       three:
         specifier: ^0.171.0
         version: 0.171.0
@@ -390,6 +393,9 @@ importers:
       '@vsim/engine-three':
         specifier: workspace:*
         version: link:../engine-three
+      '@vsim/text':
+        specifier: workspace:*
+        version: link:../text
       three:
         specifier: ^0.171.0
         version: 0.171.0
