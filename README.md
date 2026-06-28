@@ -149,6 +149,7 @@ the AI uses `ANTHROPIC_API_KEY` or the `claude` CLI). See
 - [Determinism guide](./docs/determinism.md)
 - [ADR 0001 — render backend & determinism](./docs/decisions/0001-render-backend-and-determinism.md)
 - [Guide: creating characters with Blender / MakeHuman](./docs/guides/blender-characters.md) — generate rigged, animated, **textured** glTF headlessly (incl. a realistic MakeHuman human with real skin) → `loadGltfRig`
+- [Text & titles](./docs/plan-text-titles.md) — screen-space titles/captions/lower-thirds as deterministic vector type, in draft + photoreal + live preview
 - [Vision & roadmap](./CONCEPT.md) · [`PLAN.md`](./PLAN.md)
 
 `pnpm docs:site` builds a static documentation site (landing page + the docs above) into
