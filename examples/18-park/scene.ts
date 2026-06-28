@@ -27,9 +27,8 @@ export default (async () => {
       clip: "walk", loop: true, material: "skin",
       scale: [meta.scale, meta.scale, meta.scale], rotation: meta.rotation,
     })
-    .animate("man", "position.x", [{ frame: 0, value: -6 }, { frame: 120, value: 6 }])
-    .group("aim", { position: [-6, 1.0, 0] })
-    .animate("aim", "position.x", [{ frame: 0, value: -6 }, { frame: 120, value: 6 }])
-    .camera({ position: [0, 2.4, 9], lookAtNodeId: "aim", fov: 46 })
+    // walk forward along the stride axis (+z) through the park, stride-matched, filmed side-on (static)
+    .animate("man", "position.z", [{ frame: 0, value: -5 }, { frame: 120, value: 5 }])
+    .camera({ position: [9, 2.4, 0], lookAt: [0, 0.9, 0], fov: 46 })
     .build();
 })();

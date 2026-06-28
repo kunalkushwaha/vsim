@@ -22,9 +22,8 @@ export default (async () => {
       scale: [meta.scale, meta.scale, meta.scale],
       rotation: meta.rotation,
     })
-    .animate("guy", "position.x", [{ frame: 0, value: -3 }, { frame: 90, value: 3 }])
-    .group("aim", { position: [-3, 0.9, 0] })
-    .animate("aim", "position.x", [{ frame: 0, value: -3 }, { frame: 90, value: 3 }])
-    .camera({ position: [0, 1.4, 5.5], lookAtNodeId: "aim", fov: 42 })
+    // walk forward along the stride axis (+z), stride-matched, filmed side-on with a static camera
+    .animate("guy", "position.z", [{ frame: 0, value: -2.5 }, { frame: 90, value: 2.5 }])
+    .camera({ position: [5, 1.5, 0], lookAt: [0, 0.85, 0], fov: 40 })
     .build();
 })();

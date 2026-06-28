@@ -113,9 +113,11 @@ def find(*cands):
     return None
 thighL=find("thigh_l","upperleg_l"); thighR=find("thigh_r","upperleg_r")
 calfL=find("calf_l","lowerleg_l");   calfR=find("calf_r","lowerleg_r")
-armL=find("upperarm_l"); armR=find("upperarm_r"); forearmR=find("lowerarm_r")
+footL=find("foot_l");                footR=find("foot_r")
+armL=find("upperarm_l"); armR=find("upperarm_r")
+forearmL=find("lowerarm_l"); forearmR=find("lowerarm_r")
 spine=find("spine_02","spine_01"); head=find("head")
-print("rig bones:", thighL, thighR, calfL, calfR, armL, armR, forearmR, spine, head)
+print("rig bones:", thighL, thighR, calfL, calfR, footL, footR, armL, armR, spine, head)
 
 ad = arm.animation_data_create()
 def author(name, keys):
@@ -131,17 +133,27 @@ def author(name, keys):
     trk.strips.new(name, 1, act)   # stash → its own track (gives the action a user + a clean name)
     ad.action = None
 
-W = 0.5  # walk: legs/arms swing about X (forward/back)
+# A real walk cycle: per side a thigh swing + KNEE BEND on the swing leg + foot roll, arms counter-
+# swinging with bent elbows. `pose()` sets a full body pose (right-leg args, left-leg args, arms).
+def pose(rt, rc, rf, lt, lc, lf, ra, la, el=0.18):
+    return {thighR:(rt,0,0), calfR:(rc,0,0), footR:(rf,0,0),
+            thighL:(lt,0,0), calfL:(lc,0,0), footL:(lf,0,0),
+            armR:(ra,0,0), armL:(la,0,0), forearmR:(el,0,0), forearmL:(el,0,0)}
+A = 0.5  # walk: ~32-frame cycle (contact → passing → contact → passing → loop)
 author("walk", [
-    (1,  {thighL:(W,0,0), thighR:(-W,0,0), armL:(-W*0.7,0,0), armR:(W*0.7,0,0)}),
-    (16, {thighL:(-W,0,0), thighR:(W,0,0), armL:(W*0.7,0,0), armR:(-W*0.7,0,0)}),
-    (31, {thighL:(W,0,0), thighR:(-W,0,0), armL:(-W*0.7,0,0), armR:(W*0.7,0,0)}),
+    (1,  pose( A, -0.05,  0.20,  -A, -0.25, -0.35,  -A * 0.8,  A * 0.8)),  # R heel-strike front; L toe-off back
+    (9,  pose( 0, -0.05,  0.00,   0, -0.95,  0.15,   0.0,      0.0)),      # R stance; L knee-up, foot lifted (swing)
+    (17, pose(-A, -0.25, -0.35,   A, -0.05,  0.20,   A * 0.8, -A * 0.8)),  # L heel-strike front; R toe-off back
+    (25, pose( 0, -0.95,  0.15,   0, -0.05,  0.00,   0.0,      0.0)),      # L stance; R knee-up swing
+    (33, pose( A, -0.05,  0.20,  -A, -0.25, -0.35,  -A * 0.8,  A * 0.8)),  # = frame 1 → seamless loop
 ])
-R = 0.9  # run: bigger swing + forward lean + bent trailing knee, faster cycle
+R = 0.85  # run: longer stride, deeper knee bend, forward lean, faster (~24-frame) cycle, bent elbows
 author("run", [
-    (1,  {spine:(0.28,0,0), thighL:(R,0,0), thighR:(-R,0,0), calfL:(-0.7,0,0), armL:(-R*0.8,0,0), armR:(R*0.8,0,0)}),
-    (9,  {spine:(0.28,0,0), thighL:(-R,0,0), thighR:(R,0,0), calfR:(-0.7,0,0), armL:(R*0.8,0,0), armR:(-R*0.8,0,0)}),
-    (17, {spine:(0.28,0,0), thighL:(R,0,0), thighR:(-R,0,0), calfL:(-0.7,0,0), armL:(-R*0.8,0,0), armR:(R*0.8,0,0)}),
+    (1,  {**pose( R, -0.35,  0.10,  -R, -0.7, -0.25,  -R * 0.9,  R * 0.9, 0.7), spine: (0.30, 0, 0)}),
+    (7,  {**pose( 0, -0.25,  0.00,   0, -1.4,  0.20,   0.0,      0.0,     0.7), spine: (0.30, 0, 0)}),
+    (13, {**pose(-R, -0.7,  -0.25,   R, -0.35, 0.10,   R * 0.9, -R * 0.9, 0.7), spine: (0.30, 0, 0)}),
+    (19, {**pose( 0, -1.4,   0.20,   0, -0.25, 0.00,   0.0,      0.0,     0.7), spine: (0.30, 0, 0)}),
+    (25, {**pose( R, -0.35,  0.10,  -R, -0.7, -0.25,  -R * 0.9,  R * 0.9, 0.7), spine: (0.30, 0, 0)}),  # loop
 ])
 author("idle", [  # slow, subtle breathing/sway
     (1,  {spine:(0.0,0,0),  head:(0,0,0)}),
