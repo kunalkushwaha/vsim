@@ -401,6 +401,9 @@ importers:
       three:
         specifier: ^0.171.0
         version: 0.171.0
+      three-gpu-pathtracer:
+        specifier: ^0.0.24
+        version: 0.0.24(three-mesh-bvh@0.9.10(three@0.171.0))(three@0.171.0)(xatlas-web@0.1.0)
     devDependencies:
       '@types/three':
         specifier: ^0.171.0
@@ -1098,6 +1101,18 @@ packages:
   std-env@3.10.0:
     resolution: {integrity: sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg==}
 
+  three-gpu-pathtracer@0.0.24:
+    resolution: {integrity: sha512-fHQ7g7ywvSwRAQywhsfech2/kspQKinfFNOcNDTJS2Q34CzcF1kpESlOVvJH8kX/bGlCnxMI+Qo16kWGAy7zCA==}
+    peerDependencies:
+      three: '>=0.180.0'
+      three-mesh-bvh: '>=0.7.4'
+      xatlas-web: ^0.1.0
+
+  three-mesh-bvh@0.9.10:
+    resolution: {integrity: sha512-UOlTgPIeqUURcwaG8knxvBaruwZlC4X3/WSHEFO7rYvMVv/YNUrkfFEszvfj36pXV88dCHoHNnIp0PifkirnTQ==}
+    peerDependencies:
+      three: '>= 0.159.0'
+
   three@0.171.0:
     resolution: {integrity: sha512-Y/lAXPaKZPcEdkKjh0JOAHVv8OOnv/NDJqm0wjfCzyQmfKxV7zvkwsnBgPBKTzJHToSOhRGQAGbPJObT59B/PQ==}
 
@@ -1200,6 +1215,9 @@ packages:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
     hasBin: true
+
+  xatlas-web@0.1.0:
+    resolution: {integrity: sha512-PprVfuXbaIskxLTLBUQRaWfgSy9xUQqAMIRooOw0P6NYqwgh6T0voeer6+Z5M7AFt5SGXUybuww/uDGs1yw8vQ==}
 
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
@@ -1683,6 +1701,16 @@ snapshots:
 
   std-env@3.10.0: {}
 
+  three-gpu-pathtracer@0.0.24(three-mesh-bvh@0.9.10(three@0.171.0))(three@0.171.0)(xatlas-web@0.1.0):
+    dependencies:
+      three: 0.171.0
+      three-mesh-bvh: 0.9.10(three@0.171.0)
+      xatlas-web: 0.1.0
+
+  three-mesh-bvh@0.9.10(three@0.171.0):
+    dependencies:
+      three: 0.171.0
+
   three@0.171.0: {}
 
   tinybench@2.9.0: {}
@@ -1773,5 +1801,7 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  xatlas-web@0.1.0: {}
 
   zod@3.25.76: {}
