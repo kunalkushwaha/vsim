@@ -143,6 +143,25 @@ describe("shadow mapping", () => {
     };
     expect(r().equals(r())).toBe(true);
   });
+
+  it("bilinear PCF: the shadow edge ramps smoothly and monotonically into the light", () => {
+    // Single-sample engine (so supersampling can't be the source of the smoothness) and a
+    // deliberately tiny shadow map, making one shadow texel span multiple output pixels.
+    // Scanning the center row from inside the cast shadow (world x≈0) toward open ground (+x):
+    // luminance must never decrease, and the transition must pass through intermediate values
+    // (a hard binary comparison would quantize to texel-sized steps).
+    const eng = new SoftwareEngine(64, 64, { supersample: 1, shadowMapSize: 8 });
+    eng.init(doc());
+    eng.renderFrame(new SceneRuntime(doc()).computeFrameState(0));
+    const px = eng.readPixels();
+    const scan: number[] = [];
+    for (let x = 30; x <= 52; x++) scan.push(lumAt(px, 64, x, 32));
+    for (let i = 1; i < scan.length; i++) expect(scan[i]!).toBeGreaterThanOrEqual(scan[i - 1]! - 1);
+    const dark = scan[0]!, lit = scan[scan.length - 1]!;
+    const mid = scan.filter((v) => v > dark + 20 && v < lit - 20).length;
+    expect(lit).toBeGreaterThan(dark + 60);
+    expect(mid).toBeGreaterThanOrEqual(2); // a real penumbra, not a binary step
+  });
 });
 
 describe("distance fog", () => {
