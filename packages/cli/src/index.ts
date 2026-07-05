@@ -26,6 +26,7 @@ interface Args {
   output: string;
   still?: string;
   frame: number;
+  workers?: number;
   audio?: string;
   prompt?: string;
   render?: string;
@@ -37,6 +38,7 @@ function parseArgs(argv: string[]): Args {
     const t = argv[i];
     if (t === "-o" || t === "--output") a.output = argv[++i]!;
     else if (t === "--still") a.still = argv[++i]!;
+    else if (t === "--workers") a.workers = Number(argv[++i]);
     else if (t === "--frame") a.frame = Number(argv[++i]);
     else if (t === "--audio") a.audio = argv[++i]!;
     else if (t === "--prompt" || t === "-p") a.prompt = argv[++i]!;
@@ -95,6 +97,7 @@ async function renderDoc(doc: SceneDocument, args: Args, audioPath?: string): Pr
     const res = await renderToVideo(doc, {
       output,
       physics,
+      workers: args.workers,
       audioPath,
       audioGain: doc.audio?.gain,
       onProgress: progressBar,
