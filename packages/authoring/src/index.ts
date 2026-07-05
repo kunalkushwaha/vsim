@@ -100,6 +100,8 @@ interface MetaInput {
   background?: Vec3;
   /** "realistic" (default) or "manga" (cel-shading + outlines). */
   style?: "realistic" | "manga";
+  /** Output tone mapping: "none" (default) or "aces" (filmic highlight rolloff). */
+  tone?: "none" | "aces";
 }
 
 interface TransformInput {
@@ -183,6 +185,7 @@ export class SceneBuilder {
         substeps: meta.substeps ?? 4,
         background: meta.background ?? [0.05, 0.06, 0.09],
         style: meta.style ?? "realistic",
+        tone: meta.tone ?? "none",
       },
       assets: [],
       materials: [],

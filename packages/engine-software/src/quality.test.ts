@@ -164,6 +164,42 @@ describe("shadow mapping", () => {
   });
 });
 
+describe("ACES tone mapping (meta.tone)", () => {
+  // An overbright emissive panel (HDR value 4.0) next to a mid-grey panel, no lights.
+  const doc = (tone?: "none" | "aces") =>
+    parseDocument({
+      meta: { durationFrames: 1, width: 32, height: 32, background: [0, 0, 0], ...(tone ? { tone } : {}) },
+      materials: [
+        { id: "hot", color: [0, 0, 0], emissive: [4, 4, 4] },
+        { id: "mid", color: [0, 0, 0], emissive: [0.5, 0.18, 0.18] },
+      ],
+      nodes: [
+        { id: "left", mesh: { geometry: { kind: "box" }, materialId: "hot" }, position: [-0.8, 0, 0] },
+        { id: "right", mesh: { geometry: { kind: "box" }, materialId: "mid" }, position: [0.8, 0, 0] },
+        { id: "__camera", position: [0, 0, 4] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, 0], fov: 45 },
+    });
+
+  it("defaults to none — byte-identical to an explicit tone:'none'", () => {
+    expect(Buffer.from(render(doc())).equals(Buffer.from(render(doc("none"))))).toBe(true);
+  });
+
+  it("rolls off HDR highlights instead of clipping, and keeps them brighter than mid-tones", () => {
+    const raw = render(doc("none"));
+    const aces = render(doc("aces"));
+    const at = (px: Uint8ClampedArray, x: number) => px[(16 * 32 + x) * 4]!;
+    expect(at(raw, 8)).toBe(255); // HDR 4.0 hard-clips without tone mapping
+    expect(at(aces, 8)).toBeLessThan(255); // filmic rolloff keeps headroom
+    expect(at(aces, 8)).toBeGreaterThan(200); // …but it still reads as very bright
+    expect(at(aces, 8)).toBeGreaterThan(at(aces, 24)); // brighter than the mid-grey panel
+  });
+
+  it("is deterministic", () => {
+    expect(Buffer.from(render(doc("aces"))).equals(Buffer.from(render(doc("aces"))))).toBe(true);
+  });
+});
+
 describe("distance fog", () => {
   // Two identical boxes, near and far, ambient light only: the far one must be tinted toward
   // the fog color; without fog both shade identically.

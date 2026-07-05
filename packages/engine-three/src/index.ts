@@ -64,7 +64,9 @@ export class ThreeEngine implements Engine {
   init(doc: SceneDocument): void {
     // Manga: cel-shade with MeshToonMaterial + a hard banded gradient (mirrors view-simulator).
     this.toon = doc.meta.style === "manga";
-    this.renderer.toneMapping = this.toon ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+    // Follow the document's tone flag so the GPU preview matches the software draft: "aces"
+    // opts into filmic rolloff, "none" (the default) renders raw like the reference renderer.
+    this.renderer.toneMapping = !this.toon && doc.meta.tone === "aces" ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     if (this.toon) {
       this.toonGradient = makeToonGradient(4);

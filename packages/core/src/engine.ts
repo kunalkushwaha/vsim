@@ -56,6 +56,8 @@ export interface FrameState {
   fog?: { color: Vec3; near: number; far: number };
   /** Render style — "manga" = banded cel-shading + outlines. */
   style: "realistic" | "manga";
+  /** Output tone mapping — "aces" rolls off HDR highlights filmically. */
+  tone: "none" | "aces";
   nodes: ResolvedNode[];
   lights: ResolvedLight[];
   camera: ResolvedCamera;

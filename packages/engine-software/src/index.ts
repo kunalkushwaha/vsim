@@ -440,7 +440,7 @@ export class SoftwareEngine implements Engine {
 
     if (toon) this.hi.outline([0.04, 0.05, 0.08]); // manga: dark silhouette/edge lines
 
-    this.hi.resolveTo(this.fb); // linear box-filter → gamma-encoded output pixels
+    this.hi.resolveTo(this.fb, state.tone === "aces"); // linear box-filter → gamma-encoded output
 
     if (state.overlays.length) compositeOverlays(this.fb, state.overlays, this.width, this.height); // screen-space text
   }

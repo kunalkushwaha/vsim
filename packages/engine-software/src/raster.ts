@@ -354,8 +354,12 @@ export class LinearBuffer {
     }
   }
 
-  /** Box-filter the linear hi-res buffer down into `fb` (gamma-encoded once, per output pixel). */
-  resolveTo(fb: Framebuffer): void {
+  /**
+   * Box-filter the linear hi-res buffer down into `fb` (gamma-encoded once, per output pixel).
+   * With `aces` the averaged linear value passes through the ACES filmic fit first, rolling
+   * HDR highlights off smoothly instead of clipping at 1.
+   */
+  resolveTo(fb: Framebuffer, aces = false): void {
     const { width, supersample: ss, rgb } = this;
     const inv = 1 / (ss * ss);
     const { width: ow, height: oh, color } = fb;
@@ -371,9 +375,15 @@ export class LinearBuffer {
           }
         }
         const pi = (oy * ow + ox) * 4;
-        color[pi] = encodeGamma(r * inv);
-        color[pi + 1] = encodeGamma(g * inv);
-        color[pi + 2] = encodeGamma(b * inv);
+        if (aces) {
+          color[pi] = encodeGamma(acesFit(r * inv));
+          color[pi + 1] = encodeGamma(acesFit(g * inv));
+          color[pi + 2] = encodeGamma(acesFit(b * inv));
+        } else {
+          color[pi] = encodeGamma(r * inv);
+          color[pi + 1] = encodeGamma(g * inv);
+          color[pi + 2] = encodeGamma(b * inv);
+        }
         color[pi + 3] = 255;
       }
     }
@@ -472,6 +482,12 @@ export function sampleAlbedo(tex: Texture, u: number, v: number): [number, numbe
 
 function edge(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
   return (cx - ax) * (by - ay) - (cy - ay) * (bx - ax);
+}
+
+/** ACES filmic tone-map fit (Narkowicz 2015): smooth highlight rolloff, ~identity near black. */
+export function acesFit(x: number): number {
+  if (x <= 0) return 0;
+  return (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
 }
 
 /** Linear RGB [0,1] → gamma-encoded 8-bit. */
