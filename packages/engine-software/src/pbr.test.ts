@@ -79,6 +79,62 @@ describe("PBR texture maps (software renderer)", () => {
     expect(r).toBeGreaterThan(g + 100);
   });
 
+  it("perspective-correct UVs: stripe spacing compresses toward the horizon on a tilted quad", () => {
+    // A deep floor quad (two triangles) receding from the camera, textured with regular stripes
+    // along v. Affine (screen-space) interpolation spaces the stripes evenly per triangle; true
+    // perspective mapping compresses them hyperbolically with distance. We scan a screen column
+    // and require each successive stripe interval (walking toward the horizon) to be no wider
+    // than the previous one, with real compression overall.
+    const stripes = { width: 1, height: 64, data: new Uint8Array(64 * 4) };
+    for (let y = 0; y < 64; y++) {
+      const on = y % 8 < 4 ? 255 : 0;
+      stripes.data.set([on, on, on, 255], y * 4);
+    }
+    const floor: MeshData = {
+      positions: [-4, 0, 0, 4, 0, 0, 4, 0, -30, -4, 0, -30],
+      normals: [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0],
+      uvs: [0, 0, 1, 0, 1, 1, 0, 1],
+      indices: [0, 1, 2, 0, 2, 3],
+      texture: stripes,
+    };
+    const doc = parseDocument({
+      meta: { durationFrames: 1, width: 48, height: 64, background: [0, 0, 1] },
+      materials: [{ id: "m", color: [1, 1, 1] }],
+      nodes: [
+        { id: "floor", mesh: { geometry: { kind: "box" }, materialId: "m" } },
+        { id: "amb", light: { type: "ambient", intensity: 1 } },
+        { id: "__camera", position: [0, 1.2, 2.5] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, -6], fov: 50 },
+    });
+    const eng = new SoftwareEngine(48, 64, { supersample: 1 });
+    eng.init(doc);
+    eng.loadMesh("floor", floor);
+    eng.renderFrame(new SceneRuntime(doc).computeFrameState(0));
+    const px = eng.readPixels();
+    // Walk up the center column, collecting stripe boundaries (black↔white transitions on the
+    // floor). The quad doesn't reach the bottom of frame, so first seek its near edge, then
+    // scan toward the horizon until the background reappears.
+    const isBg = (y: number) => {
+      const p = (y * 48 + 24) * 4;
+      return px[p + 2] === 255 && px[p]! < 40; // blue background
+    };
+    let y = 63;
+    while (y >= 0 && isBg(y)) y--;
+    const boundaries: number[] = [];
+    let prev = -1;
+    for (; y >= 0 && !isBg(y); y--) {
+      const on = px[(y * 48 + 24) * 4]! > 127 ? 1 : 0;
+      if (prev !== -1 && on !== prev) boundaries.push(y);
+      prev = on;
+    }
+    expect(boundaries.length).toBeGreaterThanOrEqual(4);
+    const gaps: number[] = [];
+    for (let i = 1; i < boundaries.length; i++) gaps.push(boundaries[i - 1]! - boundaries[i]!);
+    for (let i = 1; i < gaps.length; i++) expect(gaps[i]!).toBeLessThanOrEqual(gaps[i - 1]! + 1);
+    expect(gaps[gaps.length - 1]!).toBeLessThan(gaps[0]!); // genuine hyperbolic compression
+  });
+
   it("is deterministic with all maps active", () => {
     const maps = {
       texture: texel(200, 150, 100),
