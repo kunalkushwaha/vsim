@@ -8,6 +8,7 @@ import {
 import { SoftwareEngine } from "@vsim/engine-software";
 import { loadGltf } from "@vsim/assets";
 import { encodePNG } from "./png.js";
+import { ParallelRenderer } from "./parallel.js";
 
 export { encodePNG } from "./png.js";
 
@@ -27,6 +28,11 @@ export interface RenderOptions {
   output: string;
   /** Renderer to use. Defaults to the pure-TS SoftwareEngine. */
   engine?: Engine;
+  /**
+   * Render frames across N worker threads (band-split SoftwareEngines, byte-identical to
+   * sequential). Ignored for physics scenes and when a custom `engine` is supplied.
+   */
+  workers?: number;
   physics?: PhysicsAdapter;
   /** Path to an audio file to mux in. */
   audioPath?: string;
@@ -90,10 +96,26 @@ export async function renderToVideo(input: unknown, opts: RenderOptions): Promis
     );
   });
 
-  for (let f = 0; f < durationFrames; f++) {
-    engine.renderFrame(runtime.computeFrameState(f));
-    await writeChunk(proc.stdin!, Buffer.from(engine.readPixels()));
-    opts.onProgress?.(f + 1, durationFrames);
+  // Parallel path: band-split worker engines (byte-identical to sequential; see parallel.ts).
+  // Only for the default software engine and non-physics scenes.
+  const useWorkers = (opts.workers ?? 1) > 1 && !opts.engine && !opts.physics && !doc.physics?.bodies?.length;
+  if (useWorkers) {
+    const par = new ParallelRenderer();
+    await par.init(doc, opts.workers!);
+    try {
+      for (let f = 0; f < durationFrames; f++) {
+        await writeChunk(proc.stdin!, Buffer.from(await par.renderFrame(f)));
+        opts.onProgress?.(f + 1, durationFrames);
+      }
+    } finally {
+      await par.dispose();
+    }
+  } else {
+    for (let f = 0; f < durationFrames; f++) {
+      engine.renderFrame(runtime.computeFrameState(f));
+      await writeChunk(proc.stdin!, Buffer.from(engine.readPixels()));
+      opts.onProgress?.(f + 1, durationFrames);
+    }
   }
   proc.stdin!.end();
   await done;
@@ -124,4 +146,4 @@ function writeChunk(stream: NodeJS.WritableStream, buf: Buffer): Promise<void> {
   });
 }
 
-export { ParallelRenderer } from "./parallel.js";
+export { ParallelRenderer };

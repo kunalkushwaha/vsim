@@ -43,15 +43,26 @@ scene are byte-identical, and the live preview matches the headless render frame
 
 ## What's in the box (v0.1)
 
-- **Code → video**: declarative scene builder → MP4 via `vsim render`.
+- **Code → video**: declarative scene builder → MP4 via `vsim render` (add `--workers N`
+  for multi-core rendering — byte-identical to single-threaded).
+- **Realistic software rendering**: per-pixel PBR (roughness/metalness + full texture-map
+  set with normal mapping), 2× supersampling in linear light, PCF-filtered directional
+  shadows and point-light cube shadows, mip-mapped trilinear texture sampling,
+  perspective-correct interpolation, sorted transparency, optional ACES tone mapping.
+- **Atmosphere**: gradient sky with a visible sun disc + glow, sky-derived hemisphere
+  ambient, linear distance fog, and closed-form deterministic particles.
+- **Animation**: keyframe tracks, glTF skeletal clips with layered crossfades
+  (`idle → walk → run`), ground-contact IK with **stance locking** (in-place walk cycles
+  drive real locomotion), spring bones for secondary motion, and morph-target lip-sync.
 - **Physics**: deterministic Rapier rigid bodies, fixed-step, reproducible.
-- **Assets**: glTF/GLB load + export.
+- **Assets**: glTF/GLB load + export — including browser-safe rig parsing (`loadRigFromUrl`).
 - **Audio**: mux a track into the MP4 and drive properties from beat frames.
-- **Live preview**: a browser player that shares the exact runtime with the renderer.
+- **Live preview**: a browser player that shares the exact runtime with the renderer,
+  plus in-browser MP4 export via WebCodecs (`renderToSink`).
 
 ## Examples & showreel
 
-Nineteen canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
+Twenty-three canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
 beat-synced pulse, a procedural **walking character** filmed from three angles, a **kid playing
 soccer** (a hand-animated kick + a ball that launches), an original **cartoon puppy** (a
 procedural quadruped with a trot gait + waggy tail), rigged characters from the bundled
@@ -69,7 +80,9 @@ base-color, sampled in the software renderer), a **manga** scene (one-flag cel-s
 outlines via `style: "manga"`), and **text & titles** — a title card, a sliding lower-third, and a
 caption, as true vector type composited on top of the 3D — in `examples/20-titles`, and an original
 big-eared **cartoon mouse** waving at the camera — built from primitive spheres/cylinders as pivoted
-node groups (no rig needed) — in `examples/21-mouse`. Render any of
+node groups (no rig needed) — in `examples/21-mouse`, **normal-mapped brick walls** under a raking
+light (tangent-space bump relief on an inline mesh) in `examples/22-normalmap`, and a character
+crossfading **idle → walk → run** with layered clips in `examples/23-crossfade`. Render any of
 them, or build the montage:
 
 ```bash

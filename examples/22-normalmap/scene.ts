@@ -64,7 +64,7 @@ const wall = (withNormal: boolean) => ({
   ...(withNormal ? { normalMap: maps.normal } : {}),
 });
 
-export default scene({ fps: 30, duration: 1, width: 960, height: 540, background: [0.09, 0.1, 0.13] })
+export default scene({ fps: 30, duration: 90, width: 960, height: 540, background: [0.09, 0.1, 0.13] })
   .material("wall", { color: [1, 1, 1], roughness: 0.85 })
   .material("floor", { color: [0.22, 0.22, 0.25], roughness: 0.9 })
   .light({ type: "ambient", intensity: 0.16 })
@@ -73,5 +73,17 @@ export default scene({ fps: 30, duration: 1, width: 960, height: 540, background
   .mesh("ground", { geometry: { kind: "plane", size: [30, 30] }, material: "floor" })
   .mesh("wallFlat", { geometry: { kind: "mesh", data: wall(false) as any }, material: "wall", position: [-1.25, 0, 0] })
   .mesh("wallBump", { geometry: { kind: "mesh", data: wall(true) as any }, material: "wall", position: [1.25, 0, 0] })
+  // Slowly swivel both walls through the raking light: the bump-mapped wall's brick relief
+  // visibly shifts with the grazing angle while the flat wall stays flat — same geometry.
+  .animate("wallFlat", "rotation.y", [
+    { frame: 0, value: -0.28 },
+    { frame: 45, value: 0.28, easing: "easeInOut" },
+    { frame: 90, value: -0.28, easing: "easeInOut" },
+  ])
+  .animate("wallBump", "rotation.y", [
+    { frame: 0, value: -0.28 },
+    { frame: 45, value: 0.28, easing: "easeInOut" },
+    { frame: 90, value: -0.28, easing: "easeInOut" },
+  ])
   .camera({ position: [0, 1.35, 4.4], lookAt: [0, 1.05, 0], fov: 42 })
   .build();

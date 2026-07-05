@@ -24,15 +24,23 @@ const CLIPS = [
   { name: "gltf", scene: "examples/04-gltf/scene.ts" },
   { name: "beat", scene: "examples/03-beat-sync/scene.ts" },
   { name: "titles", scene: "examples/20-titles/scene.ts" },
+  { name: "mouse", scene: "examples/21-mouse/scene.ts" },
+  { name: "normalmap", scene: "examples/22-normalmap/scene.ts" },
+  { name: "crossfade", scene: "examples/23-crossfade/scene.ts" },
 ];
 
 mkdirSync("out", { recursive: true });
 
+// Parallel band rendering (byte-identical to single-threaded); physics scenes fall back automatically.
+const workers = String(process.env.VSIM_WORKERS ?? 4);
+
 for (const { name, scene } of CLIPS) {
   console.log(`\n▶ rendering ${name} (${scene})`);
-  execFileSync("pnpm", ["exec", "tsx", "packages/cli/src/index.ts", "render", scene, "-o", `out/${name}.mp4`], {
-    stdio: "inherit",
-  });
+  execFileSync(
+    "pnpm",
+    ["exec", "tsx", "packages/cli/src/index.ts", "render", scene, "-o", `out/${name}.mp4`, "--workers", workers],
+    { stdio: "inherit" },
+  );
 }
 
 const inputs = CLIPS.flatMap(({ name }) => ["-i", `out/${name}.mp4`]);

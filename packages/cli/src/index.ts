@@ -26,6 +26,7 @@ interface Args {
   output: string;
   still?: string;
   frame: number;
+  workers?: number;
   audio?: string;
   prompt?: string;
   render?: string;
@@ -37,6 +38,7 @@ function parseArgs(argv: string[]): Args {
     const t = argv[i];
     if (t === "-o" || t === "--output") a.output = argv[++i]!;
     else if (t === "--still") a.still = argv[++i]!;
+    else if (t === "--workers") a.workers = Number(argv[++i]);
     else if (t === "--frame") a.frame = Number(argv[++i]);
     else if (t === "--audio") a.audio = argv[++i]!;
     else if (t === "--prompt" || t === "-p") a.prompt = argv[++i]!;
@@ -95,6 +97,7 @@ async function renderDoc(doc: SceneDocument, args: Args, audioPath?: string): Pr
     const res = await renderToVideo(doc, {
       output,
       physics,
+      workers: args.workers,
       audioPath,
       audioGain: doc.audio?.gain,
       onProgress: progressBar,
@@ -145,7 +148,7 @@ async function main(): Promise<void> {
   if (args.cmd === "render" && args.file) return runRender(args);
   console.log(
     "Usage:\n" +
-      "  vsim render <scene.ts|scene.json> [-o out.mp4] [--still frame.png --frame N] [--audio file]\n" +
+      "  vsim render <scene.ts|scene.json> [-o out.mp4] [--workers N] [--still frame.png --frame N] [--audio file]\n" +
       '  vsim edit <scene.ts|scene.json> --prompt "..." [-o out.scene.json] [--render out.mp4]   (uses ANTHROPIC_API_KEY, or the claude CLI)',
   );
   process.exit(args.cmd ? 1 : 1);
