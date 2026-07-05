@@ -311,6 +311,48 @@ export class SceneBuilder {
     return this;
   }
 
+  /**
+   * A field of grass blades scattered over a rectangular area — ONE inline mesh per tone (not a
+   * node per blade), so hundreds of blades cost two draw batches. Each blade is a tapered,
+   * randomly bent quad; placement/height/lean/tone all hash off the id (deterministic).
+   * `position` is the patch center on the ground.
+   */
+  grass(
+    id: string,
+    opts: TransformInput & { area?: [number, number]; count?: number; height?: number; color?: Vec3; colorDark?: Vec3 } = {},
+  ): this {
+    const [aw, ad] = opts.area ?? [10, 10];
+    const count = opts.count ?? 400;
+    const maxH = opts.height ?? 0.35;
+    this.ensureMaterial("prop_grass", opts.color ?? [0.3, 0.55, 0.22]);
+    this.ensureMaterial("prop_grass_dark", opts.colorDark ?? [0.2, 0.42, 0.16]);
+    this.group(id, opts);
+
+    const light = { positions: [] as number[], normals: [] as number[], indices: [] as number[] };
+    const dark = { positions: [] as number[], normals: [] as number[], indices: [] as number[] };
+    for (let i = 0; i < count; i++) {
+      const bx = (hash01(id, i * 7 + 1) - 0.5) * aw;
+      const bz = (hash01(id, i * 7 + 2) - 0.5) * ad;
+      const h = maxH * (0.6 + 0.4 * hash01(id, i * 7 + 3));
+      const ang = hash01(id, i * 7 + 4) * Math.PI; // blade facing
+      const lean = (hash01(id, i * 7 + 5) - 0.5) * 0.6 * h; // tip offset (wind-bent)
+      const leanAng = hash01(id, i * 7 + 6) * Math.PI * 2;
+      const wBase = 0.015 + 0.02 * hash01(id, i * 7 + 7);
+      const dx = Math.cos(ang) * wBase, dz = Math.sin(ang) * wBase;
+      const tipX = bx + Math.cos(leanAng) * lean, tipZ = bz + Math.sin(leanAng) * lean;
+      const m = hash01(id, i * 7 + 5) < 0.5 ? light : dark;
+      const base = m.positions.length / 3;
+      // Tapered quad: two base verts, two near-coincident tip verts.
+      m.positions.push(bx - dx, 0, bz - dz, bx + dx, 0, bz + dz, tipX + dx * 0.15, h, tipZ + dz * 0.15, tipX - dx * 0.15, h, tipZ - dz * 0.15);
+      // Up-facing normals: blades take the ground's lighting (no dark backsides, no culling issues).
+      for (let k = 0; k < 4; k++) m.normals.push(0, 1, 0);
+      m.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+    this.node(`${id}__blades`, { parent: id }, { mesh: { geometry: { kind: "mesh", data: light }, materialId: "prop_grass" } });
+    this.node(`${id}__blades_dark`, { parent: id }, { mesh: { geometry: { kind: "mesh", data: dark }, materialId: "prop_grass_dark" } });
+    return this;
+  }
+
   /** A faceted boulder prop: a squashed low-poly sphere. `position` is its base on the ground. */
   rock(id: string, opts: TransformInput & { radius?: number; color?: Vec3 } = {}): this {
     const r = opts.radius ?? 0.5;

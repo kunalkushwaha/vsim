@@ -19,6 +19,7 @@ export default (async () => {
     .light({ type: "directional", intensity: 1.2, color: [1.0, 0.8, 0.55], direction: [-0.2, -0.3, 0.93] }) // low sun ahead of camera — backlit golden hour
     .light({ type: "point", intensity: 0.5, color: [1.0, 0.72, 0.45], position: [-3, 1.6, -2.5] }) // warm rim from behind
     .mesh("ground", { geometry: { kind: "plane", size: [80, 80] }, material: "grass" })
+    .grass("lawn", { area: [16, 10], count: 700, height: 0.3, color: [0.3, 0.52, 0.2], colorDark: [0.22, 0.4, 0.15] })
     .tree("t1", { position: [-5.5, 0, -6], height: 3.2 })
     .tree("t2", { position: [-2.5, 0, -8], height: 2.6, variant: "broadleaf" })
     .tree("t3", { position: [3.5, 0, -7], height: 3.6 })
