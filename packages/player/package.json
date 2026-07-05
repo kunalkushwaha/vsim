@@ -58,5 +58,8 @@
         "import": "./dist/index.js"
       }
     }
+  },
+  "devDependencies": {
+    "@vsim/engine-software": "workspace:*"
   }
 }

@@ -139,3 +139,5 @@ export function createPlayer(doc: SceneDocument, opts: PlayerOptions): Player {
 }
 
 export { paintOverlays, overlayDraw, type OverlayDraw } from "./overlay-canvas.js";
+
+export { renderToSink, webCodecsSink, type FrameSink, type RenderToSinkOptions, type WebCodecsSinkOptions } from "./export.js";
