@@ -278,12 +278,19 @@ export class LinearBuffer {
    * perspective-correct: interpolated as attr/w with a per-pixel divide by the interpolated
    * 1/w, so textures and world positions don't swim on large surfaces at grazing angles.
    * Depth stays screen-affine (NDC z is already hyperbolic).
+   *
+   * When `uvIndex` ≥ 0, attrs[uvIndex]/attrs[uvIndex+1] are treated as UV and the PER-PIXEL
+   * screen-space UV footprint (max of the x/y derivative magnitudes, in UV units per pixel) is
+   * written into attrs[n] (one slot past the vertex attributes) for mip selection. Derivatives
+   * are exact for the hyperbolic mapping: d(u)/dx = (dPAu/dx − u·dIW/dx) / IW, with the linear
+   * forms' gradients constant per triangle.
    */
   triangleShaded(
     p0: [number, number, number, number], a0: ArrayLike<number>,
     p1: [number, number, number, number], a1: ArrayLike<number>,
     p2: [number, number, number, number], a2: ArrayLike<number>,
     shade: (attrs: Float64Array, out: Vec3) => void,
+    uvIndex = -1,
   ): void {
     const { width, height, rgb, depth } = this;
     const area = edge(p0[0], p0[1], p1[0], p1[1], p2[0], p2[1]);
@@ -296,7 +303,7 @@ export class LinearBuffer {
     const maxY = Math.min(height - 1, Math.ceil(Math.max(p0[1], p1[1], p2[1])));
 
     const n = a0.length;
-    const attrs = SCRATCH_ATTRS.length >= n ? SCRATCH_ATTRS : new Float64Array(n);
+    const attrs = SCRATCH_ATTRS.length >= n + 1 ? SCRATCH_ATTRS : new Float64Array(n + 1);
     const out: Vec3 = SCRATCH_RGB;
     // Premultiply attributes by their vertex 1/w once per triangle.
     const iw0 = p0[3], iw1 = p1[3], iw2 = p2[3];
@@ -307,6 +314,20 @@ export class LinearBuffer {
       pa0[k] = a0[k]! * iw0;
       pa1[k] = a1[k]! * iw1;
       pa2[k] = a2[k]! * iw2;
+    }
+
+    // Constant per-triangle gradients of the barycentric weights over screen space.
+    const dw0dx = (p2[1] - p1[1]) * inv, dw0dy = -(p2[0] - p1[0]) * inv;
+    const dw1dx = (p0[1] - p2[1]) * inv, dw1dy = -(p0[0] - p2[0]) * inv;
+    const dw2dx = (p1[1] - p0[1]) * inv, dw2dy = -(p1[0] - p0[0]) * inv;
+    const dIWdx = iw0 * dw0dx + iw1 * dw1dx + iw2 * dw2dx;
+    const dIWdy = iw0 * dw0dy + iw1 * dw1dy + iw2 * dw2dy;
+    let dPUdx = 0, dPUdy = 0, dPVdx = 0, dPVdy = 0;
+    if (uvIndex >= 0) {
+      dPUdx = pa0[uvIndex]! * dw0dx + pa1[uvIndex]! * dw1dx + pa2[uvIndex]! * dw2dx;
+      dPUdy = pa0[uvIndex]! * dw0dy + pa1[uvIndex]! * dw1dy + pa2[uvIndex]! * dw2dy;
+      dPVdx = pa0[uvIndex + 1]! * dw0dx + pa1[uvIndex + 1]! * dw1dx + pa2[uvIndex + 1]! * dw2dx;
+      dPVdy = pa0[uvIndex + 1]! * dw0dy + pa1[uvIndex + 1]! * dw1dy + pa2[uvIndex + 1]! * dw2dy;
     }
 
     for (let y = minY; y <= maxY; y++) {
@@ -327,6 +348,12 @@ export class LinearBuffer {
         const iw = w0 * iw0 + w1 * iw1 + w2 * iw2;
         const rw = iw !== 0 ? 1 / iw : 0;
         for (let k = 0; k < n; k++) attrs[k] = (w0 * pa0[k]! + w1 * pa1[k]! + w2 * pa2[k]!) * rw;
+        if (uvIndex >= 0) {
+          const u = attrs[uvIndex]!, v = attrs[uvIndex + 1]!;
+          const dudx = (dPUdx - u * dIWdx) * rw, dvdx = (dPVdx - v * dIWdx) * rw;
+          const dudy = (dPUdy - u * dIWdy) * rw, dvdy = (dPVdy - v * dIWdy) * rw;
+          attrs[n] = Math.max(Math.sqrt(dudx * dudx + dvdx * dvdx), Math.sqrt(dudy * dudy + dvdy * dvdy));
+        }
         shade(attrs, out);
         const p = di * 3;
         rgb[p] = out[0];
@@ -469,6 +496,53 @@ function dilate(mask: Uint8Array, width: number, height: number, r: number): Uin
     }
   }
   return out;
+}
+
+/**
+ * Build a mip chain for a texture: successive 2× box reductions (in stored gamma space, matching
+ * how levels are later decoded on sample) down to 1×1. Level 0 is the original texture.
+ */
+export function buildMips(tex: Texture): Texture[] {
+  const chain: Texture[] = [tex];
+  let cur = tex;
+  while (cur.width > 1 || cur.height > 1) {
+    const w = Math.max(1, cur.width >> 1);
+    const h = Math.max(1, cur.height >> 1);
+    const data = new Uint8Array(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      const sy0 = Math.min(y * 2, cur.height - 1);
+      const sy1 = Math.min(y * 2 + 1, cur.height - 1);
+      for (let x = 0; x < w; x++) {
+        const sx0 = Math.min(x * 2, cur.width - 1);
+        const sx1 = Math.min(x * 2 + 1, cur.width - 1);
+        for (let c = 0; c < 4; c++) {
+          const sum =
+            cur.data[(sy0 * cur.width + sx0) * 4 + c]! + cur.data[(sy0 * cur.width + sx1) * 4 + c]! +
+            cur.data[(sy1 * cur.width + sx0) * 4 + c]! + cur.data[(sy1 * cur.width + sx1) * 4 + c]!;
+          data[(y * w + x) * 4 + c] = Math.round(sum / 4);
+        }
+      }
+    }
+    cur = { width: w, height: h, data };
+    chain.push(cur);
+  }
+  return chain;
+}
+
+/**
+ * Trilinear sample: bilinear taps from the two mip levels bracketing `lod`, blended by its
+ * fraction. `lod` 0 = full resolution; values past the chain end clamp to the 1×1 tail.
+ */
+export function sampleTexelLod(mips: Texture[], u: number, v: number, lod: number, srgb: boolean): [number, number, number] {
+  if (lod <= 0 || mips.length === 1) return sampleTexel(mips[0]!, u, v, srgb);
+  const top = mips.length - 1;
+  const l0 = Math.min(Math.floor(lod), top);
+  const l1 = Math.min(l0 + 1, top);
+  const a = sampleTexel(mips[l0]!, u, v, srgb);
+  if (l0 === l1) return a;
+  const b = sampleTexel(mips[l1]!, u, v, srgb);
+  const t = lod - l0;
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
 
 /**
