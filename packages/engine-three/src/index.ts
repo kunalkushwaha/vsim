@@ -152,6 +152,10 @@ export class ThreeEngine implements Engine {
       ? [(state.sky.top[0] + state.sky.bottom[0]) / 2, (state.sky.top[1] + state.sky.bottom[1]) / 2, (state.sky.top[2] + state.sky.bottom[2]) / 2]
       : state.background;
     this.scene.background = new THREE.Color(bg[0], bg[1], bg[2]);
+    // Linear distance fog, matching the software renderer's environment.fog.
+    this.scene.fog = state.fog
+      ? new THREE.Fog(new THREE.Color(state.fog.color[0], state.fog.color[1], state.fog.color[2]), state.fog.near, state.fog.far)
+      : null;
 
     for (const node of state.nodes) {
       const mesh = this.meshes.get(node.id);

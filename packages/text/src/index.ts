@@ -5,8 +5,12 @@
 // This entry is environment-agnostic: the caller supplies the font via `setFont()`. In Node, import
 // "@vsim/text/node" instead — it reads the bundled font and calls `setFont` for you. In a browser,
 // fetch the bundled .ttf and pass its ArrayBuffer to `setFont`.
-// Named imports (not a default) so this bundles in both the browser ESM build and Node.
-import { parse, Path, type Font } from "opentype.js";
+// Namespace import with a runtime default-unwrap: opentype.js ships a UMD/CJS main whose named
+// exports Node's ESM interop can't statically detect (only `default` is exposed), while bundlers
+// resolve the ESM build where the names exist directly. This form works in both.
+import * as opentypeNs from "opentype.js";
+import type { Font } from "opentype.js";
+const { parse, Path } = ((opentypeNs as { default?: typeof opentypeNs }).default ?? opentypeNs);
 
 let _font: Font | undefined;
 

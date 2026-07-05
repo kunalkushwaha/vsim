@@ -1,0 +1,10 @@
+{
+  "name": "@vsim/example-mouse",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@vsim/authoring": "workspace:*",
+    "@vsim/core": "workspace:*"
+  }
+}

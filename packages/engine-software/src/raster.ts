@@ -217,8 +217,238 @@ export class Framebuffer {
   }
 }
 
-/** Bilinear sample of a base-color texture → linear-RGB albedo (sRGB-decoded), repeat-wrapped. */
-function sampleAlbedo(tex: Texture, u: number, v: number): [number, number, number] {
+/**
+ * High-resolution linear-space render target for supersampled, per-pixel-shaded drawing.
+ * Stores linear RGB floats (gamma-encoded only once, at resolve time) plus a z-buffer, at
+ * `supersample`× the output resolution. `resolveTo` box-filters down into a `Framebuffer`.
+ */
+export class LinearBuffer {
+  readonly width: number; // = output width · supersample
+  readonly height: number;
+  readonly supersample: number;
+  readonly rgb: Float32Array; // linear RGB, 3 floats per pixel
+  readonly depth: Float32Array; // NDC z; smaller = nearer
+
+  constructor(outWidth: number, outHeight: number, supersample = 1) {
+    this.supersample = supersample;
+    this.width = outWidth * supersample;
+    this.height = outHeight * supersample;
+    this.rgb = new Float32Array(this.width * this.height * 3);
+    this.depth = new Float32Array(this.width * this.height);
+  }
+
+  clear(bg: Vec3): void {
+    const { rgb, depth } = this;
+    for (let i = 0, p = 0; i < depth.length; i++, p += 3) {
+      rgb[p] = bg[0];
+      rgb[p + 1] = bg[1];
+      rgb[p + 2] = bg[2];
+      depth[i] = Infinity;
+    }
+  }
+
+  /**
+   * Clear to a vertical gradient. Each block of `supersample` rows takes the color of its OUTPUT
+   * row (same ramp as a non-supersampled render), so the resolved sky is byte-identical to a
+   * single-sample render — supersampling sharpens geometry without re-shading the background.
+   */
+  clearGradient(top: Vec3, bottom: Vec3): void {
+    const { width, height, supersample: ss, rgb, depth } = this;
+    const outHeight = height / ss;
+    for (let y = 0; y < height; y++) {
+      const oy = Math.floor(y / ss);
+      const t = outHeight === 1 ? 0 : oy / (outHeight - 1);
+      const r = top[0] + (bottom[0] - top[0]) * t;
+      const g = top[1] + (bottom[1] - top[1]) * t;
+      const b = top[2] + (bottom[2] - top[2]) * t;
+      for (let x = 0; x < width; x++) {
+        const p = (y * width + x) * 3;
+        rgb[p] = r;
+        rgb[p + 1] = g;
+        rgb[p + 2] = b;
+      }
+    }
+    depth.fill(Infinity);
+  }
+
+  /**
+   * Rasterize a screen-space triangle with a per-pixel shading callback. Each vertex is
+   * [x, y, ndcZ] plus `ATTRS` interpolated floats (world position, normal, uv); `shade`
+   * receives the interpolated attributes and writes linear RGB into `out`. Interpolation is
+   * affine (screen-space), consistent with the rest of this rasterizer.
+   */
+  triangleShaded(
+    p0: [number, number, number], a0: ArrayLike<number>,
+    p1: [number, number, number], a1: ArrayLike<number>,
+    p2: [number, number, number], a2: ArrayLike<number>,
+    shade: (attrs: Float64Array, out: Vec3) => void,
+  ): void {
+    const { width, height, rgb, depth } = this;
+    const area = edge(p0[0], p0[1], p1[0], p1[1], p2[0], p2[1]);
+    if (area === 0) return;
+    const inv = 1 / area;
+
+    const minX = Math.max(0, Math.floor(Math.min(p0[0], p1[0], p2[0])));
+    const maxX = Math.min(width - 1, Math.ceil(Math.max(p0[0], p1[0], p2[0])));
+    const minY = Math.max(0, Math.floor(Math.min(p0[1], p1[1], p2[1])));
+    const maxY = Math.min(height - 1, Math.ceil(Math.max(p0[1], p1[1], p2[1])));
+
+    const n = a0.length;
+    const attrs = SCRATCH_ATTRS.length >= n ? SCRATCH_ATTRS : new Float64Array(n);
+    const out: Vec3 = SCRATCH_RGB;
+
+    for (let y = minY; y <= maxY; y++) {
+      const py = y + 0.5;
+      for (let x = minX; x <= maxX; x++) {
+        const px = x + 0.5;
+        const w0 = edge(p1[0], p1[1], p2[0], p2[1], px, py) * inv;
+        const w1 = edge(p2[0], p2[1], p0[0], p0[1], px, py) * inv;
+        const w2 = edge(p0[0], p0[1], p1[0], p1[1], px, py) * inv;
+        // accept either winding
+        if (!((w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 <= 0 && w1 <= 0 && w2 <= 0))) continue;
+
+        const z = w0 * p0[2] + w1 * p1[2] + w2 * p2[2];
+        const di = y * width + x;
+        if (z >= depth[di]!) continue;
+        depth[di] = z;
+
+        for (let k = 0; k < n; k++) attrs[k] = w0 * a0[k]! + w1 * a1[k]! + w2 * a2[k]!;
+        shade(attrs, out);
+        const p = di * 3;
+        rgb[p] = out[0];
+        rgb[p + 1] = out[1];
+        rgb[p + 2] = out[2];
+      }
+    }
+  }
+
+  /**
+   * Manga-style outline on the hi-res buffer: darken pixels on a depth discontinuity, dilated to
+   * `supersample` thickness so the resolved line weight matches a single-sample render.
+   */
+  outline(rgb: Vec3, threshold = 0.002): void {
+    const { width, height, depth } = this;
+    const edgeMask = new Uint8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = y * width + x;
+        const d = depth[i]!;
+        if (d === Infinity) continue; // background: the outline sits on the object's near side
+        const e =
+          (x > 0 && depth[i - 1]! - d > threshold) ||
+          (x < width - 1 && depth[i + 1]! - d > threshold) ||
+          (y > 0 && depth[i - width]! - d > threshold) ||
+          (y < height - 1 && depth[i + width]! - d > threshold);
+        if (e) edgeMask[i] = 1;
+      }
+    }
+    // Dilate so the line survives the box-filter at full strength (matches 1px at output res).
+    const r = this.supersample - 1;
+    const mask = r > 0 ? dilate(edgeMask, width, height, r) : edgeMask;
+    for (let i = 0; i < mask.length; i++) {
+      if (!mask[i]) continue;
+      const p = i * 3;
+      this.rgb[p] = rgb[0];
+      this.rgb[p + 1] = rgb[1];
+      this.rgb[p + 2] = rgb[2];
+    }
+  }
+
+  /** Box-filter the linear hi-res buffer down into `fb` (gamma-encoded once, per output pixel). */
+  resolveTo(fb: Framebuffer): void {
+    const { width, supersample: ss, rgb } = this;
+    const inv = 1 / (ss * ss);
+    const { width: ow, height: oh, color } = fb;
+    for (let oy = 0; oy < oh; oy++) {
+      for (let ox = 0; ox < ow; ox++) {
+        let r = 0, g = 0, b = 0;
+        for (let sy = 0; sy < ss; sy++) {
+          let p = ((oy * ss + sy) * width + ox * ss) * 3;
+          for (let sx = 0; sx < ss; sx++, p += 3) {
+            r += rgb[p]!;
+            g += rgb[p + 1]!;
+            b += rgb[p + 2]!;
+          }
+        }
+        const pi = (oy * ow + ox) * 4;
+        color[pi] = encodeGamma(r * inv);
+        color[pi + 1] = encodeGamma(g * inv);
+        color[pi + 2] = encodeGamma(b * inv);
+        color[pi + 3] = 255;
+      }
+    }
+  }
+}
+
+const SCRATCH_ATTRS = new Float64Array(16);
+const SCRATCH_RGB: Vec3 = [0, 0, 0];
+
+/**
+ * A square depth-only buffer for shadow mapping: triangles rasterized in light space, keeping
+ * the depth nearest the light. Pure floats — deterministic everywhere.
+ */
+export class DepthMap {
+  readonly size: number;
+  readonly data: Float32Array;
+
+  constructor(size: number) {
+    this.size = size;
+    this.data = new Float32Array(size * size);
+  }
+
+  clear(): void {
+    this.data.fill(Infinity);
+  }
+
+  /** Rasterize a triangle given in map coordinates ([0..size) x/y, arbitrary z; smaller = nearer). */
+  triangle(
+    x0: number, y0: number, z0: number,
+    x1: number, y1: number, z1: number,
+    x2: number, y2: number, z2: number,
+  ): void {
+    const { size, data } = this;
+    const area = edge(x0, y0, x1, y1, x2, y2);
+    if (area === 0) return;
+    const inv = 1 / area;
+    const minX = Math.max(0, Math.floor(Math.min(x0, x1, x2)));
+    const maxX = Math.min(size - 1, Math.ceil(Math.max(x0, x1, x2)));
+    const minY = Math.max(0, Math.floor(Math.min(y0, y1, y2)));
+    const maxY = Math.min(size - 1, Math.ceil(Math.max(y0, y1, y2)));
+    for (let y = minY; y <= maxY; y++) {
+      const py = y + 0.5;
+      for (let x = minX; x <= maxX; x++) {
+        const px = x + 0.5;
+        const w0 = edge(x1, y1, x2, y2, px, py) * inv;
+        const w1 = edge(x2, y2, x0, y0, px, py) * inv;
+        const w2 = edge(x0, y0, x1, y1, px, py) * inv;
+        if (!((w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 <= 0 && w1 <= 0 && w2 <= 0))) continue;
+        const z = w0 * z0 + w1 * z1 + w2 * z2;
+        const i = y * size + x;
+        if (z < data[i]!) data[i] = z;
+      }
+    }
+  }
+}
+
+/** Binary dilation of a mask by Chebyshev radius `r`. */
+function dilate(mask: Uint8Array, width: number, height: number, r: number): Uint8Array {
+  const out = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!mask[y * width + x]) continue;
+      const y0 = Math.max(0, y - r), y1 = Math.min(height - 1, y + r);
+      const x0 = Math.max(0, x - r), x1 = Math.min(width - 1, x + r);
+      for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) out[yy * width + xx] = 1;
+    }
+  }
+  return out;
+}
+
+/**
+ * Bilinear sample of a texture, repeat-wrapped. `srgb` decodes color maps (base colour /
+ * emissive) to linear; data maps (normal / metallic-roughness / occlusion) stay raw 0..1.
+ */
+export function sampleTexel(tex: Texture, u: number, v: number, srgb: boolean): [number, number, number] {
   const { width: w, height: h, data } = tex;
   const fx = (u - Math.floor(u)) * w - 0.5;
   const fy = (v - Math.floor(v)) * h - 0.5;
@@ -229,9 +459,15 @@ function sampleAlbedo(tex: Texture, u: number, v: number): [number, number, numb
   const ch = (o: number): number => {
     const top = data[(sy0 * w + sx0) * 4 + o]! + (data[(sy0 * w + sx1) * 4 + o]! - data[(sy0 * w + sx0) * 4 + o]!) * tx;
     const bot = data[(sy1 * w + sx0) * 4 + o]! + (data[(sy1 * w + sx1) * 4 + o]! - data[(sy1 * w + sx0) * 4 + o]!) * tx;
-    return Math.pow((top + (bot - top) * ty) / 255, 2.2); // sRGB → linear
+    const value = (top + (bot - top) * ty) / 255;
+    return srgb ? Math.pow(value, 2.2) : value; // sRGB → linear for color maps only
   };
   return [ch(0), ch(1), ch(2)];
+}
+
+/** Bilinear sample of a base-color texture → linear-RGB albedo (sRGB-decoded), repeat-wrapped. */
+export function sampleAlbedo(tex: Texture, u: number, v: number): [number, number, number] {
+  return sampleTexel(tex, u, v, true);
 }
 
 function edge(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {

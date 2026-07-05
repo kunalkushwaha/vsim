@@ -2,7 +2,7 @@ import { Clock } from "./clock.js";
 import { Rng } from "./rng.js";
 import { evaluateTrack } from "./animation.js";
 import { evaluateClip } from "./clip.js";
-import { mat4, quatFromEuler, v3, DEG2RAD } from "./math.js";
+import { mat4, quat, quatFromEuler, v3, DEG2RAD } from "./math.js";
 import type { Mat4, Quat, Vec3 } from "./math.js";
 import type { Camera, Clip, Material, Node, SceneDocument, Skin, TextOverlay } from "./document.js";
 import type {
@@ -149,18 +149,35 @@ export class SceneRuntime {
     }
 
     // Skeletal clips: sample each playing clip and override its joints' local transforms.
+    // With blendInFrames the sampled pose is mixed against the static (bind) pose the locals
+    // still hold here — lerp for translation/scale, slerp for rotation, smoothstep-eased. The
+    // weight is a pure function of the frame index, so the transition is fully deterministic.
     for (const node of this.doc.nodes) {
       if (!node.clip) continue;
       const clip = this.clipMap.get(node.clip.clipId);
       if (!clip) continue;
       const local = clipLocalFrame(node.clip, frame, clip.durationFrames);
       if (local === null) continue; // not yet started
+      let w = 1;
+      if (node.clip.blendInFrames > 0) {
+        const raw = Math.min(1, Math.max(0, (frame - node.clip.startFrame) / node.clip.blendInFrames));
+        w = raw * raw * (3 - 2 * raw); // smoothstep ease
+      }
       for (const [jointId, pose] of evaluateClip(clip, local)) {
         const lt = locals.get(jointId);
         if (!lt) continue;
-        if (pose.translation) lt.position = pose.translation;
-        if (pose.scale) lt.scale = pose.scale;
-        if (pose.rotation) lt.quat = pose.rotation;
+        if (w >= 1) {
+          if (pose.translation) lt.position = pose.translation;
+          if (pose.scale) lt.scale = pose.scale;
+          if (pose.rotation) lt.quat = pose.rotation;
+        } else {
+          if (pose.translation) lt.position = v3.lerp(lt.position, pose.translation, w);
+          if (pose.scale) lt.scale = v3.lerp(lt.scale, pose.scale, w);
+          if (pose.rotation) {
+            const from = lt.quat ?? quatFromEuler(lt.rotation[0], lt.rotation[1], lt.rotation[2]);
+            lt.quat = quat.slerp(from, pose.rotation, w);
+          }
+        }
       }
     }
 
@@ -259,6 +276,7 @@ export class SceneRuntime {
         this.doc.environment?.sky?.type === "gradient"
           ? { top: this.doc.environment.sky.top, bottom: this.doc.environment.sky.bottom }
           : undefined,
+      fog: this.doc.environment?.fog,
       style: this.doc.meta.style,
       nodes,
       lights,

@@ -29,7 +29,8 @@ export default scene({ fps: 30, duration: 90, width: 640, height: 360 })
 ```
 
 That's the whole loop: a `.ts` file in, a reproducible `.mp4` out — no GPU required (the
-default renderer is a pure-TypeScript rasterizer that runs anywhere).
+default renderer is a pure-TypeScript rasterizer that runs anywhere, with per-pixel lighting,
+specular highlights, and supersampled anti-aliasing).
 
 ## Why deterministic?
 
@@ -66,7 +67,9 @@ primitives) in `examples/18-park`, and a procedural **quadruped** trotting in `e
 loaded by name with `loadCharacter()` and **rendered with their real glTF textures** (PNG/JPEG
 base-color, sampled in the software renderer), a **manga** scene (one-flag cel-shading +
 outlines via `style: "manga"`), and **text & titles** — a title card, a sliding lower-third, and a
-caption, as true vector type composited on top of the 3D — in `examples/20-titles`. Render any of
+caption, as true vector type composited on top of the 3D — in `examples/20-titles`, and an original
+big-eared **cartoon mouse** waving at the camera — built from primitive spheres/cylinders as pivoted
+node groups (no rig needed) — in `examples/21-mouse`. Render any of
 them, or build the montage:
 
 ```bash

@@ -106,6 +106,11 @@ export const ClipPlaybackSchema = z.object({
   startFrame: z.number().default(0),
   speed: z.number().default(1),
   loop: z.boolean().default(false),
+  /**
+   * Ease from the static (bind) pose into the clip over this many frames after `startFrame` —
+   * the graphics→animation transition. 0 = snap straight to the clip's first pose.
+   */
+  blendInFrames: z.number().min(0).default(0),
 });
 
 export const LightSchema = z.object({
@@ -120,7 +125,7 @@ export const LightSchema = z.object({
   groundColor: color.optional(),
 });
 
-/** Scene environment: sky background and (later) fog. */
+/** Scene environment: sky background and distance fog. */
 export const EnvironmentSchema = z.object({
   sky: z
     .object({
@@ -129,6 +134,14 @@ export const EnvironmentSchema = z.object({
       top: color.default([0.35, 0.55, 0.92]),
       /** Gradient: color at the horizon. */
       bottom: color.default([0.72, 0.83, 0.96]),
+    })
+    .optional(),
+  /** Linear distance fog: geometry blends toward `color` between `near` and `far` (camera units). */
+  fog: z
+    .object({
+      color: color.default([0.75, 0.8, 0.85]),
+      near: z.number().default(10),
+      far: z.number().default(50),
     })
     .optional(),
 });
