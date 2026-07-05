@@ -273,14 +273,16 @@ export class LinearBuffer {
 
   /**
    * Rasterize a screen-space triangle with a per-pixel shading callback. Each vertex is
-   * [x, y, ndcZ] plus `ATTRS` interpolated floats (world position, normal, uv); `shade`
-   * receives the interpolated attributes and writes linear RGB into `out`. Interpolation is
-   * affine (screen-space), consistent with the rest of this rasterizer.
+   * [x, y, ndcZ, 1/w] plus `ATTRS` interpolated floats (world position, normal, uv); `shade`
+   * receives the interpolated attributes and writes linear RGB into `out`. Attributes are
+   * perspective-correct: interpolated as attr/w with a per-pixel divide by the interpolated
+   * 1/w, so textures and world positions don't swim on large surfaces at grazing angles.
+   * Depth stays screen-affine (NDC z is already hyperbolic).
    */
   triangleShaded(
-    p0: [number, number, number], a0: ArrayLike<number>,
-    p1: [number, number, number], a1: ArrayLike<number>,
-    p2: [number, number, number], a2: ArrayLike<number>,
+    p0: [number, number, number, number], a0: ArrayLike<number>,
+    p1: [number, number, number, number], a1: ArrayLike<number>,
+    p2: [number, number, number, number], a2: ArrayLike<number>,
     shade: (attrs: Float64Array, out: Vec3) => void,
   ): void {
     const { width, height, rgb, depth } = this;
@@ -296,6 +298,16 @@ export class LinearBuffer {
     const n = a0.length;
     const attrs = SCRATCH_ATTRS.length >= n ? SCRATCH_ATTRS : new Float64Array(n);
     const out: Vec3 = SCRATCH_RGB;
+    // Premultiply attributes by their vertex 1/w once per triangle.
+    const iw0 = p0[3], iw1 = p1[3], iw2 = p2[3];
+    const pa0 = SCRATCH_PA0.length >= n ? SCRATCH_PA0 : new Float64Array(n);
+    const pa1 = SCRATCH_PA1.length >= n ? SCRATCH_PA1 : new Float64Array(n);
+    const pa2 = SCRATCH_PA2.length >= n ? SCRATCH_PA2 : new Float64Array(n);
+    for (let k = 0; k < n; k++) {
+      pa0[k] = a0[k]! * iw0;
+      pa1[k] = a1[k]! * iw1;
+      pa2[k] = a2[k]! * iw2;
+    }
 
     for (let y = minY; y <= maxY; y++) {
       const py = y + 0.5;
@@ -312,7 +324,9 @@ export class LinearBuffer {
         if (z >= depth[di]!) continue;
         depth[di] = z;
 
-        for (let k = 0; k < n; k++) attrs[k] = w0 * a0[k]! + w1 * a1[k]! + w2 * a2[k]!;
+        const iw = w0 * iw0 + w1 * iw1 + w2 * iw2;
+        const rw = iw !== 0 ? 1 / iw : 0;
+        for (let k = 0; k < n; k++) attrs[k] = (w0 * pa0[k]! + w1 * pa1[k]! + w2 * pa2[k]!) * rw;
         shade(attrs, out);
         const p = di * 3;
         rgb[p] = out[0];
@@ -391,6 +405,9 @@ export class LinearBuffer {
 }
 
 const SCRATCH_ATTRS = new Float64Array(16);
+const SCRATCH_PA0 = new Float64Array(16);
+const SCRATCH_PA1 = new Float64Array(16);
+const SCRATCH_PA2 = new Float64Array(16);
 const SCRATCH_RGB: Vec3 = [0, 0, 0];
 
 /**

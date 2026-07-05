@@ -396,13 +396,13 @@ export class SoftwareEngine implements Engine {
         }
       };
 
-      const project = (i: number): [number, number, number] => {
+      const project = (i: number): [number, number, number, number] => {
         const w = b.cw[i]!;
-        return [((b.cx[i]! / w) * 0.5 + 0.5) * hiW, (0.5 - (b.cy[i]! / w) * 0.5) * hiH, b.cz[i]! / w];
+        return [((b.cx[i]! / w) * 0.5 + 0.5) * hiW, (0.5 - (b.cy[i]! / w) * 0.5) * hiH, b.cz[i]! / w, 1 / w];
       };
-      const projectV = (v: number[]): [number, number, number] => {
+      const projectV = (v: number[]): [number, number, number, number] => {
         const w = v[3]!;
-        return [((v[0]! / w) * 0.5 + 0.5) * hiW, (0.5 - (v[1]! / w) * 0.5) * hiH, v[2]! / w];
+        return [((v[0]! / w) * 0.5 + 0.5) * hiW, (0.5 - (v[1]! / w) * 0.5) * hiH, v[2]! / w, 1 / w];
       };
       const attrsOf = (i: number): number[] => {
         const a = [b.wx[i]!, b.wy[i]!, b.wz[i]!, b.nx[i]!, b.ny[i]!, b.nz[i]!];
