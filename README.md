@@ -29,7 +29,8 @@ export default scene({ fps: 30, duration: 90, width: 640, height: 360 })
 ```
 
 That's the whole loop: a `.ts` file in, a reproducible `.mp4` out — no GPU required (the
-default renderer is a pure-TypeScript rasterizer that runs anywhere).
+default renderer is a pure-TypeScript rasterizer that runs anywhere, with per-pixel lighting,
+specular highlights, and supersampled anti-aliasing).
 
 ## Why deterministic?
 
