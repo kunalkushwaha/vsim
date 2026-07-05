@@ -1,5 +1,41 @@
 # Plan — realism roadmap (post PR #2)
 
+> **STATUS (updated after the execution run, PRs #3–#19):** every implementable task below has
+> shipped to `main` through an implement → test → review → merge loop. The table is the source
+> of truth:
+>
+> | Task | Status | PR |
+> |------|--------|----|
+> | R3.1 crossfade | ✅ merged | #3 |
+> | R1.1 bilinear PCF | ✅ merged | #4 |
+> | R1.2 ACES opt-in | ✅ merged | #5 |
+> | R1.3 perspective-correct | ✅ merged | #6 |
+> | R1.4 mipmaps + per-pixel LOD | ✅ merged | #7 |
+> | R1.5 transparency + fill rule | ✅ merged | #8 |
+> | R1.6 point-light cube shadows | ✅ merged | #9 |
+> | R2.1 sun disc + glow | ✅ merged | #10 |
+> | R2.2 sky-derived ambient | ✅ merged | #11 |
+> | R2.3 deterministic particles | ✅ merged | #12 |
+> | R2.4 grass scatter | ✅ merged | #13 |
+> | R3.3 ground-contact IK v1 | ✅ merged | #14 (cross-frame stance lock = follow-up) |
+> | R3.4 spring bones | ✅ merged | #15 |
+> | R3.5 lipsync envelopes | ✅ merged | #16 (viseme ASSETS need Blender, see below) |
+> | R5.1 browser rig loading | ✅ merged | #17 |
+> | R5.2 renderToSink + WebCodecs | ✅ merged | #18 (mux via mp4-muxer in the app) |
+> | R5.3 tiled rendering core | ✅ merged | #19 (worker harness = thin wrapper, below) |
+> | R3.2 PBR-mapped human exports | ⛔ needs Blender locally | run `blender --background --python scripts/blender/make-human.py` after adding normal/roughness bake (renderer already consumes the maps since PR #2's F2 work) |
+> | R4.1/R4.2 Cycles photoreal | ⛔ needs Blender locally | `apps/studio/cycles-bake.ts` already resolves world-space frames through SceneRuntime; run the bake → `blender --background --python apps/studio/cycles-render.mjs`-style pipeline on a machine with Blender |
+> | R4.3 browser path tracer | ⛔ needs GPU/browser | wrap `three-gpu-pathtracer` behind the `Engine` interface; `FrameState` already delivers resolved world matrices + materials |
+> | R5.4 WebGPU preview | ⛔ needs GPU/browser | swap `WebGLRenderer` for `three/webgpu`'s renderer behind `ThreeEngineOptions`; verify visually via `pnpm studio` |
+>
+> **R5.3 worker harness note:** each worker constructs `new SoftwareEngine(w, h, { region: { y0, y1 } })`
+> plus its own `SceneRuntime`, receives the document once and a frame index per frame, and posts back
+> its band rows; the main thread concatenates rows. Stitching is proven byte-identical in
+> `packages/engine-software/src/tiling.test.ts`, so the harness needs no pixel-level testing — only
+> transport. (In dev, workers need compiled dist or a tsx loader; that's why the harness ships with
+> the build tooling rather than this repo state.)
+
+
 *Follow-up to `docs/plan-photoreal.md`. PR #2 landed the draft renderer's realism base:
 per-pixel Lambert + Blinn-Phong specular, 2× supersampled AA, PCF shadow mapping, distance
 fog, the full PBR texture-map pipeline (normal / metallic-roughness / occlusion / emissive),
