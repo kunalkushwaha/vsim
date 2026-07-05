@@ -6,7 +6,10 @@ import { PNG } from "pngjs";
 import { mat4, v3, type Mat4, type MeshData, type Vec3, type Quat, type Clip, type ClipChannel, type Texture } from "@vsim/core";
 
 /** Decode a PNG/JPEG image to RGBA pixels. */
-function decodeImage(bytes: Buffer, mime: string): Texture {
+function decodeImage(raw: Uint8Array, mime: string): Texture {
+  // pngjs/jpeg-js want Buffer; wrap only when needed (Node). Browser texture decoding is the
+  // caller's concern until a fetch-based image path lands — geometry/clips parse fine without.
+  const bytes = typeof Buffer !== "undefined" && !(raw instanceof Buffer) ? Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength) : (raw as Buffer);
   if (mime === "image/png") {
     const png = PNG.sync.read(bytes);
     return { width: png.width, height: png.height, data: new Uint8Array(png.data) };
@@ -19,16 +22,16 @@ function decodeImage(bytes: Buffer, mime: string): Texture {
 }
 
 /** Load + decode a glTF image (by index) from a GLB bufferView or a data: URI. */
-function loadImage(json: any, buffers: Buffer[], imageIndex: number): Texture | undefined {
+function loadImage(json: any, buffers: Uint8Array[], imageIndex: number): Texture | undefined {
   const img = json.images?.[imageIndex];
   if (!img) return undefined;
-  let bytes: Buffer;
+  let bytes: Uint8Array;
   if (img.bufferView != null) {
     const bv = json.bufferViews[img.bufferView];
     const base = bv.byteOffset ?? 0;
     bytes = buffers[bv.buffer]!.subarray(base, base + bv.byteLength);
   } else if (typeof img.uri === "string" && img.uri.startsWith("data:")) {
-    bytes = Buffer.from(img.uri.split(",")[1]!, "base64");
+    bytes = bytesFromBase64(img.uri.split(",")[1]!);
   } else {
     return undefined; // external file URIs unsupported here
   }
@@ -36,14 +39,14 @@ function loadImage(json: any, buffers: Buffer[], imageIndex: number): Texture | 
 }
 
 /** The base-color texture for a primitive's material, if any. */
-function texRef(json: any, buffers: Buffer[], ref: any): Texture | undefined {
+function texRef(json: any, buffers: Uint8Array[], ref: any): Texture | undefined {
   if (!ref) return undefined;
   const source = json.textures?.[ref.index]?.source;
   return source == null ? undefined : loadImage(json, buffers, source);
 }
 
 /** All PBR maps on a primitive's glTF material: base colour + normal/metal-rough/occlusion/emissive. */
-function primitiveMaps(json: any, buffers: Buffer[], prim: any) {
+function primitiveMaps(json: any, buffers: Uint8Array[], prim: any) {
   const m = json.materials?.[prim.material];
   const pbr = m?.pbrMetallicRoughness ?? {};
   return {
@@ -169,7 +172,7 @@ export async function loadVrm(path: string, fps: number): Promise<VrmAvatar> {
 const VALID_INTERP = new Set(["linear", "step", "cubicspline"]);
 const jointIdOf = (json: any, idx: number): string => `${json.nodes[idx]?.name ?? "joint"}_${idx}`;
 
-function parseRig(json: any, buffers: Buffer[], fps: number): RiggedGltf {
+function parseRig(json: any, buffers: Uint8Array[], fps: number): RiggedGltf {
   // Every node with both `mesh` and `skin` is skinned geometry: the body plus any garments. They
   // share one skeleton, so the first node's skin defines the joints; other meshes' JOINTS_0 are
   // remapped into that order by joint id (robust even if MPFB emits a separate skin per garment).
@@ -319,15 +322,16 @@ export async function loadCharacter(id: string, fps: number): Promise<{ rig: Rig
   return { rig, meta };
 }
 
-function parseGLB(buf: Buffer): { json: any; glbBin?: Buffer } {
+function parseGLB(buf: Uint8Array): { json: any; glbBin?: Uint8Array } {
+  const v = viewOf(buf);
   let off = 12;
   let json: any;
-  let glbBin: Buffer | undefined;
+  let glbBin: Uint8Array | undefined;
   while (off + 8 <= buf.length) {
-    const len = buf.readUInt32LE(off);
-    const type = buf.readUInt32LE(off + 4);
+    const len = v.getUint32(off, true);
+    const type = v.getUint32(off + 4, true);
     const data = buf.subarray(off + 8, off + 8 + len);
-    if (type === 0x4e4f534a) json = JSON.parse(data.toString("utf8")); // "JSON"
+    if (type === 0x4e4f534a) json = JSON.parse(new TextDecoder().decode(data)); // "JSON"
     else if (type === 0x004e4942) glbBin = data; // "BIN\0"
     off += 8 + len;
   }
@@ -335,10 +339,51 @@ function parseGLB(buf: Buffer): { json: any; glbBin?: Buffer } {
   return { json, glbBin };
 }
 
-async function loadBuffers(json: any, glbBin: Buffer | undefined, baseDir: string): Promise<Buffer[]> {
-  const out: Buffer[] = [];
+/** Base64 → bytes without assuming Node (Buffer in Node, atob in browsers). */
+function bytesFromBase64(b64: string): Uint8Array {
+  if (typeof Buffer !== "undefined") return Buffer.from(b64, "base64");
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Is this a binary GLB container (magic "glTF")? */
+function isGlbData(data: Uint8Array): boolean {
+  return data.byteLength >= 4 && viewOf(data).getUint32(0, true) === 0x46546c67;
+}
+
+/**
+ * Parse a rigged glTF/GLB from raw bytes — no filesystem, runs in the BROWSER as well as Node.
+ * Buffers must be embedded (GLB BIN chunk or data: URIs); external .bin file references throw,
+ * since there is no directory to resolve them against. All bundled library characters are
+ * self-contained GLBs, so this covers the browser character-loading path (R5.1).
+ */
+export function parseGltfRigData(data: ArrayBuffer | Uint8Array, fps: number): RiggedGltf {
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+  const { json, glbBin } = isGlbData(bytes)
+    ? parseGLB(bytes)
+    : { json: JSON.parse(new TextDecoder().decode(bytes)), glbBin: undefined };
+  const buffers: Uint8Array[] = [];
   for (const b of json.buffers ?? []) {
-    if (!b.uri) out.push(glbBin ?? Buffer.alloc(0));
+    if (!b.uri) buffers.push(glbBin ?? new Uint8Array(0));
+    else if (b.uri.startsWith("data:")) buffers.push(bytesFromBase64(b.uri.split(",")[1]));
+    else throw new Error(`parseGltfRigData: external buffer URI '${b.uri}' — pass a self-contained GLB or load via loadGltfRig(path)`);
+  }
+  return parseRig(json, buffers, fps);
+}
+
+/** Fetch a self-contained rigged GLB over HTTP(S) and parse it — the browser loader. */
+export async function loadRigFromUrl(url: string, fps: number): Promise<RiggedGltf> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`loadRigFromUrl: ${res.status} ${res.statusText} for ${url}`);
+  return parseGltfRigData(await res.arrayBuffer(), fps);
+}
+
+async function loadBuffers(json: any, glbBin: Uint8Array | undefined, baseDir: string): Promise<Uint8Array[]> {
+  const out: Uint8Array[] = [];
+  for (const b of json.buffers ?? []) {
+    if (!b.uri) out.push(glbBin ?? new Uint8Array(0));
     else if (b.uri.startsWith("data:")) out.push(Buffer.from(b.uri.split(",")[1], "base64"));
     else out.push(await readFile(resolve(baseDir, decodeURIComponent(b.uri))));
   }
@@ -356,7 +401,7 @@ function nodeMatrix(node: any): Mat4 {
 const COMP_SIZE: Record<number, number> = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 };
 const NUM_COMP: Record<string, number> = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
 
-function readAccessor(json: any, buffers: Buffer[], index: number): number[] {
+function readAccessor(json: any, buffers: Uint8Array[], index: number): number[] {
   const acc = json.accessors[index];
   const view = json.bufferViews[acc.bufferView];
   const buffer = buffers[view.buffer]!;
@@ -375,19 +420,35 @@ function readAccessor(json: any, buffers: Buffer[], index: number): number[] {
   return out;
 }
 
-function readComp(buf: Buffer, p: number, compType: number): number {
+/** DataView over a Uint8Array (Buffer included — it IS a Uint8Array), respecting its window. */
+function viewOf(buf: Uint8Array): DataView {
+  return new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+}
+
+const viewCache = new WeakMap<Uint8Array, DataView>();
+function cachedView(buf: Uint8Array): DataView {
+  let v = viewCache.get(buf);
+  if (!v) {
+    v = viewOf(buf);
+    viewCache.set(buf, v);
+  }
+  return v;
+}
+
+function readComp(buf: Uint8Array, p: number, compType: number): number {
+  const v = cachedView(buf);
   switch (compType) {
-    case 5126: return buf.readFloatLE(p);
-    case 5125: return buf.readUInt32LE(p);
-    case 5123: return buf.readUInt16LE(p);
-    case 5121: return buf.readUInt8(p);
-    case 5122: return buf.readInt16LE(p);
-    case 5120: return buf.readInt8(p);
+    case 5126: return v.getFloat32(p, true);
+    case 5125: return v.getUint32(p, true);
+    case 5123: return v.getUint16(p, true);
+    case 5121: return v.getUint8(p);
+    case 5122: return v.getInt16(p, true);
+    case 5120: return v.getInt8(p);
     default: throw new Error(`glTF: unsupported componentType ${compType}`);
   }
 }
 
-function appendMesh(json: any, buffers: Buffer[], mesh: any, world: Mat4, merged: MeshData): void {
+function appendMesh(json: any, buffers: Uint8Array[], mesh: any, world: Mat4, merged: MeshData): void {
   for (const prim of mesh.primitives ?? []) {
     if (prim.attributes?.POSITION == null) continue;
     const pos = readAccessor(json, buffers, prim.attributes.POSITION);
