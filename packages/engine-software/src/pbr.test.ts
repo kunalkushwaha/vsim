@@ -135,6 +135,58 @@ describe("PBR texture maps (software renderer)", () => {
     expect(gaps[gaps.length - 1]!).toBeLessThan(gaps[0]!); // genuine hyperbolic compression
   });
 
+  it("mipmaps: a distant high-frequency checker converges to grey instead of aliasing", () => {
+    // A deep floor tiled with a fine checker (uv wraps 16×). Near the camera the pattern shows
+    // real contrast (base mip); far away, one pixel spans many texels — with trilinear mips the
+    // samples average toward mid-grey, without them adjacent pixels alias to random extremes.
+    const checker = { width: 32, height: 32, data: new Uint8Array(32 * 32 * 4) };
+    for (let y = 0; y < 32; y++)
+      for (let x = 0; x < 32; x++) {
+        const on = (x + y) % 2 ? 255 : 0;
+        checker.data.set([on, on, on, 255], (y * 32 + x) * 4);
+      }
+    const floor: MeshData = {
+      positions: [-6, 0, 0, 6, 0, 0, 6, 0, -60, -6, 0, -60],
+      normals: [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0],
+      uvs: [0, 0, 3, 0, 3, 16, 0, 16], // ≈isotropic texel density on the 12×60 quad
+      indices: [0, 1, 2, 0, 2, 3],
+      texture: checker,
+    };
+    const doc = parseDocument({
+      meta: { durationFrames: 1, width: 48, height: 64, background: [0, 0, 1] },
+      materials: [{ id: "m", color: [1, 1, 1] }],
+      nodes: [
+        { id: "floor", mesh: { geometry: { kind: "box" }, materialId: "m" } },
+        { id: "amb", light: { type: "ambient", intensity: 1 } },
+        { id: "__camera", position: [0, 1.2, 2.5] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, -8], fov: 50 },
+    });
+    const eng = new SoftwareEngine(48, 64, { supersample: 1 });
+    eng.init(doc);
+    eng.loadMesh("floor", floor);
+    eng.renderFrame(new SceneRuntime(doc).computeFrameState(0));
+    const px = eng.readPixels();
+    const row = (y: number) => {
+      const vals: number[] = [];
+      for (let x = 12; x < 36; x++) {
+        const p = (y * 48 + x) * 4;
+        if (!(px[p + 2] === 255 && px[p]! < 40)) vals.push(px[p]!);
+      }
+      return vals;
+    };
+    // Find the topmost (farthest) floor row and a near row.
+    let farY = 0;
+    while (farY < 64 && row(farY).length < 12) farY++;
+    const far = row(farY + 1);
+    const near = row(60).length ? row(60) : row(50);
+    const spread = (v: number[]) => Math.max(...v) - Math.min(...v);
+    // Far band: heavy minification → mips average the checker out; spread collapses.
+    expect(spread(far)).toBeLessThan(80);
+    // Near band: base mip keeps real black↔white contrast.
+    expect(spread(near)).toBeGreaterThan(150);
+  });
+
   it("is deterministic with all maps active", () => {
     const maps = {
       texture: texel(200, 150, 100),

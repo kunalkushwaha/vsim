@@ -3,7 +3,7 @@ import {
   type Engine, type FrameState, type SceneDocument,
   type Material, type MeshData, type ResolvedLight, type ResolvedNode, type Vec3,
 } from "@vsim/core";
-import { Framebuffer, LinearBuffer, DepthMap, sampleTexel } from "./raster.js";
+import { Framebuffer, LinearBuffer, DepthMap, sampleTexel, sampleTexelLod, buildMips } from "./raster.js";
 import { compositeOverlays } from "./overlay.js";
 
 const DEFAULT_MATERIAL: Material = {
@@ -219,6 +219,7 @@ export class SoftwareEngine implements Engine {
   private shadowMap: DepthMap;
   private meshes = new Map<string, MeshData>();
   private tangentCache = new WeakMap<MeshData, Float32Array>();
+  private mipCache = new WeakMap<object, ReturnType<typeof buildMips>>();
 
   constructor(width: number, height: number, opts: SoftwareEngineOptions = {}) {
     this.width = width;
@@ -239,6 +240,16 @@ export class SoftwareEngine implements Engine {
   /** Inject mesh data for a node (e.g. a loaded glTF mesh). */
   loadMesh(nodeId: string, data: MeshData): void {
     this.meshes.set(nodeId, data);
+  }
+
+  /** Mip chain for a texture, built once and cached by texture identity. */
+  private mipsOf(tex: { width: number; height: number; data: Uint8Array }) {
+    let mips = this.mipCache.get(tex);
+    if (!mips) {
+      mips = buildMips(tex);
+      this.mipCache.set(tex, mips);
+    }
+    return mips;
   }
 
   renderFrame(state: FrameState): void {
@@ -331,9 +342,20 @@ export class SoftwareEngine implements Engine {
       const tex = md.texture, nrmMap = md.normalMap, mrMap = md.metallicRoughnessMap;
       const aoMap = md.occlusionMap, emiMap = md.emissiveMap;
       const hasTangents = b.tx !== undefined;
-      // Attr layout: [wx,wy,wz, nx,ny,nz] + [u,v]? + [tx,ty,tz,tw]?
+      // Mip chains for the color maps (albedo/emissive) — the ones where minification shimmer
+      // is visible. Data maps (normal/MR/AO) sample base level. LOD is chosen per triangle
+      // from the texel-to-pixel area ratio and blended trilinearly between levels.
+      const albMips = tex ? this.mipsOf(tex) : undefined;
+      const emiMips = emiMap ? this.mipsOf(emiMap) : undefined;
+      const albDim = tex ? Math.max(tex.width, tex.height) : 0;
+      const emiDim = emiMap ? Math.max(emiMap.width, emiMap.height) : 0;
+      const wantLod = (albMips?.length ?? 1) > 1 || (emiMips?.length ?? 1) > 1;
+      // Attr layout: [wx,wy,wz, nx,ny,nz] + [u,v]? + [tx,ty,tz,tw]?; the rasterizer appends
+      // the per-pixel UV footprint (uv units/pixel) one slot past the attrs when requested.
+      const attrCount = 6 + (useUV ? 2 : 0) + (hasTangents ? 4 : 0);
       const shadePx = (a: Float64Array, out: Vec3): void => {
         const u = useUV ? a[6]! : 0, v = useUV ? a[7]! : 0;
+        const rho = wantLod ? a[attrCount]! : 0;
 
         // Geometric normal, renormalized after interpolation.
         let nX = a[3]!, nY = a[4]!, nZ = a[5]!;
@@ -363,8 +385,9 @@ export class SoftwareEngine implements Engine {
         }
 
         let albR: number, albG: number, albB: number;
-        if (tex) {
-          const alb = sampleTexel(tex, u, v, true);
+        if (albMips) {
+          const lod = rho > 0 ? Math.log2(Math.max(rho * albDim, 1)) : 0;
+          const alb = sampleTexelLod(albMips, u, v, lod, true);
           albR = alb[0]; albG = alb[1]; albB = alb[2];
         } else {
           albR = material.color[0]; albG = material.color[1]; albB = material.color[2];
@@ -378,8 +401,9 @@ export class SoftwareEngine implements Engine {
         }
         const ao = aoMap ? sampleTexel(aoMap, u, v, false)[0] : 1;
         let emiR = material.emissive[0], emiG = material.emissive[1], emiB = material.emissive[2];
-        if (emiMap) {
-          const em = sampleTexel(emiMap, u, v, true);
+        if (emiMips) {
+          const lod = rho > 0 ? Math.log2(Math.max(rho * emiDim, 1)) : 0;
+          const em = sampleTexelLod(emiMips, u, v, lod, true);
           emiR = em[0]; emiG = em[1]; emiB = em[2];
         }
 
@@ -418,7 +442,8 @@ export class SoftwareEngine implements Engine {
 
         if (ain && bin && cin) {
           // Fully in front: project directly.
-          this.hi.triangleShaded(project(a), attrsOf(a), project(b2), attrsOf(b2), project(c), attrsOf(c), shadePx);
+          const uvIdx = useUV && wantLod ? 6 : -1;
+          this.hi.triangleShaded(project(a), attrsOf(a), project(b2), attrsOf(b2), project(c), attrsOf(c), shadePx, uvIdx);
           continue;
         }
         if (!ain && !bin && !cin) continue; // wholly behind the near plane
@@ -428,11 +453,12 @@ export class SoftwareEngine implements Engine {
         const poly = clipNear([vert(a), vert(b2), vert(c)]);
         for (let k = 1; k + 1 < poly.length; k++) {
           const v0 = poly[0]!, v1 = poly[k]!, v2 = poly[k + 1]!;
+          const uvIdx = useUV && wantLod ? 6 : -1;
           this.hi.triangleShaded(
             projectV(v0), v0.slice(4),
             projectV(v1), v1.slice(4),
             projectV(v2), v2.slice(4),
-            shadePx,
+            shadePx, uvIdx,
           );
         }
       }
