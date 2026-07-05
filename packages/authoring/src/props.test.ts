@@ -43,6 +43,30 @@ describe("prop builders", () => {
     expect(build()).toEqual(doc);
   });
 
+  it("grass() scatters deterministic blades inside the area as two tone meshes", () => {
+    const build = () =>
+      scene({ fps: 30, duration: 1, width: 16, height: 16 })
+        .grass("lawn", { area: [8, 6], count: 100, height: 0.4 })
+        .camera({ position: [0, 1, 5], lookAt: [0, 0, 0] })
+        .build();
+    const doc = build();
+    const meshes = ["lawn__blades", "lawn__blades_dark"].map((id) => doc.nodes.find((n) => n.id === id)!);
+    let blades = 0;
+    for (const m of meshes) {
+      const data = (m.mesh!.geometry as { kind: "mesh"; data: { positions: number[]; indices: number[] } }).data;
+      blades += data.indices.length / 6; // two triangles per blade
+      for (let v = 0; v < data.positions.length / 3; v++) {
+        const x = data.positions[v * 3]!, y = data.positions[v * 3 + 1]!, z = data.positions[v * 3 + 2]!;
+        expect(Math.abs(x)).toBeLessThanOrEqual(4.3); // inside area (+lean margin)
+        expect(Math.abs(z)).toBeLessThanOrEqual(3.3);
+        expect(y).toBeGreaterThanOrEqual(0);
+        expect(y).toBeLessThanOrEqual(0.4);
+      }
+    }
+    expect(blades).toBe(100);
+    expect(build()).toEqual(doc); // hashed variation, no randomness
+  });
+
   it("rock() sits on the ground (lifted by its squashed radius)", () => {
     const doc = scene({ fps: 30, duration: 1, width: 16, height: 16 })
       .rock("r0", { position: [0, 0, 0], radius: 0.5 })
