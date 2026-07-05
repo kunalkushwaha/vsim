@@ -1,9 +1,9 @@
 import {
   mat4, v3, tessellate, skinningMatrix,
   type Engine, type FrameState, type SceneDocument,
-  type Material, type MeshData, type ResolvedLight, type Vec3,
+  type Material, type MeshData, type ResolvedLight, type ResolvedNode, type Vec3,
 } from "@vsim/core";
-import { Framebuffer, LinearBuffer, sampleAlbedo } from "./raster.js";
+import { Framebuffer, LinearBuffer, DepthMap, sampleAlbedo } from "./raster.js";
 import { compositeOverlays } from "./overlay.js";
 
 const DEFAULT_MATERIAL: Material = {
@@ -17,6 +17,8 @@ const DEFAULT_MATERIAL: Material = {
 
 /** Clip-space w below this is at/behind the camera; the near plane sits just in front of it. */
 const W_NEAR = 1e-5;
+
+const SHADOW_MAP_SIZE = 1024;
 
 /**
  * Sutherland–Hodgman clip of a convex clip-space polygon against the near plane `w = W_NEAR`.
@@ -42,32 +44,130 @@ function clipNear(poly: number[][]): number[][] {
   return out;
 }
 
+/** One mesh's per-frame vertex data: world positions/normals (skinning + morphs applied) etc. */
+interface MeshBatch {
+  node: ResolvedNode;
+  md: MeshData;
+  material: Material;
+  textured: boolean;
+  wx: Float64Array; wy: Float64Array; wz: Float64Array;
+  nx: Float64Array; ny: Float64Array; nz: Float64Array;
+  cx: Float64Array; cy: Float64Array; cz: Float64Array; cw: Float64Array;
+  cu?: Float64Array; cv?: Float64Array;
+}
+
+/**
+ * Directional-light shadow context: an orthographic light-space depth map fitted to the frame's
+ * world-space geometry. `factor` returns how lit a world point is (0 = fully shadowed, 1 = lit)
+ * using a 3×3 PCF kernel and a slope-scaled depth bias.
+ */
+interface ShadowContext {
+  factor(wpx: number, wpy: number, wpz: number, lambert: number): number;
+}
+
+function buildShadow(sun: ResolvedLight, batches: MeshBatch[], map: DepthMap): ShadowContext | undefined {
+  // Planes are ground/backdrop: they RECEIVE shadows but don't cast them. Excluding them keeps
+  // the map bounds tight around the actual objects (a big ground plane would blow the texel
+  // size up ~10× and turn every shadow edge into blocks). Points outside the map sample as lit.
+  const casters = batches.filter((b) => b.node.mesh?.geometry.kind !== "plane");
+  if (casters.length === 0) return undefined;
+
+  // Orthonormal light basis: f along the light's travel direction, r/u spanning the map plane.
+  const f = v3.normalize(sun.direction);
+  const helper: Vec3 = Math.abs(f[1]) < 0.95 ? [0, 1, 0] : [1, 0, 0];
+  const r = v3.normalize(v3.cross(helper, f));
+  const u = v3.cross(f, r);
+
+  // Fit light-space bounds over caster vertices (deterministic; no temporal stabilization needed).
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const b of casters) {
+    const n = b.wx.length;
+    for (let i = 0; i < n; i++) {
+      const x = b.wx[i]!, y = b.wy[i]!, z = b.wz[i]!;
+      const lx = x * r[0] + y * r[1] + z * r[2];
+      const ly = x * u[0] + y * u[1] + z * u[2];
+      const lz = x * f[0] + y * f[1] + z * f[2];
+      if (lx < minX) minX = lx; if (lx > maxX) maxX = lx;
+      if (ly < minY) minY = ly; if (ly > maxY) maxY = ly;
+      if (lz < minZ) minZ = lz; if (lz > maxZ) maxZ = lz;
+    }
+  }
+  if (!Number.isFinite(minX)) return undefined;
+  const size = map.size;
+  const padXY = Math.max(maxX - minX, maxY - minY) * 0.01 + 1e-4;
+  minX -= padXY; maxX += padXY; minY -= padXY; maxY += padXY;
+  const spanX = maxX - minX, spanY = maxY - minY, spanZ = Math.max(maxZ - minZ, 1e-4);
+  const sx = size / spanX, sy = size / spanY;
+
+  map.clear();
+  for (const b of casters) {
+    const idx = b.md.indices;
+    const px = (i: number) => (b.wx[i]! * r[0] + b.wy[i]! * r[1] + b.wz[i]! * r[2] - minX) * sx;
+    const py = (i: number) => (b.wx[i]! * u[0] + b.wy[i]! * u[1] + b.wz[i]! * u[2] - minY) * sy;
+    const pz = (i: number) => (b.wx[i]! * f[0] + b.wy[i]! * f[1] + b.wz[i]! * f[2] - minZ) / spanZ;
+    for (let t = 0; t < idx.length; t += 3) {
+      const a = idx[t]!, bb = idx[t + 1]!, c = idx[t + 2]!;
+      map.triangle(px(a), py(a), pz(a), px(bb), py(bb), pz(bb), px(c), py(c), pz(c));
+    }
+  }
+
+  const data = map.data;
+  return {
+    factor(wpx, wpy, wpz, lambert) {
+      const lx = (wpx * r[0] + wpy * r[1] + wpz * r[2] - minX) * sx;
+      const ly = (wpx * u[0] + wpy * u[1] + wpz * u[2] - minY) * sy;
+      const lz = (wpx * f[0] + wpy * f[1] + wpz * f[2] - minZ) / spanZ;
+      const ix = Math.floor(lx), iy = Math.floor(ly);
+      // Slope-scaled bias in normalized depth: steeper grazing angles need more to avoid acne.
+      const bias = 0.004 + 0.014 * (1 - lambert);
+      let lit = 0, taps = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = iy + dy;
+        if (yy < 0 || yy >= size) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = ix + dx;
+          if (xx < 0 || xx >= size) continue;
+          taps++;
+          if (lz - bias <= data[yy * size + xx]!) lit++;
+        }
+      }
+      return taps === 0 ? 1 : lit / taps;
+    },
+  };
+}
+
 export interface SoftwareEngineOptions {
   /**
    * Supersampling factor: the frame is shaded at N× resolution in linear space and box-filtered
    * down (anti-aliasing). 1 disables it. Default 2 — 4 shaded samples per output pixel.
    */
   supersample?: number;
+  /** Disable the directional-light shadow map (on by default). */
+  shadows?: boolean;
 }
 
 /**
  * Pure-TypeScript reference renderer. No GPU, no native deps — runs identically everywhere,
  * which makes it the determinism oracle and the default headless renderer. Per-pixel lighting
- * (Lambert diffuse + Blinn-Phong specular driven by material roughness/metalness), supersampled
- * anti-aliasing, and a z-buffer.
+ * (Lambert diffuse + Blinn-Phong specular driven by material roughness/metalness), PCF shadow
+ * mapping for the first directional light, linear distance fog, supersampled anti-aliasing,
+ * and a z-buffer.
  */
 export class SoftwareEngine implements Engine {
   readonly width: number;
   readonly height: number;
   readonly supersample: number;
+  readonly shadows: boolean;
   private hi: LinearBuffer; // hi-res linear-space target: all 3D shading lands here
   private fb: Framebuffer; // output-res gamma-space target: resolve + overlays
+  private shadowMap = new DepthMap(SHADOW_MAP_SIZE);
   private meshes = new Map<string, MeshData>();
 
   constructor(width: number, height: number, opts: SoftwareEngineOptions = {}) {
     this.width = width;
     this.height = height;
     this.supersample = Math.max(1, Math.floor(opts.supersample ?? 2));
+    this.shadows = opts.shadows ?? true;
     this.hi = new LinearBuffer(width, height, this.supersample);
     this.fb = new Framebuffer(width, height);
   }
@@ -91,7 +191,10 @@ export class SoftwareEngine implements Engine {
     const hiH = this.hi.height;
     const toon = state.style === "manga";
     const cam = state.camera.position;
+    const fog = state.fog;
 
+    // ---- pass 1: transform every mesh's vertices once (morphs + skinning + world + clip) ----
+    const batches: MeshBatch[] = [];
     for (const node of state.nodes) {
       if (!node.mesh) continue;
       const md = this.meshes.get(node.id);
@@ -99,18 +202,9 @@ export class SoftwareEngine implements Engine {
       const material = node.material ?? DEFAULT_MATERIAL;
       const vcount = md.positions.length / 3;
 
-      // Clip-space coords (pre-divide) + world-space position/normal per vertex, kept so
-      // triangles straddling the near plane can be clipped rather than dropped.
-      const cx = new Float64Array(vcount);
-      const cy = new Float64Array(vcount);
-      const cz = new Float64Array(vcount);
-      const cw = new Float64Array(vcount);
-      const wx = new Float64Array(vcount);
-      const wy = new Float64Array(vcount);
-      const wz = new Float64Array(vcount);
-      const nx = new Float64Array(vcount);
-      const ny = new Float64Array(vcount);
-      const nz = new Float64Array(vcount);
+      const wx = new Float64Array(vcount), wy = new Float64Array(vcount), wz = new Float64Array(vcount);
+      const nx = new Float64Array(vcount), ny = new Float64Array(vcount), nz = new Float64Array(vcount);
+      const cx = new Float64Array(vcount), cy = new Float64Array(vcount), cz = new Float64Array(vcount), cw = new Float64Array(vcount);
       const textured = md.texture !== undefined && md.uvs !== undefined;
       const cu = textured ? new Float64Array(vcount) : undefined;
       const cv = textured ? new Float64Array(vcount) : undefined;
@@ -142,12 +236,20 @@ export class SoftwareEngine implements Engine {
           cu![i] = md.uvs![i * 2]!;
           cv![i] = md.uvs![i * 2 + 1]!;
         }
-
         const clip = mat4.transformPoint(viewProj, [wp4[0], wp4[1], wp4[2]]);
         cx[i] = clip[0]; cy[i] = clip[1]; cz[i] = clip[2]; cw[i] = clip[3];
       }
 
-      // Per-pixel shader for this mesh: attrs = [wx,wy,wz, nx,ny,nz, (u,v)] interpolated.
+      batches.push({ node, md, material, textured, wx, wy, wz, nx, ny, nz, cx, cy, cz, cw, cu, cv });
+    }
+
+    // ---- pass 2: shadow map for the first directional light (all meshes cast + receive) ----
+    const sun = this.shadows ? state.lights.find((l) => l.type === "directional") : undefined;
+    const shadow = sun ? buildShadow(sun, batches, this.shadowMap) : undefined;
+
+    // ---- pass 3: shade + rasterize ----
+    for (const b of batches) {
+      const { md, material, textured } = b;
       const tex = md.texture;
       const shadePx = (a: Float64Array, out: Vec3): void => {
         let albR: number, albG: number, albB: number;
@@ -157,12 +259,22 @@ export class SoftwareEngine implements Engine {
         } else {
           albR = material.color[0]; albG = material.color[1]; albB = material.color[2];
         }
-        shadePixel(a[0]!, a[1]!, a[2]!, a[3]!, a[4]!, a[5]!, albR, albG, albB, material, state.lights, cam, toon, out);
+        shadePixel(a[0]!, a[1]!, a[2]!, a[3]!, a[4]!, a[5]!, albR, albG, albB, material, state.lights, cam, toon, sun, shadow, out);
+        if (fog) {
+          const dx = a[0]! - cam[0], dy = a[1]! - cam[1], dz = a[2]! - cam[2];
+          const t = (Math.sqrt(dx * dx + dy * dy + dz * dz) - fog.near) / (fog.far - fog.near);
+          if (t > 0) {
+            const k = t >= 1 ? 1 : t;
+            out[0] += (fog.color[0] - out[0]) * k;
+            out[1] += (fog.color[1] - out[1]) * k;
+            out[2] += (fog.color[2] - out[2]) * k;
+          }
+        }
       };
 
       const project = (i: number): [number, number, number] => {
-        const w = cw[i]!;
-        return [((cx[i]! / w) * 0.5 + 0.5) * hiW, (0.5 - (cy[i]! / w) * 0.5) * hiH, cz[i]! / w];
+        const w = b.cw[i]!;
+        return [((b.cx[i]! / w) * 0.5 + 0.5) * hiW, (0.5 - (b.cy[i]! / w) * 0.5) * hiH, b.cz[i]! / w];
       };
       const projectV = (v: number[]): [number, number, number] => {
         const w = v[3]!;
@@ -170,24 +282,24 @@ export class SoftwareEngine implements Engine {
       };
       const attrsOf = (i: number): number[] =>
         textured
-          ? [wx[i]!, wy[i]!, wz[i]!, nx[i]!, ny[i]!, nz[i]!, cu![i]!, cv![i]!]
-          : [wx[i]!, wy[i]!, wz[i]!, nx[i]!, ny[i]!, nz[i]!];
+          ? [b.wx[i]!, b.wy[i]!, b.wz[i]!, b.nx[i]!, b.ny[i]!, b.nz[i]!, b.cu![i]!, b.cv![i]!]
+          : [b.wx[i]!, b.wy[i]!, b.wz[i]!, b.nx[i]!, b.ny[i]!, b.nz[i]!];
 
       const idx = md.indices;
       for (let t = 0; t < idx.length; t += 3) {
-        const a = idx[t]!, b = idx[t + 1]!, c = idx[t + 2]!;
-        const ain = cw[a]! >= W_NEAR, bin = cw[b]! >= W_NEAR, cin = cw[c]! >= W_NEAR;
+        const a = idx[t]!, b2 = idx[t + 1]!, c = idx[t + 2]!;
+        const ain = b.cw[a]! >= W_NEAR, bin = b.cw[b2]! >= W_NEAR, cin = b.cw[c]! >= W_NEAR;
 
         if (ain && bin && cin) {
           // Fully in front: project directly.
-          this.hi.triangleShaded(project(a), attrsOf(a), project(b), attrsOf(b), project(c), attrsOf(c), shadePx);
+          this.hi.triangleShaded(project(a), attrsOf(a), project(b2), attrsOf(b2), project(c), attrsOf(c), shadePx);
           continue;
         }
         if (!ain && !bin && !cin) continue; // wholly behind the near plane
 
         // Straddles the near plane: clip to a polygon, then fan-triangulate the visible part.
-        const vert = (i: number): number[] => [cx[i]!, cy[i]!, cz[i]!, cw[i]!, ...attrsOf(i)];
-        const poly = clipNear([vert(a), vert(b), vert(c)]);
+        const vert = (i: number): number[] => [b.cx[i]!, b.cy[i]!, b.cz[i]!, b.cw[i]!, ...attrsOf(i)];
+        const poly = clipNear([vert(a), vert(b2), vert(c)]);
         for (let k = 1; k + 1 < poly.length; k++) {
           const v0 = poly[0]!, v1 = poly[k]!, v2 = poly[k + 1]!;
           this.hi.triangleShaded(
@@ -225,14 +337,16 @@ function bandLambert(x: number): number {
  * Per-pixel shading in linear space: emissive + per-light Lambert diffuse, plus a Blinn-Phong
  * specular lobe for directional/point lights driven by the material's roughness (lobe width via
  * a Beckmann-style exponent) and metalness (F0 = 4% dielectric → albedo-tinted metal; metals
- * lose direct diffuse). Ambient/hemisphere terms are diffuse-only, unchanged from the classic
- * path. Manga (toon) mode keeps the banded, specular-free cel look.
+ * lose direct diffuse). The first directional light (`sun`) is attenuated by the PCF shadow
+ * factor when a shadow map is present. Ambient/hemisphere terms are diffuse-only. Manga (toon)
+ * mode keeps the banded, specular-free cel look — with hard-thresholded shadows to match.
  */
 function shadePixel(
   px: number, py: number, pz: number,
   nxr: number, nyr: number, nzr: number,
   albR: number, albG: number, albB: number,
-  mat: Material, lights: ResolvedLight[], cam: Vec3, toon: boolean, out: Vec3,
+  mat: Material, lights: ResolvedLight[], cam: Vec3, toon: boolean,
+  sun: ResolvedLight | undefined, shadow: ShadowContext | undefined, out: Vec3,
 ): void {
   // Renormalize the interpolated normal.
   const nl = Math.sqrt(nxr * nxr + nyr * nyr + nzr * nzr) || 1;
@@ -284,15 +398,24 @@ function shadePixel(
     }
     let lambert = nX * lX + nY * lY + nZ * lZ;
     if (lambert <= 0) continue;
+
+    // Shadow: only the mapped sun light is attenuated. Toon thresholds to a hard cel shadow.
+    let vis = 1;
+    if (shadow && light === sun) {
+      vis = shadow.factor(px, py, pz, lambert);
+      if (toon) vis = vis < 0.5 ? 0 : 1;
+      if (vis === 0) continue;
+    }
+
     if (toon) {
       // Cel shading: banded diffuse, no specular.
-      const f = bandLambert(lambert) * light.intensity;
+      const f = bandLambert(lambert) * light.intensity * vis;
       r += albR * light.color[0] * f;
       g += albG * light.color[1] * f;
       b += albB * light.color[2] * f;
       continue;
     }
-    const diff = lambert * light.intensity * kd;
+    const diff = lambert * light.intensity * kd * vis;
     r += albR * light.color[0] * diff;
     g += albG * light.color[1] * diff;
     b += albB * light.color[2] * diff;
@@ -304,7 +427,7 @@ function shadePixel(
     hX /= hl; hY /= hl; hZ /= hl;
     const ndh = nX * hX + nY * hY + nZ * hZ;
     if (ndh <= 0) continue;
-    const s = Math.pow(ndh, specExp) * specNorm * lambert * light.intensity;
+    const s = Math.pow(ndh, specExp) * specNorm * lambert * light.intensity * vis;
     r += f0r * light.color[0] * s;
     g += f0g * light.color[1] * s;
     b += f0b * light.color[2] * s;
@@ -314,5 +437,5 @@ function shadePixel(
   out[2] = b;
 }
 
-export { Framebuffer, LinearBuffer } from "./raster.js";
+export { Framebuffer, LinearBuffer, DepthMap } from "./raster.js";
 export { compositeOverlays } from "./overlay.js";

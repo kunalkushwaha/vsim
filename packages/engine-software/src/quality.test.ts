@@ -91,3 +91,107 @@ describe("per-pixel specular shading", () => {
     expect(Buffer.from(render(planeDoc(0.3))).equals(Buffer.from(render(planeDoc(0.3))))).toBe(true);
   });
 });
+
+describe("shadow mapping", () => {
+  // A box floating above a large ground plane, sun slanted so its shadow falls BESIDE the box
+  // in the top-down view: box at world x=-2, height 2 → shadow lands around world x=0 (screen
+  // center), while world x=+3 is open sunlit ground.
+  const doc = () =>
+    parseDocument({
+      meta: { durationFrames: 1, width: 64, height: 64, background: [0, 0, 0] },
+      materials: [{ id: "g", color: [0.6, 0.6, 0.6] }, { id: "b", color: [0.6, 0.2, 0.2] }],
+      nodes: [
+        { id: "ground", mesh: { geometry: { kind: "plane", size: [20, 20] }, materialId: "g" } },
+        { id: "box", mesh: { geometry: { kind: "box", size: [1.5, 0.3, 1.5] }, materialId: "b" }, position: [-2, 2, 0] },
+        { id: "sun", light: { type: "directional", intensity: 1, direction: [1, -1, 0] } },
+        { id: "amb", light: { type: "ambient", intensity: 0.15 } },
+        { id: "__camera", position: [0, 14, 0.01] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, 0], fov: 45 },
+    });
+
+  const SHADOWED: [number, number] = [32, 32]; // world x≈0 — inside the cast shadow
+  const LIT: [number, number] = [48, 32]; // world x≈+3 — open ground
+
+  it("darkens ground where the occluder blocks the sun; open ground stays lit", () => {
+    const eng = new SoftwareEngine(64, 64);
+    eng.init(doc());
+    eng.renderFrame(new SceneRuntime(doc()).computeFrameState(0));
+    const px = eng.readPixels();
+    expect(lumAt(px, 64, ...LIT)).toBeGreaterThan(lumAt(px, 64, ...SHADOWED) + 60);
+  });
+
+  it("can be disabled via the option", () => {
+    const on = new SoftwareEngine(64, 64);
+    on.init(doc());
+    on.renderFrame(new SceneRuntime(doc()).computeFrameState(0));
+    const off = new SoftwareEngine(64, 64, { shadows: false });
+    off.init(doc());
+    off.renderFrame(new SceneRuntime(doc()).computeFrameState(0));
+    expect(Buffer.from(on.readPixels()).equals(Buffer.from(off.readPixels()))).toBe(false);
+    // Without shadows the two ground samples match (both fully sunlit).
+    const px = off.readPixels();
+    expect(Math.abs(lumAt(px, 64, ...SHADOWED) - lumAt(px, 64, ...LIT))).toBeLessThan(6);
+  });
+
+  it("is deterministic across independent renders", () => {
+    const r = () => {
+      const eng = new SoftwareEngine(64, 64);
+      eng.init(doc());
+      eng.renderFrame(new SceneRuntime(doc()).computeFrameState(0));
+      return Buffer.from(eng.readPixels());
+    };
+    expect(r().equals(r())).toBe(true);
+  });
+});
+
+describe("distance fog", () => {
+  // Two identical boxes, near and far, ambient light only: the far one must be tinted toward
+  // the fog color; without fog both shade identically.
+  const doc = (fog: boolean) =>
+    parseDocument({
+      meta: { durationFrames: 1, width: 64, height: 64, background: [0, 0, 0] },
+      environment: fog ? { fog: { color: [1, 0, 0], near: 2, far: 20 } } : undefined,
+      materials: [{ id: "m", color: [0.2, 0.6, 0.2] }],
+      nodes: [
+        { id: "near", mesh: { geometry: { kind: "box", size: [1, 1, 1] }, materialId: "m" }, position: [-1.2, 0, 0] },
+        { id: "far", mesh: { geometry: { kind: "box", size: [1, 1, 1] }, materialId: "m" }, position: [4, 0, -14] },
+        { id: "amb", light: { type: "ambient", intensity: 0.8 } },
+        { id: "__camera", position: [0, 0, 4] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, -4], fov: 50 },
+    });
+
+  const sample = (px: Uint8ClampedArray, x: number, y: number) =>
+    [px[(y * 64 + x) * 4]!, px[(y * 64 + x) * 4 + 1]!] as const;
+
+  it("tints distant geometry toward the fog color", () => {
+    const px = render(doc(true));
+    // Find one pixel of each box by color signature: near = green-dominant, far = red-shifted.
+    let nearGreenRatio = 0, farRedRatio = 0;
+    for (let y = 0; y < 64; y++) {
+      for (let x = 0; x < 64; x++) {
+        const [r, g] = sample(px, x, y);
+        if (r === 0 && g === 0) continue; // background
+        const ratio = r / Math.max(g, 1);
+        if (x < 32) nearGreenRatio = Math.max(nearGreenRatio, g);
+        else farRedRatio = Math.max(farRedRatio, ratio);
+      }
+    }
+    expect(nearGreenRatio).toBeGreaterThan(100); // near box still green
+    expect(farRedRatio).toBeGreaterThan(1.5); // far box pushed toward red fog
+  });
+
+  it("no fog → both boxes shade identically per-face", () => {
+    const px = render(doc(false));
+    let maxRatio = 0;
+    for (let y = 0; y < 64; y++) {
+      for (let x = 32; x < 64; x++) {
+        const [r, g] = sample(px, x, y);
+        if (r === 0 && g === 0) continue;
+        maxRatio = Math.max(maxRatio, r / Math.max(g, 1));
+      }
+    }
+    expect(maxRatio).toBeLessThan(1); // stays green-dominant with ambient-only shading
+  });
+});

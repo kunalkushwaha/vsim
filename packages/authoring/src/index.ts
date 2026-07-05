@@ -276,6 +276,13 @@ export class SceneBuilder {
         position: [j3 * h * 0.3, trunkH + crownR * 0.35, j1 * h * 0.24],
         scale: [1, 0.85, 1],
       }, { mesh: { geometry: { kind: "mesh", data: lumpyCanopy(crownR * 0.62, hash01(id, 5) * 100) }, materialId: "prop_leaves" } });
+      // Darker under-canopy blob: fakes the shaded interior mass beneath the crown.
+      this.ensureMaterial("prop_leaves_dark", [0.10, 0.28, 0.11]);
+      this.node(`${id}__leaves2`, {
+        parent: id,
+        position: [-j3 * h * 0.16, trunkH + crownR * 0.12, -j2 * h * 0.16],
+        scale: [1.05, 0.7, 1.05],
+      }, { mesh: { geometry: { kind: "mesh", data: lumpyCanopy(crownR * 0.72, hash01(id, 6) * 100) }, materialId: "prop_leaves_dark" } });
       return this;
     }
 
@@ -377,6 +384,12 @@ export class SceneBuilder {
   /** Set a gradient sky background (top color → horizon color). */
   sky(top: Vec3, bottom: Vec3): this {
     this.doc.environment = { ...(this.doc.environment ?? {}), sky: { type: "gradient", top, bottom } };
+    return this;
+  }
+
+  /** Linear distance fog: geometry fades toward `color` between `near` and `far` (camera units). */
+  fog(color: Vec3, near: number, far: number): this {
+    this.doc.environment = { ...(this.doc.environment ?? {}), fog: { color, near, far } };
     return this;
   }
 

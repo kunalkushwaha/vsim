@@ -259,6 +259,7 @@ export class SceneRuntime {
         this.doc.environment?.sky?.type === "gradient"
           ? { top: this.doc.environment.sky.top, bottom: this.doc.environment.sky.bottom }
           : undefined,
+      fog: this.doc.environment?.fog,
       style: this.doc.meta.style,
       nodes,
       lights,

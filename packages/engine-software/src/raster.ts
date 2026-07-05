@@ -383,6 +383,53 @@ export class LinearBuffer {
 const SCRATCH_ATTRS = new Float64Array(16);
 const SCRATCH_RGB: Vec3 = [0, 0, 0];
 
+/**
+ * A square depth-only buffer for shadow mapping: triangles rasterized in light space, keeping
+ * the depth nearest the light. Pure floats — deterministic everywhere.
+ */
+export class DepthMap {
+  readonly size: number;
+  readonly data: Float32Array;
+
+  constructor(size: number) {
+    this.size = size;
+    this.data = new Float32Array(size * size);
+  }
+
+  clear(): void {
+    this.data.fill(Infinity);
+  }
+
+  /** Rasterize a triangle given in map coordinates ([0..size) x/y, arbitrary z; smaller = nearer). */
+  triangle(
+    x0: number, y0: number, z0: number,
+    x1: number, y1: number, z1: number,
+    x2: number, y2: number, z2: number,
+  ): void {
+    const { size, data } = this;
+    const area = edge(x0, y0, x1, y1, x2, y2);
+    if (area === 0) return;
+    const inv = 1 / area;
+    const minX = Math.max(0, Math.floor(Math.min(x0, x1, x2)));
+    const maxX = Math.min(size - 1, Math.ceil(Math.max(x0, x1, x2)));
+    const minY = Math.max(0, Math.floor(Math.min(y0, y1, y2)));
+    const maxY = Math.min(size - 1, Math.ceil(Math.max(y0, y1, y2)));
+    for (let y = minY; y <= maxY; y++) {
+      const py = y + 0.5;
+      for (let x = minX; x <= maxX; x++) {
+        const px = x + 0.5;
+        const w0 = edge(x1, y1, x2, y2, px, py) * inv;
+        const w1 = edge(x2, y2, x0, y0, px, py) * inv;
+        const w2 = edge(x0, y0, x1, y1, px, py) * inv;
+        if (!((w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 <= 0 && w1 <= 0 && w2 <= 0))) continue;
+        const z = w0 * z0 + w1 * z1 + w2 * z2;
+        const i = y * size + x;
+        if (z < data[i]!) data[i] = z;
+      }
+    }
+  }
+}
+
 /** Binary dilation of a mask by Chebyshev radius `r`. */
 function dilate(mask: Uint8Array, width: number, height: number, r: number): Uint8Array {
   const out = new Uint8Array(mask.length);
