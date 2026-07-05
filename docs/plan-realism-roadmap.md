@@ -22,9 +22,9 @@
 > | R3.5 lipsync envelopes | ✅ merged | #16 (viseme ASSETS need Blender, see below) |
 > | R5.1 browser rig loading | ✅ merged | #17 |
 > | R5.2 renderToSink + WebCodecs | ✅ merged | #18 (mux via mp4-muxer in the app) |
-> | R5.3 tiled rendering core | ✅ merged | #19 (worker harness = thin wrapper, below) |
-> | R3.2 PBR-mapped human exports | ⛔ needs Blender locally | run `blender --background --python scripts/blender/make-human.py` after adding normal/roughness bake (renderer already consumes the maps since PR #2's F2 work) |
-> | R4.1/R4.2 Cycles photoreal | ⛔ needs Blender locally | `apps/studio/cycles-bake.ts` already resolves world-space frames through SceneRuntime; run the bake → `blender --background --python apps/studio/cycles-render.mjs`-style pipeline on a machine with Blender |
+> | R5.3 tiled rendering core + worker harness | ✅ merged | #19, #21 (ParallelRenderer: ~2.5× on 4 cores, byte-identical) |
+> | R3.2 PBR-mapped human exports | ⛔ needs the MPFB2 add-on zip (host not reachable from CI) | Blender itself is NOT the blocker anymore (`pip install bpy` works); fetch `mpfb2-latest.zip` locally, then run scripts/blender/make-human.py with a normal/roughness bake step |
+> | R4.1/R4.2 Cycles photoreal | ✅ EXECUTED via `pip install bpy` | cycles-render.mjs now falls back to the bpy Python module when no Blender binary exists — a photoreal character still AND a full path-traced MP4 (bake → Cycles → overlays → ffmpeg) were rendered in CI with zero Blender install |
 > | R4.3 browser path tracer | ⛔ needs GPU/browser | wrap `three-gpu-pathtracer` behind the `Engine` interface; `FrameState` already delivers resolved world matrices + materials |
 > | R5.4 WebGPU preview | ⛔ needs GPU/browser | swap `WebGLRenderer` for `three/webgpu`'s renderer behind `ThreeEngineOptions`; verify visually via `pnpm studio` |
 >
