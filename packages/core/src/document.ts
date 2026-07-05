@@ -158,6 +158,13 @@ export const NodeSchema = z.object({
   light: LightSchema.optional(),
   /** Plays an animation clip driving this node's skeleton (for skinned characters). */
   clip: ClipPlaybackSchema.optional(),
+  /**
+   * Multiple clip playbacks on one skeleton, blended in order: each playback ramps in over its
+   * `blendInFrames` (smoothstep) ON TOP of the result so far — so a later clip crossfades over
+   * an earlier one (idle → walk → run), and the first blends from the static bind pose.
+   * Supersedes `clip` when both are present.
+   */
+  clips: z.array(ClipPlaybackSchema).optional(),
 });
 
 const EasingSchema = z.union([

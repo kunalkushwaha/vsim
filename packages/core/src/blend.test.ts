@@ -65,3 +65,71 @@ describe("clip blend-in (graphics → animation transition)", () => {
     expect(cosAtFrame(10, 13)).toBe(cosAtFrame(10, 13));
   });
 });
+
+/**
+ * Clip-to-clip crossfade via `clips[]`: clip A holds 90° about Z from frame 0; clip B holds the
+ * identity pose and starts at frame 10 with a 10-frame blend — so the joint swings 90° → 0°.
+ */
+function crossfadeDoc() {
+  return parseDocument({
+    meta: { durationFrames: 30, width: 8, height: 8 },
+    nodes: [
+      { id: "j" },
+      {
+        id: "host",
+        clips: [
+          { clipId: "A", startFrame: 0 },
+          { clipId: "B", startFrame: 10, blendInFrames: 10 },
+        ],
+      },
+      { id: "__camera", position: [0, 0, 5] },
+    ],
+    clips: [
+      { id: "A", durationFrames: 30, channels: [{ jointNodeId: "j", path: "rotation", times: [0], values: [0, 0, HALF, HALF] }] },
+      { id: "B", durationFrames: 30, channels: [{ jointNodeId: "j", path: "rotation", times: [0], values: [0, 0, 0, 1] }] },
+    ],
+    camera: { nodeId: "__camera", lookAt: [0, 0, 0] },
+  });
+}
+
+function crossCosAt(frame: number): number {
+  const rt = new SceneRuntime(crossfadeDoc());
+  let m0 = NaN;
+  for (let f = 0; f <= frame; f++) {
+    m0 = rt.computeFrameState(f).nodes.find((n) => n.id === "j")!.worldMatrix[0]!;
+  }
+  return m0;
+}
+
+describe("clip-to-clip crossfade (clips[])", () => {
+  it("plays the first clip alone before the second starts", () => {
+    expect(crossCosAt(5)).toBeCloseTo(0, 6); // full 90° from clip A
+    expect(crossCosAt(10)).toBeCloseTo(0, 6); // B at w=0 still contributes nothing
+  });
+
+  it("passes through the slerp midpoint at the eased halfway frame", () => {
+    expect(crossCosAt(15)).toBeCloseTo(Math.cos(Math.PI / 4), 5); // 45°
+  });
+
+  it("lands fully on the second clip when the fade completes", () => {
+    expect(crossCosAt(20)).toBeCloseTo(1, 6); // back to identity
+    expect(crossCosAt(28)).toBeCloseTo(1, 6);
+  });
+
+  it("a single-entry clips[] behaves exactly like the legacy clip field", () => {
+    const legacy = makeDoc(10);
+    const listDoc = parseDocument({
+      ...JSON.parse(JSON.stringify({ ...legacy, nodes: undefined })),
+      nodes: legacy.nodes.map((n) =>
+        n.id === "host" ? { id: "host", clips: [{ clipId: "c", startFrame: 10, blendInFrames: 10 }] } : { id: n.id, position: n.position },
+      ),
+    });
+    const at = (doc: ReturnType<typeof parseDocument>, frame: number) => {
+      const rt = new SceneRuntime(doc);
+      let m0 = NaN;
+      for (let f = 0; f <= frame; f++) m0 = rt.computeFrameState(f).nodes.find((n) => n.id === "j")!.worldMatrix[0]!;
+      return m0;
+    };
+    for (const f of [9, 10, 15, 20]) expect(at(listDoc, f)).toBeCloseTo(at(legacy, f), 10);
+  });
+});

@@ -368,6 +368,32 @@ export class SceneBuilder {
     return this;
   }
 
+  /**
+   * Queue another clip on a character (see `character()`), crossfading over whatever is already
+   * playing: the new clip ramps in over `blendIn` frames (smoothstep) on top of the previous
+   * pose. Chain calls to sequence idle → walk → run on one skeleton.
+   */
+  playClip(
+    characterId: string,
+    clip: string,
+    opts: { startFrame?: number; blendIn?: number; speed?: number; loop?: boolean } = {},
+  ): this {
+    const mesh = this.doc.nodes!.find((n) => (n as { id?: string }).id === `${characterId}__mesh`) as
+      | { clip?: unknown; clips?: unknown[] }
+      | undefined;
+    if (!mesh) throw new Error(`playClip: no character '${characterId}' (expected node '${characterId}__mesh')`);
+    if (!mesh.clips) mesh.clips = mesh.clip ? [mesh.clip] : [];
+    delete mesh.clip; // migrated into the ordered list
+    mesh.clips.push({
+      clipId: `${characterId}/${clip}`,
+      startFrame: opts.startFrame,
+      blendInFrames: opts.blendIn,
+      speed: opts.speed,
+      loop: opts.loop,
+    });
+    return this;
+  }
+
   light(props: LightInput, id?: string): this {
     const nid = id ?? `__light${this.lightCount++}`;
     this.node(nid, props, {

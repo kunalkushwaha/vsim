@@ -148,34 +148,37 @@ export class SceneRuntime {
       morphNames.set(n.id, names);
     }
 
-    // Skeletal clips: sample each playing clip and override its joints' local transforms.
-    // With blendInFrames the sampled pose is mixed against the static (bind) pose the locals
-    // still hold here — lerp for translation/scale, slerp for rotation, smoothstep-eased. The
-    // weight is a pure function of the frame index, so the transition is fully deterministic.
+    // Skeletal clips: sample each playing clip and blend it onto the joints' local transforms.
+    // Playbacks apply in order, each ramping in over its blendInFrames (smoothstep) ON TOP of
+    // the result so far: the first blends from the static bind pose the locals still hold, and
+    // every later one crossfades over the previous (idle → walk → run). Lerp for translation/
+    // scale, slerp for rotation. Weights are pure functions of the frame index → deterministic.
     for (const node of this.doc.nodes) {
-      if (!node.clip) continue;
-      const clip = this.clipMap.get(node.clip.clipId);
-      if (!clip) continue;
-      const local = clipLocalFrame(node.clip, frame, clip.durationFrames);
-      if (local === null) continue; // not yet started
-      let w = 1;
-      if (node.clip.blendInFrames > 0) {
-        const raw = Math.min(1, Math.max(0, (frame - node.clip.startFrame) / node.clip.blendInFrames));
-        w = raw * raw * (3 - 2 * raw); // smoothstep ease
-      }
-      for (const [jointId, pose] of evaluateClip(clip, local)) {
-        const lt = locals.get(jointId);
-        if (!lt) continue;
-        if (w >= 1) {
-          if (pose.translation) lt.position = pose.translation;
-          if (pose.scale) lt.scale = pose.scale;
-          if (pose.rotation) lt.quat = pose.rotation;
-        } else {
-          if (pose.translation) lt.position = v3.lerp(lt.position, pose.translation, w);
-          if (pose.scale) lt.scale = v3.lerp(lt.scale, pose.scale, w);
-          if (pose.rotation) {
-            const from = lt.quat ?? quatFromEuler(lt.rotation[0], lt.rotation[1], lt.rotation[2]);
-            lt.quat = quat.slerp(from, pose.rotation, w);
+      const playbacks = node.clips ?? (node.clip ? [node.clip] : []);
+      for (const pb of playbacks) {
+        const clip = this.clipMap.get(pb.clipId);
+        if (!clip) continue;
+        const local = clipLocalFrame(pb, frame, clip.durationFrames);
+        if (local === null) continue; // not yet started
+        let w = 1;
+        if (pb.blendInFrames > 0) {
+          const raw = Math.min(1, Math.max(0, (frame - pb.startFrame) / pb.blendInFrames));
+          w = raw * raw * (3 - 2 * raw); // smoothstep ease
+        }
+        for (const [jointId, pose] of evaluateClip(clip, local)) {
+          const lt = locals.get(jointId);
+          if (!lt) continue;
+          if (w >= 1) {
+            if (pose.translation) lt.position = pose.translation;
+            if (pose.scale) lt.scale = pose.scale;
+            if (pose.rotation) lt.quat = pose.rotation;
+          } else {
+            if (pose.translation) lt.position = v3.lerp(lt.position, pose.translation, w);
+            if (pose.scale) lt.scale = v3.lerp(lt.scale, pose.scale, w);
+            if (pose.rotation) {
+              const from = lt.quat ?? quatFromEuler(lt.rotation[0], lt.rotation[1], lt.rotation[2]);
+              lt.quat = quat.slerp(from, pose.rotation, w);
+            }
           }
         }
       }
