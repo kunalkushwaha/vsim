@@ -27,6 +27,7 @@ const CLIPS = [
   { name: "mouse", scene: "examples/21-mouse/scene.ts" },
   { name: "normalmap", scene: "examples/22-normalmap/scene.ts" },
   { name: "crossfade", scene: "examples/23-crossfade/scene.ts" },
+  { name: "campfire", scene: "examples/24-campfire/scene.ts" },
 ];
 
 mkdirSync("out", { recursive: true });

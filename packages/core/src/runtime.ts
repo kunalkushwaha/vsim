@@ -445,6 +445,7 @@ export class SceneRuntime {
             : v3.normalize(mat4.transformDir(world, [0, 0, -1])),
           skyColor: n.light.skyColor,
           groundColor: n.light.groundColor,
+          decay: n.light.decay,
         });
       }
     }

@@ -59,6 +59,12 @@ all of it from source.
   <sub><code>examples/06-fox</code> — golden-hour sun + glow, sky-derived ambient, fog, 700 blades of grass. Pure TypeScript, no GPU.</sub>
 </p>
 
+<p align="center">
+  <img src="docs/media/campfire.gif" width="640" alt="A fox resting by a flickering campfire at dusk — inverse-square firelight pooling around the pit, breathing cube shadows, rising sparks and smoke, dark woods in fog" />
+  <br/>
+  <sub><code>examples/24-campfire</code> — one flickering point light with inverse-square falloff (<code>decay: 2</code>) IS the scene: breathing cube shadows, spark & smoke particles, ACES rolling the flames off filmically.</sub>
+</p>
+
 | | | |
 |:---:|:---:|:---:|
 | ![cartoon mouse waving](docs/media/mouse.gif) | ![normal-mapped brick walls under a raking light](docs/media/normalmap.gif) | ![deterministic physics tower collapse](docs/media/physics.gif) |
@@ -66,14 +72,14 @@ all of it from source.
 | ![manga cel-shaded scene](docs/media/manga.gif) | ![hand-animated soccer kick](docs/media/soccer.gif) | ![vector text titles over 3D](docs/media/titles.png) |
 | **Manga mode** — cel-shading + ink outlines with one flag: `style: "manga"` ([`09-manga`](examples/09-manga)) | **Keyframe animation** — a hand-animated kick and a launched ball ([`08-soccer`](examples/08-soccer)) | **Text & titles** — true vector type composited over the 3D ([`20-titles`](examples/20-titles)) |
 
-There are **23 examples** in [`examples/`](./examples) — rigged glTF characters,
+There are **24 examples** in [`examples/`](./examples) — rigged glTF characters,
 MakeHuman humans with real skin textures, a VRM avatar, beat-synced audio, morph-target
 lip-sync, procedural parks, a trotting quadruped, and more:
 
 ```bash
 pnpm install
 pnpm example:fox      # → out/fox.mp4 (any example works: cube, physics, crossfade, …)
-pnpm showreel         # renders all 22 reel scenes in parallel → out/showreel.mp4
+pnpm showreel         # renders all 23 reel scenes in parallel → out/showreel.mp4
 ```
 
 ## Why vsim?

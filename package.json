@@ -41,6 +41,7 @@
     "example:mouse": "tsx packages/cli/src/index.ts render examples/21-mouse/scene.ts -o out/mouse.mp4",
     "example:normalmap": "tsx packages/cli/src/index.ts render examples/22-normalmap/scene.ts -o out/normalmap.mp4",
     "example:crossfade": "tsx packages/cli/src/index.ts render examples/23-crossfade/scene.ts -o out/crossfade.mp4",
+    "example:campfire": "tsx packages/cli/src/index.ts render examples/24-campfire/scene.ts -o out/campfire.mp4",
     "studio": "pnpm --filter @vsim/studio dev",
     "studio:build": "pnpm --filter @vsim/studio build",
     "studio:server": "tsx apps/studio/server.ts"

@@ -377,6 +377,43 @@ describe("ACES tone mapping (meta.tone)", () => {
   });
 });
 
+describe("point-light distance falloff (light.decay)", () => {
+  // A lamp hangs 1 unit above a big plane, camera straight down. Directly under the lamp the
+  // distance is 1; toward the frame edge it grows. With decay 2 the brightness must fall off
+  // with distance; with the default decay 0 the plane grades only by lambert (much flatter).
+  const doc = (decay: number) =>
+    parseDocument({
+      meta: { durationFrames: 1, width: 64, height: 64, background: [0, 0, 0] },
+      materials: [{ id: "g", color: [0.7, 0.7, 0.7], roughness: 1 }],
+      nodes: [
+        { id: "ground", mesh: { geometry: { kind: "plane", size: [40, 40] }, materialId: "g" } },
+        { id: "lamp", position: [0, 1, 0], light: { type: "point", intensity: 2, decay } },
+        { id: "__camera", position: [0, 10, 0.01] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, 0], fov: 60 },
+    });
+
+  const CENTER: [number, number] = [32, 32];
+  const EDGE: [number, number] = [4, 32];
+
+  it("decay 2 darkens the plane with distance far more than decay 0", () => {
+    const flat = render(doc(0));
+    const attenuated = render(doc(2));
+    const dropFlat = lumAt(flat, 64, ...CENTER) - lumAt(flat, 64, ...EDGE);
+    const dropAtten = lumAt(attenuated, 64, ...CENTER) - lumAt(attenuated, 64, ...EDGE);
+    expect(dropAtten).toBeGreaterThan(dropFlat + 40);
+  });
+
+  it("decay 0 (the default) is unchanged legacy behavior", () => {
+    const implicit = render(parseDocument({ ...doc(0), nodes: doc(0).nodes.map((n) => n.id === "lamp" ? { ...n, light: { type: "point" as const, color: [1, 1, 1] as [number, number, number], intensity: 2, decay: 0 } } : n) }));
+    expect(Buffer.from(render(doc(0))).equals(Buffer.from(implicit))).toBe(true);
+  });
+
+  it("is deterministic", () => {
+    expect(Buffer.from(render(doc(2))).equals(Buffer.from(render(doc(2))))).toBe(true);
+  });
+});
+
 describe("distance fog", () => {
   // Two identical boxes, near and far, ambient light only: the far one must be tinted toward
   // the fog color; without fog both shade identically.

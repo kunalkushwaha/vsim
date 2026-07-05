@@ -124,6 +124,8 @@ interface LightInput extends TransformInput {
   color?: Vec3;
   intensity?: number;
   direction?: Vec3;
+  /** Point light distance falloff: 0 (default) = none, 2 = inverse-square (`1/(1+d^decay)`). */
+  decay?: number;
   /** Hemisphere light: sky/ground tints. */
   skyColor?: Vec3;
   groundColor?: Vec3;
@@ -462,6 +464,7 @@ export class SceneBuilder {
         color: props.color,
         intensity: props.intensity,
         direction: props.direction,
+        decay: props.decay,
         skyColor: props.skyColor,
         groundColor: props.groundColor,
       },

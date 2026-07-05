@@ -323,6 +323,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
 
+  examples/24-campfire:
+    dependencies:
+      '@vsim/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
+      '@vsim/authoring':
+        specifier: workspace:*
+        version: link:../../packages/authoring
+      '@vsim/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
   packages/ai:
     dependencies:
       '@anthropic-ai/sdk':
