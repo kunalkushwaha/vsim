@@ -1,6 +1,6 @@
 # Plan — realism roadmap (post PR #2)
 
-> **STATUS (updated after the execution run, PRs #3–#19):** every implementable task below has
+> **STATUS (updated after the execution run, PRs #3–#25):** every implementable task below has
 > shipped to `main` through an implement → test → review → merge loop. The table is the source
 > of truth:
 >
@@ -17,12 +17,14 @@
 > | R2.2 sky-derived ambient | ✅ merged | #11 |
 > | R2.3 deterministic particles | ✅ merged | #12 |
 > | R2.4 grass scatter | ✅ merged | #13 |
-> | R3.3 ground-contact IK v1 | ✅ merged | #14 (cross-frame stance lock = follow-up) |
+> | R3.3 ground-contact IK v1 | ✅ merged | #14 |
+> | R3.3b stance locking (root-motion extraction) | ✅ merged | #24 (`ik.lock` — planted feet pinned in world space; in-place walk cycles drive real locomotion, stride accumulates across loop wraps) |
 > | R3.4 spring bones | ✅ merged | #15 |
 > | R3.5 lipsync envelopes | ✅ merged | #16 (viseme ASSETS need Blender, see below) |
 > | R5.1 browser rig loading | ✅ merged | #17 |
 > | R5.2 renderToSink + WebCodecs | ✅ merged | #18 (mux via mp4-muxer in the app) |
 > | R5.3 tiled rendering core + worker harness | ✅ merged | #19, #21 (ParallelRenderer: ~2.5× on 4 cores, byte-identical) |
+> | R5.3c parallel MP4 integration | ✅ merged | #25 (`renderToVideo({ workers })` + CLI `--workers N`; showreel renders all 22 examples through the worker pipeline; docs/scene-document.md + README refreshed) |
 > | R3.2 PBR-mapped human exports | ⛔ needs the MPFB2 add-on zip (host not reachable from CI) | Blender itself is NOT the blocker anymore (`pip install bpy` works); fetch `mpfb2-latest.zip` locally, then run scripts/blender/make-human.py with a normal/roughness bake step |
 > | R4.1/R4.2 Cycles photoreal | ✅ EXECUTED via `pip install bpy` | cycles-render.mjs now falls back to the bpy Python module when no Blender binary exists — a photoreal character still AND a full path-traced MP4 (bake → Cycles → overlays → ffmpeg) were rendered in CI with zero Blender install |
 > | R4.3 browser path tracer | 🧪 code landed (experimental) | `@vsim/engine-three/pathtracer` → PathTracerEngine wraps ThreeEngine's scene sync + three-gpu-pathtracer sampling; guards tested headless; visual verification via `pnpm studio` on a real GPU |
