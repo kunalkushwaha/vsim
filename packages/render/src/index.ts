@@ -123,3 +123,5 @@ function writeChunk(stream: NodeJS.WritableStream, buf: Buffer): Promise<void> {
     else resolve();
   });
 }
+
+export { ParallelRenderer } from "./parallel.js";
