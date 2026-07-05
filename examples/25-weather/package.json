@@ -5,6 +5,8 @@
   "type": "module",
   "dependencies": {
     "@vsim/authoring": "workspace:*",
-    "@vsim/core": "workspace:*"
+    "@vsim/core": "workspace:*",
+    "@vsim/assets": "workspace:*",
+    "@vsim/text": "workspace:*"
   }
 }

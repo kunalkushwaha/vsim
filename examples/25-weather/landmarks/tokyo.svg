@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 140">
+  <!-- Tokyo — travel-poster composition: Mt. Fuji on the horizon, the Skytree needle at
+       left, Tokyo Tower (orange, decks at 45%/75%) at right, over a layered skyline strip.
+       Only <polygon> elements; paint order = depth order (first = farthest). -->
+
+  <!-- Mt. Fuji, far horizon -->
+  <polygon fill="#8A93B0" points="4,112 60,52 116,112"/>
+  <polygon fill="#EFF2F8" points="42,71 51,61 60,52 69,61 78,71 71,66 66,71 60,65 54,71 49,66"/>
+
+  <!-- distant skyline strip -->
+  <polygon fill="#5A6488" points="0,140 0,104 10,104 10,96 18,96 18,104 30,104 30,110 44,110 44,98 54,98 54,110 66,110 66,102 78,102 78,110 92,110 92,105 104,105 104,110 118,110 118,100 130,100 130,110 146,110 146,104 158,104 158,96 166,96 166,104 176,104 176,110 200,110 200,140"/>
+  <!-- nearer skyline strip -->
+  <polygon fill="#454F73" points="0,140 0,122 14,122 14,114 26,114 26,122 40,122 40,118 58,118 58,124 74,124 74,116 90,116 90,124 108,124 108,119 124,119 124,124 142,124 142,116 156,116 156,124 172,124 172,120 186,120 186,124 200,124 200,140"/>
+
+  <!-- Tokyo Skytree (634 m — taller than the Tower), slim lattice needle with two decks -->
+  <polygon fill="#C9CEDC" points="22,140 26,96 27,62 28,40 29,20 30,6 31,20 32,40 33,62 34,96 38,140 34,140 31,100 30,96 29,100 26,140"/>
+  <polygon fill="#F2F0EB" points="24,64 36,64 35.4,69 24.6,69"/>
+  <polygon fill="#F2F0EB" points="26,38 34,38 33.5,42 26.5,42"/>
+
+  <!-- Tokyo Tower (333 m): flared Eiffel-style legs, Main Deck ~45%, Top Deck ~75% -->
+  <polygon fill="#D94F2B" points="100,140 109,118 117,99 123,83 127,68 130,54 132,41 134,31 135,26 136,31 138,41 140,54 143,68 147,83 153,99 161,118 170,140 158,140 151,120 143,101 135,95 127,101 119,120 112,140"/>
+  <polygon fill="#D94F2B" points="116,113 154,113 156,117 114,117"/>
+  <polygon fill="#F2F0EB" points="120,80 150,80 149,88 121,88"/>
+  <polygon fill="#D94F2B" points="121,84 149,84 148.6,86 121.4,86"/>
+  <polygon fill="#F2F0EB" points="128,48 142,48 141,54 129,54"/>
+  <polygon fill="#F2F0EB" points="133.5,30 136.5,30 136.3,34 133.7,34"/>
+</svg>

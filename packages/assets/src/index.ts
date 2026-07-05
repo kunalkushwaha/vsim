@@ -5,8 +5,8 @@ import jpeg from "jpeg-js";
 import { PNG } from "pngjs";
 import { mat4, v3, type Mat4, type MeshData, type Vec3, type Quat, type Clip, type ClipChannel, type Texture } from "@vsim/core";
 
-/** Decode a PNG/JPEG image to RGBA pixels. */
-function decodeImage(raw: Uint8Array, mime: string): Texture {
+/** Decode a PNG/JPEG image to RGBA pixels (mime: "image/png" | "image/jpeg"). */
+export function decodeImage(raw: Uint8Array, mime: string): Texture {
   // pngjs/jpeg-js want Buffer; wrap only when needed (Node). Browser texture decoding is the
   // caller's concern until a fetch-based image path lands — geometry/clips parse fine without.
   const bytes = typeof Buffer !== "undefined" && !(raw instanceof Buffer) ? Buffer.from(raw.buffer, raw.byteOffset, raw.byteLength) : (raw as Buffer);

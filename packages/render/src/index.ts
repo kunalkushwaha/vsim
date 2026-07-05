@@ -33,6 +33,11 @@ export interface RenderOptions {
    * sequential). Ignored for physics scenes and when a custom `engine` is supplied.
    */
   workers?: number;
+  /**
+   * Custom overlay font (TTF/OTF path) for the text rasterizer. The main thread registers it
+   * via @vsim/text setFont(); worker threads each register it in their own module graph.
+   */
+  fontPath?: string;
   physics?: PhysicsAdapter;
   /** Path to an audio file to mux in. */
   audioPath?: string;
@@ -101,7 +106,7 @@ export async function renderToVideo(input: unknown, opts: RenderOptions): Promis
   const useWorkers = (opts.workers ?? 1) > 1 && !opts.engine && !opts.physics && !doc.physics?.bodies?.length;
   if (useWorkers) {
     const par = new ParallelRenderer();
-    await par.init(doc, opts.workers!);
+    await par.init(doc, opts.workers!, { fontPath: opts.fontPath });
     try {
       for (let f = 0; f < durationFrames; f++) {
         await writeChunk(proc.stdin!, Buffer.from(await par.renderFrame(f)));

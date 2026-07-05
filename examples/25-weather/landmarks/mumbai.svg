@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 100">
+  <!-- Gateway of India (26 m): yellow-basalt Indo-Saracenic central block with a tall,
+       slightly pointed central arch, four corner turrets, parapet band, and lower side
+       halls with their own small arches. -->
+  <polygon fill="#B99A63" points="35,18 105,18 105,100 83,100 83,52 80,41 74,35 70,33 66,35 60,41 57,52 57,100 35,100"/>
+  <polygon fill="#C9AC76" points="35,18 105,18 105,24 35,24"/>
+  <polygon fill="#A7894F" points="33,18 33,8 36,3 39,8 39,18"/>
+  <polygon fill="#A7894F" points="101,18 101,8 104,3 107,8 107,18"/>
+  <polygon fill="#A7894F" points="53,18 53,10 56,6 59,10 59,18"/>
+  <polygon fill="#A7894F" points="81,18 81,10 84,6 87,10 87,18"/>
+  <polygon fill="#B99A63" points="5,100 5,54 35,54 35,100"/>
+  <polygon fill="#B99A63" points="105,100 105,54 135,54 135,100"/>
+  <polygon fill="#8F7440" points="12,100 12,74 15,67 20,65 25,67 28,74 28,100"/>
+  <polygon fill="#8F7440" points="112,100 112,74 115,67 120,65 125,67 128,74 128,100"/>
+  <polygon fill="#C9AC76" points="5,54 35,54 35,59 5,59"/>
+  <polygon fill="#C9AC76" points="105,54 135,54 135,59 105,59"/>
+</svg>

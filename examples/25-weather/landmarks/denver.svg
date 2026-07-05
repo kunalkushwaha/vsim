@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <!-- The Front Range behind Denver: a hazy distant ridge, three main peaks with ragged
+       snowlines, and dark foothills in front. -->
+  <polygon fill="#6B7590" points="0,100 22,58 44,80 70,40 96,74 122,52 144,78 160,66 160,100"/>
+  <polygon fill="#4C5670" points="0,100 38,32 76,100"/>
+  <polygon fill="#3E4763" points="42,100 92,14 142,100"/>
+  <polygon fill="#4C5670" points="102,100 134,44 160,88 160,100"/>
+  <polygon fill="#EFF2F8" points="28,50 38,32 48,50 44,44 40,50 36,44 32,50"/>
+  <polygon fill="#EFF2F8" points="79,37 92,14 105,37 100,29 95,36 90,28 84,36"/>
+  <polygon fill="#EFF2F8" points="126,58 134,44 142,58 138,52 134,58 130,52"/>
+  <polygon fill="#333B54" points="0,100 0,86 30,92 62,84 96,94 126,86 160,92 160,100"/>
+</svg>
