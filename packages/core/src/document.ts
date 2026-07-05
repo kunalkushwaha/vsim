@@ -148,6 +148,12 @@ export const EnvironmentSchema = z.object({
           color: color.optional(),
         })
         .optional(),
+      /**
+       * Sky-derived ambient (image-based-lighting approximation): inject a hemisphere
+       * irradiance light of this intensity using the sky's own top/bottom colors, so surfaces
+       * receive tinted "bounce" from the environment. Respects occlusion maps.
+       */
+      ambient: z.number().optional(),
     })
     .optional(),
   /** Linear distance fog: geometry blends toward `color` between `near` and `far` (camera units). */
