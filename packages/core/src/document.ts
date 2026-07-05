@@ -185,6 +185,17 @@ export const NodeSchema = z.object({
    * Supersedes `clip` when both are present.
    */
   clips: z.array(ClipPlaybackSchema).optional(),
+  /**
+   * Ground-contact IK (v1): after clips/tracks pose the skeleton, if any of these foot joints
+   * ends up below `ground` (world Y), this node is lifted so the deepest foot lands exactly on
+   * it. Pure per-frame correction → deterministic and scrub-safe.
+   */
+  ik: z
+    .object({
+      feet: z.array(z.string()),
+      ground: z.number().default(0),
+    })
+    .optional(),
 });
 
 const EasingSchema = z.union([
