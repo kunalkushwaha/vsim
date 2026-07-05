@@ -228,6 +228,10 @@ export class LinearBuffer {
   readonly supersample: number;
   readonly rgb: Float32Array; // linear RGB, 3 floats per pixel
   readonly depth: Float32Array; // NDC z; smaller = nearer
+  /** Rasterization band in hi-res rows [rasterY0, rasterY1) — full height by default. Tiled
+   * rendering (R5.3) restricts each engine to its band (+margin for the outline pass). */
+  rasterY0 = 0;
+  rasterY1: number;
 
   constructor(outWidth: number, outHeight: number, supersample = 1) {
     this.supersample = supersample;
@@ -235,6 +239,7 @@ export class LinearBuffer {
     this.height = outHeight * supersample;
     this.rgb = new Float32Array(this.width * this.height * 3);
     this.depth = new Float32Array(this.width * this.height);
+    this.rasterY1 = this.height;
   }
 
   clear(bg: Vec3): void {
@@ -300,8 +305,8 @@ export class LinearBuffer {
 
     const minX = Math.max(0, Math.floor(Math.min(p0[0], p1[0], p2[0])));
     const maxX = Math.min(width - 1, Math.ceil(Math.max(p0[0], p1[0], p2[0])));
-    const minY = Math.max(0, Math.floor(Math.min(p0[1], p1[1], p2[1])));
-    const maxY = Math.min(height - 1, Math.ceil(Math.max(p0[1], p1[1], p2[1])));
+    const minY = Math.max(this.rasterY0, Math.floor(Math.min(p0[1], p1[1], p2[1])));
+    const maxY = Math.min(this.rasterY1 - 1, Math.ceil(Math.max(p0[1], p1[1], p2[1])));
 
     const n = a0.length;
     const attrs = SCRATCH_ATTRS.length >= n + 1 ? SCRATCH_ATTRS : new Float64Array(n + 1);
@@ -422,9 +427,9 @@ export class LinearBuffer {
    */
   splat(cx: number, cy: number, r: number, z: number, color: Vec3, alpha: number): void {
     if (alpha <= 0 || r <= 0) return;
-    const { width, height, rgb, depth } = this;
+    const { width, rgb, depth } = this;
     const minX = Math.max(0, Math.floor(cx - r)), maxX = Math.min(width - 1, Math.ceil(cx + r));
-    const minY = Math.max(0, Math.floor(cy - r)), maxY = Math.min(height - 1, Math.ceil(cy + r));
+    const minY = Math.max(this.rasterY0, Math.floor(cy - r)), maxY = Math.min(this.rasterY1 - 1, Math.ceil(cy + r));
     for (let y = minY; y <= maxY; y++) {
       for (let x = minX; x <= maxX; x++) {
         const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
@@ -444,9 +449,9 @@ export class LinearBuffer {
    * `discR` and an additive falloff halo out to `glowR`, centered at (cx, cy).
    */
   paintSun(cx: number, cy: number, discR: number, glowR: number, color: Vec3): void {
-    const { width, height, rgb } = this;
+    const { width, rgb } = this;
     const minX = Math.max(0, Math.floor(cx - glowR)), maxX = Math.min(width - 1, Math.ceil(cx + glowR));
-    const minY = Math.max(0, Math.floor(cy - glowR)), maxY = Math.min(height - 1, Math.ceil(cy + glowR));
+    const minY = Math.max(this.rasterY0, Math.floor(cy - glowR)), maxY = Math.min(this.rasterY1 - 1, Math.ceil(cy + glowR));
     for (let y = minY; y <= maxY; y++) {
       for (let x = minX; x <= maxX; x++) {
         const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
@@ -473,11 +478,12 @@ export class LinearBuffer {
    * With `aces` the averaged linear value passes through the ACES filmic fit first, rolling
    * HDR highlights off smoothly instead of clipping at 1.
    */
-  resolveTo(fb: Framebuffer, aces = false): void {
+  resolveTo(fb: Framebuffer, aces = false, bandY0 = 0, bandY1 = Infinity): void {
     const { width, supersample: ss, rgb } = this;
     const inv = 1 / (ss * ss);
     const { width: ow, height: oh, color } = fb;
-    for (let oy = 0; oy < oh; oy++) {
+    const oy0 = Math.max(0, bandY0), oy1 = Math.min(oh, bandY1);
+    for (let oy = oy0; oy < oy1; oy++) {
       for (let ox = 0; ox < ow; ox++) {
         let r = 0, g = 0, b = 0;
         for (let sy = 0; sy < ss; sy++) {

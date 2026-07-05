@@ -297,6 +297,13 @@ export interface SoftwareEngineOptions {
   shadows?: boolean;
   /** Shadow map resolution (texels per side). Default 1024; lower = softer/cheaper shadows. */
   shadowMapSize?: number;
+  /**
+   * Render only output rows [y0, y1) — the tiled-rendering band (R5.3). Each band engine pays
+   * the vertex/shadow passes but rasterizes only its rows (plus an internal margin so manga
+   * outlines are seam-free); stitching N bands is byte-identical to one full-frame render.
+   * Run one band engine per worker for parallel rendering.
+   */
+  region?: { y0: number; y1: number };
 }
 
 /**
@@ -311,6 +318,7 @@ export class SoftwareEngine implements Engine {
   readonly height: number;
   readonly supersample: number;
   readonly shadows: boolean;
+  readonly region?: { y0: number; y1: number };
   private hi: LinearBuffer; // hi-res linear-space target: all 3D shading lands here
   private fb: Framebuffer; // output-res gamma-space target: resolve + overlays
   private shadowMap: DepthMap;
@@ -327,6 +335,14 @@ export class SoftwareEngine implements Engine {
     this.shadowMap = new DepthMap(Math.max(2, Math.floor(opts.shadowMapSize ?? SHADOW_MAP_SIZE)));
     this.hi = new LinearBuffer(width, height, this.supersample);
     this.fb = new Framebuffer(width, height);
+    this.region = opts.region ? { y0: Math.max(0, opts.region.y0), y1: Math.min(height, opts.region.y1) } : undefined;
+    if (this.region) {
+      // Rasterize a margin beyond the band so the outline pass (which reads neighbor depth,
+      // then dilates by supersample-1) sees valid depth at the band boundary.
+      const margin = this.supersample * 2;
+      this.hi.rasterY0 = Math.max(0, this.region.y0 * this.supersample - margin);
+      this.hi.rasterY1 = Math.min(this.hi.height, this.region.y1 * this.supersample + margin);
+    }
   }
 
   init(doc: SceneDocument): void {
@@ -636,7 +652,7 @@ export class SoftwareEngine implements Engine {
 
     if (toon) this.hi.outline([0.04, 0.05, 0.08]); // manga: dark silhouette/edge lines
 
-    this.hi.resolveTo(this.fb, state.tone === "aces"); // linear box-filter → gamma-encoded output
+    this.hi.resolveTo(this.fb, state.tone === "aces", this.region?.y0 ?? 0, this.region?.y1 ?? Infinity); // linear box-filter → gamma-encoded output
 
     if (state.overlays.length) compositeOverlays(this.fb, state.overlays, this.width, this.height); // screen-space text
   }
