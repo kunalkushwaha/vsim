@@ -25,8 +25,8 @@
 > | R5.3 tiled rendering core + worker harness | ✅ merged | #19, #21 (ParallelRenderer: ~2.5× on 4 cores, byte-identical) |
 > | R3.2 PBR-mapped human exports | ⛔ needs the MPFB2 add-on zip (host not reachable from CI) | Blender itself is NOT the blocker anymore (`pip install bpy` works); fetch `mpfb2-latest.zip` locally, then run scripts/blender/make-human.py with a normal/roughness bake step |
 > | R4.1/R4.2 Cycles photoreal | ✅ EXECUTED via `pip install bpy` | cycles-render.mjs now falls back to the bpy Python module when no Blender binary exists — a photoreal character still AND a full path-traced MP4 (bake → Cycles → overlays → ffmpeg) were rendered in CI with zero Blender install |
-> | R4.3 browser path tracer | ⛔ needs GPU/browser | wrap `three-gpu-pathtracer` behind the `Engine` interface; `FrameState` already delivers resolved world matrices + materials |
-> | R5.4 WebGPU preview | ⛔ needs GPU/browser | swap `WebGLRenderer` for `three/webgpu`'s renderer behind `ThreeEngineOptions`; verify visually via `pnpm studio` |
+> | R4.3 browser path tracer | 🧪 code landed (experimental) | `@vsim/engine-three/pathtracer` → PathTracerEngine wraps ThreeEngine's scene sync + three-gpu-pathtracer sampling; guards tested headless; visual verification via `pnpm studio` on a real GPU |
+> | R5.4 WebGPU preview | 🧪 code landed (experimental) | `@vsim/engine-three/webgpu` → createWebGpuEngine (async WebGPURenderer init, preview-only readPixels guard); guards tested headless; verify via `pnpm studio` in a WebGPU browser |
 >
 > **R5.3 worker harness note:** each worker constructs `new SoftwareEngine(w, h, { region: { y0, y1 } })`
 > plus its own `SceneRuntime`, receives the document once and a frame index per frame, and posts back
