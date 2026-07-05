@@ -538,6 +538,42 @@ export class SceneBuilder {
     return this;
   }
 
+  /**
+   * Drive a morph target from beat/onset frames — the lip-sync/viseme workhorse: at every beat
+   * the weight ramps up over `attack` frames, holds, and falls over `release`. Overlapping
+   * beats merge (max wins) so fast speech doesn't flutter. Works for any morph: "mouthOpen"
+   * on audio beats, a blink on cut points, an emote on a story beat.
+   */
+  lipsync(
+    nodeId: string,
+    morph: string,
+    beatFrames: number[],
+    opts: { weight?: number; attack?: number; hold?: number; release?: number } = {},
+  ): this {
+    const { weight = 1, attack = 2, hold = 3, release = 4 } = opts;
+    if (beatFrames.length === 0) return this;
+    // Envelope per beat → merged piecewise-max, sampled at every envelope breakpoint.
+    const beats = [...beatFrames].sort((a, b) => a - b);
+    const level = (f: number): number => {
+      let v = 0;
+      for (const b of beats) {
+        if (f < b || f > b + attack + hold + release) continue;
+        const t = f - b;
+        v = Math.max(v, t < attack ? t / attack : t <= attack + hold ? 1 : 1 - (t - attack - hold) / release);
+      }
+      return v * weight;
+    };
+    const frames = new Set<number>();
+    for (const b of beats) {
+      for (const off of [0, attack, attack + hold, attack + hold + release]) frames.add(b + off);
+    }
+    const keyframes: Keyframes = [...frames]
+      .sort((a, b) => a - b)
+      .map((frame) => ({ frame, value: level(frame) }));
+    this.doc.animation!.push({ target: { nodeId, path: `morph.${morph}` }, keyframes });
+    return this;
+  }
+
   /** Make a node a spring bone: its rotation lags the animation by `smoothing` per frame. */
   spring(nodeId: string, smoothing: number): this {
     const node = this.doc.nodes!.find((n) => n.id === nodeId) as { spring?: unknown } | undefined;
