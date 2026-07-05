@@ -3,7 +3,7 @@ import {
   type Engine, type FrameState, type SceneDocument,
   type Material, type MeshData, type ResolvedLight, type ResolvedNode, type Vec3,
 } from "@vsim/core";
-import { Framebuffer, LinearBuffer, DepthMap, sampleAlbedo } from "./raster.js";
+import { Framebuffer, LinearBuffer, DepthMap, sampleTexel } from "./raster.js";
 import { compositeOverlays } from "./overlay.js";
 
 const DEFAULT_MATERIAL: Material = {
@@ -49,11 +49,58 @@ interface MeshBatch {
   node: ResolvedNode;
   md: MeshData;
   material: Material;
-  textured: boolean;
+  /** UVs are carried whenever ANY texture map needs them (base colour or PBR maps). */
+  useUV: boolean;
   wx: Float64Array; wy: Float64Array; wz: Float64Array;
   nx: Float64Array; ny: Float64Array; nz: Float64Array;
   cx: Float64Array; cy: Float64Array; cz: Float64Array; cw: Float64Array;
   cu?: Float64Array; cv?: Float64Array;
+  /** World-space tangents (xyz) + handedness (w), only when the mesh has a normal map. */
+  tx?: Float64Array; ty?: Float64Array; tz?: Float64Array; tw?: Float64Array;
+}
+
+/**
+ * Per-vertex tangents (xyz + handedness w) from bind-pose positions/uvs (Lengyel's method):
+ * accumulate the uv-aligned edge direction per triangle, then Gram-Schmidt against the normal.
+ * Cached per MeshData — tangents deform with the same matrices as normals at draw time.
+ */
+function computeTangents(md: MeshData): Float32Array {
+  const vcount = md.positions.length / 3;
+  const tan = new Float64Array(vcount * 3);
+  const bit = new Float64Array(vcount * 3);
+  const pos = md.positions, uv = md.uvs!, idx = md.indices;
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = idx[t]!, b = idx[t + 1]!, c = idx[t + 2]!;
+    const x1 = pos[b * 3]! - pos[a * 3]!, y1 = pos[b * 3 + 1]! - pos[a * 3 + 1]!, z1 = pos[b * 3 + 2]! - pos[a * 3 + 2]!;
+    const x2 = pos[c * 3]! - pos[a * 3]!, y2 = pos[c * 3 + 1]! - pos[a * 3 + 1]!, z2 = pos[c * 3 + 2]! - pos[a * 3 + 2]!;
+    const s1 = uv[b * 2]! - uv[a * 2]!, t1 = uv[b * 2 + 1]! - uv[a * 2 + 1]!;
+    const s2 = uv[c * 2]! - uv[a * 2]!, t2 = uv[c * 2 + 1]! - uv[a * 2 + 1]!;
+    const det = s1 * t2 - s2 * t1;
+    if (det === 0) continue;
+    const r = 1 / det;
+    const tx = (t2 * x1 - t1 * x2) * r, ty = (t2 * y1 - t1 * y2) * r, tz = (t2 * z1 - t1 * z2) * r;
+    const bx = (s1 * x2 - s2 * x1) * r, by = (s1 * y2 - s2 * y1) * r, bz = (s1 * z2 - s2 * z1) * r;
+    for (const i of [a, b, c]) {
+      tan[i * 3] = tan[i * 3]! + tx; tan[i * 3 + 1] = tan[i * 3 + 1]! + ty; tan[i * 3 + 2] = tan[i * 3 + 2]! + tz;
+      bit[i * 3] = bit[i * 3]! + bx; bit[i * 3 + 1] = bit[i * 3 + 1]! + by; bit[i * 3 + 2] = bit[i * 3 + 2]! + bz;
+    }
+  }
+  const out = new Float32Array(vcount * 4);
+  const nrm = md.normals;
+  for (let i = 0; i < vcount; i++) {
+    const nx = nrm[i * 3]!, ny = nrm[i * 3 + 1]!, nz = nrm[i * 3 + 2]!;
+    let tx = tan[i * 3]!, ty = tan[i * 3 + 1]!, tz = tan[i * 3 + 2]!;
+    // Gram-Schmidt orthogonalize against the normal.
+    const d = nx * tx + ny * ty + nz * tz;
+    tx -= nx * d; ty -= ny * d; tz -= nz * d;
+    const len = Math.sqrt(tx * tx + ty * ty + tz * tz);
+    if (len > 1e-8) { tx /= len; ty /= len; tz /= len; } else { tx = 1; ty = 0; tz = 0; }
+    // Handedness: does N×T point along the accumulated bitangent?
+    const cxv = ny * tz - nz * ty, cyv = nz * tx - nx * tz, czv = nx * ty - ny * tx;
+    const w = cxv * bit[i * 3]! + cyv * bit[i * 3 + 1]! + czv * bit[i * 3 + 2]! < 0 ? -1 : 1;
+    out[i * 4] = tx; out[i * 4 + 1] = ty; out[i * 4 + 2] = tz; out[i * 4 + 3] = w;
+  }
+  return out;
 }
 
 /**
@@ -162,6 +209,7 @@ export class SoftwareEngine implements Engine {
   private fb: Framebuffer; // output-res gamma-space target: resolve + overlays
   private shadowMap = new DepthMap(SHADOW_MAP_SIZE);
   private meshes = new Map<string, MeshData>();
+  private tangentCache = new WeakMap<MeshData, Float32Array>();
 
   constructor(width: number, height: number, opts: SoftwareEngineOptions = {}) {
     this.width = width;
@@ -205,9 +253,25 @@ export class SoftwareEngine implements Engine {
       const wx = new Float64Array(vcount), wy = new Float64Array(vcount), wz = new Float64Array(vcount);
       const nx = new Float64Array(vcount), ny = new Float64Array(vcount), nz = new Float64Array(vcount);
       const cx = new Float64Array(vcount), cy = new Float64Array(vcount), cz = new Float64Array(vcount), cw = new Float64Array(vcount);
-      const textured = md.texture !== undefined && md.uvs !== undefined;
-      const cu = textured ? new Float64Array(vcount) : undefined;
-      const cv = textured ? new Float64Array(vcount) : undefined;
+      const useUV = md.uvs !== undefined &&
+        (md.texture !== undefined || md.normalMap !== undefined || md.metallicRoughnessMap !== undefined ||
+          md.occlusionMap !== undefined || md.emissiveMap !== undefined);
+      const cu = useUV ? new Float64Array(vcount) : undefined;
+      const cv = useUV ? new Float64Array(vcount) : undefined;
+      // Normal mapping needs per-vertex tangents (computed once per mesh, deformed per frame).
+      const hasNormalMap = useUV && md.normalMap !== undefined;
+      let bindTangents: Float32Array | undefined;
+      if (hasNormalMap) {
+        bindTangents = this.tangentCache.get(md);
+        if (!bindTangents) {
+          bindTangents = computeTangents(md);
+          this.tangentCache.set(md, bindTangents);
+        }
+      }
+      const tx = hasNormalMap ? new Float64Array(vcount) : undefined;
+      const ty = hasNormalMap ? new Float64Array(vcount) : undefined;
+      const tz = hasNormalMap ? new Float64Array(vcount) : undefined;
+      const tw = hasNormalMap ? new Float64Array(vcount) : undefined;
 
       // Skinned meshes deform per-vertex by blended joint matrices (CPU linear-blend skinning);
       // static meshes use the node's world matrix.
@@ -232,15 +296,19 @@ export class SoftwareEngine implements Engine {
         const wn = v3.normalize(mat4.transformDir(m, nrm));
         wx[i] = wp4[0]; wy[i] = wp4[1]; wz[i] = wp4[2];
         nx[i] = wn[0]; ny[i] = wn[1]; nz[i] = wn[2];
-        if (textured) {
+        if (useUV) {
           cu![i] = md.uvs![i * 2]!;
           cv![i] = md.uvs![i * 2 + 1]!;
+        }
+        if (hasNormalMap) {
+          const wt = v3.normalize(mat4.transformDir(m, [bindTangents![i * 4]!, bindTangents![i * 4 + 1]!, bindTangents![i * 4 + 2]!]));
+          tx![i] = wt[0]; ty![i] = wt[1]; tz![i] = wt[2]; tw![i] = bindTangents![i * 4 + 3]!;
         }
         const clip = mat4.transformPoint(viewProj, [wp4[0], wp4[1], wp4[2]]);
         cx[i] = clip[0]; cy[i] = clip[1]; cz[i] = clip[2]; cw[i] = clip[3];
       }
 
-      batches.push({ node, md, material, textured, wx, wy, wz, nx, ny, nz, cx, cy, cz, cw, cu, cv });
+      batches.push({ node, md, material, useUV, wx, wy, wz, nx, ny, nz, cx, cy, cz, cw, cu, cv, tx, ty, tz, tw });
     }
 
     // ---- pass 2: shadow map for the first directional light (all meshes cast + receive) ----
@@ -249,17 +317,63 @@ export class SoftwareEngine implements Engine {
 
     // ---- pass 3: shade + rasterize ----
     for (const b of batches) {
-      const { md, material, textured } = b;
-      const tex = md.texture;
+      const { md, material, useUV } = b;
+      const tex = md.texture, nrmMap = md.normalMap, mrMap = md.metallicRoughnessMap;
+      const aoMap = md.occlusionMap, emiMap = md.emissiveMap;
+      const hasTangents = b.tx !== undefined;
+      // Attr layout: [wx,wy,wz, nx,ny,nz] + [u,v]? + [tx,ty,tz,tw]?
       const shadePx = (a: Float64Array, out: Vec3): void => {
+        const u = useUV ? a[6]! : 0, v = useUV ? a[7]! : 0;
+
+        // Geometric normal, renormalized after interpolation.
+        let nX = a[3]!, nY = a[4]!, nZ = a[5]!;
+        {
+          const nl = Math.sqrt(nX * nX + nY * nY + nZ * nZ) || 1;
+          nX /= nl; nY /= nl; nZ /= nl;
+        }
+        // Tangent-space normal mapping: perturb the geometric normal by the sampled texel.
+        if (nrmMap && hasTangents) {
+          let tX = a[8]!, tY = a[9]!, tZ = a[10]!;
+          const w = a[11]! < 0 ? -1 : 1;
+          // Re-orthogonalize the interpolated tangent against the normal.
+          const d = nX * tX + nY * tY + nZ * tZ;
+          tX -= nX * d; tY -= nY * d; tZ -= nZ * d;
+          const tl = Math.sqrt(tX * tX + tY * tY + tZ * tZ);
+          if (tl > 1e-8) {
+            tX /= tl; tY /= tl; tZ /= tl;
+            const bX = (nY * tZ - nZ * tY) * w, bY = (nZ * tX - nX * tZ) * w, bZ = (nX * tY - nY * tX) * w;
+            const tn = sampleTexel(nrmMap, u, v, false);
+            const sx = tn[0] * 2 - 1, sy = tn[1] * 2 - 1, sz = tn[2] * 2 - 1;
+            let pX = tX * sx + bX * sy + nX * sz;
+            let pY = tY * sx + bY * sy + nY * sz;
+            let pZ = tZ * sx + bZ * sy + nZ * sz;
+            const pl = Math.sqrt(pX * pX + pY * pY + pZ * pZ);
+            if (pl > 1e-8) { nX = pX / pl; nY = pY / pl; nZ = pZ / pl; }
+          }
+        }
+
         let albR: number, albG: number, albB: number;
-        if (tex && textured) {
-          const alb = sampleAlbedo(tex, a[6]!, a[7]!);
+        if (tex) {
+          const alb = sampleTexel(tex, u, v, true);
           albR = alb[0]; albG = alb[1]; albB = alb[2];
         } else {
           albR = material.color[0]; albG = material.color[1]; albB = material.color[2];
         }
-        shadePixel(a[0]!, a[1]!, a[2]!, a[3]!, a[4]!, a[5]!, albR, albG, albB, material, state.lights, cam, toon, sun, shadow, out);
+
+        // glTF factor semantics: map values multiply the material's scalar factors.
+        let roughness = material.roughness, metalness = material.metalness;
+        if (mrMap) {
+          const mr = sampleTexel(mrMap, u, v, false); // G = roughness, B = metalness
+          roughness *= mr[1]; metalness *= mr[2];
+        }
+        const ao = aoMap ? sampleTexel(aoMap, u, v, false)[0] : 1;
+        let emiR = material.emissive[0], emiG = material.emissive[1], emiB = material.emissive[2];
+        if (emiMap) {
+          const em = sampleTexel(emiMap, u, v, true);
+          emiR = em[0]; emiG = em[1]; emiB = em[2];
+        }
+
+        shadePixel(a[0]!, a[1]!, a[2]!, nX, nY, nZ, albR, albG, albB, emiR, emiG, emiB, roughness, metalness, ao, state.lights, cam, toon, sun, shadow, out);
         if (fog) {
           const dx = a[0]! - cam[0], dy = a[1]! - cam[1], dz = a[2]! - cam[2];
           const t = (Math.sqrt(dx * dx + dy * dy + dz * dz) - fog.near) / (fog.far - fog.near);
@@ -280,10 +394,12 @@ export class SoftwareEngine implements Engine {
         const w = v[3]!;
         return [((v[0]! / w) * 0.5 + 0.5) * hiW, (0.5 - (v[1]! / w) * 0.5) * hiH, v[2]! / w];
       };
-      const attrsOf = (i: number): number[] =>
-        textured
-          ? [b.wx[i]!, b.wy[i]!, b.wz[i]!, b.nx[i]!, b.ny[i]!, b.nz[i]!, b.cu![i]!, b.cv![i]!]
-          : [b.wx[i]!, b.wy[i]!, b.wz[i]!, b.nx[i]!, b.ny[i]!, b.nz[i]!];
+      const attrsOf = (i: number): number[] => {
+        const a = [b.wx[i]!, b.wy[i]!, b.wz[i]!, b.nx[i]!, b.ny[i]!, b.nz[i]!];
+        if (useUV) a.push(b.cu![i]!, b.cv![i]!);
+        if (hasTangents) a.push(b.tx![i]!, b.ty![i]!, b.tz![i]!, b.tw![i]!);
+        return a;
+      };
 
       const idx = md.indices;
       for (let t = 0; t < idx.length; t += 3) {
@@ -335,26 +451,25 @@ function bandLambert(x: number): number {
 
 /**
  * Per-pixel shading in linear space: emissive + per-light Lambert diffuse, plus a Blinn-Phong
- * specular lobe for directional/point lights driven by the material's roughness (lobe width via
- * a Beckmann-style exponent) and metalness (F0 = 4% dielectric → albedo-tinted metal; metals
- * lose direct diffuse). The first directional light (`sun`) is attenuated by the PCF shadow
- * factor when a shadow map is present. Ambient/hemisphere terms are diffuse-only. Manga (toon)
- * mode keeps the banded, specular-free cel look — with hard-thresholded shadows to match.
+ * specular lobe for directional/point lights driven by roughness (lobe width via a
+ * Beckmann-style exponent) and metalness (F0 = 4% dielectric → albedo-tinted metal; metals
+ * lose direct diffuse). Surface parameters arrive pre-resolved (material factors × PBR map
+ * texels; the normal is already normalized and normal-mapped). `ao` darkens the ambient and
+ * hemisphere terms only, per glTF occlusion semantics. The first directional light (`sun`) is
+ * attenuated by the PCF shadow factor when a shadow map is present. Manga (toon) mode keeps
+ * the banded, specular-free cel look — with hard-thresholded shadows to match.
  */
 function shadePixel(
   px: number, py: number, pz: number,
-  nxr: number, nyr: number, nzr: number,
+  nX: number, nY: number, nZ: number,
   albR: number, albG: number, albB: number,
-  mat: Material, lights: ResolvedLight[], cam: Vec3, toon: boolean,
+  emiR: number, emiG: number, emiB: number,
+  roughness: number, metal: number, ao: number,
+  lights: ResolvedLight[], cam: Vec3, toon: boolean,
   sun: ResolvedLight | undefined, shadow: ShadowContext | undefined, out: Vec3,
 ): void {
-  // Renormalize the interpolated normal.
-  const nl = Math.sqrt(nxr * nxr + nyr * nyr + nzr * nzr) || 1;
-  const nX = nxr / nl, nY = nyr / nl, nZ = nzr / nl;
+  let r = emiR, g = emiG, b = emiB;
 
-  let r = mat.emissive[0], g = mat.emissive[1], b = mat.emissive[2];
-
-  const metal = mat.metalness;
   const kd = 1 - metal;
   // Specular reflectance at normal incidence: 4% dielectric, albedo-tinted for metals.
   const f0r = 0.04 * kd + albR * metal;
@@ -362,7 +477,7 @@ function shadePixel(
   const f0b = 0.04 * kd + albB * metal;
   // Blinn-Phong exponent from roughness (Beckmann-style α = roughness²), with an energy
   // normalization so tight lobes peak brighter than broad ones.
-  const alpha = Math.max(mat.roughness * mat.roughness, 0.02);
+  const alpha = Math.max(roughness * roughness, 0.02);
   const specExp = 2 / (alpha * alpha) - 2;
   const specNorm = (specExp + 8) / 8;
 
@@ -373,9 +488,10 @@ function shadePixel(
 
   for (const light of lights) {
     if (light.type === "ambient") {
-      r += albR * light.color[0] * light.intensity;
-      g += albG * light.color[1] * light.intensity;
-      b += albB * light.color[2] * light.intensity;
+      const f = light.intensity * ao; // occlusion darkens ambient terms only
+      r += albR * light.color[0] * f;
+      g += albG * light.color[1] * f;
+      b += albB * light.color[2] * f;
       continue;
     }
     if (light.type === "hemisphere") {
@@ -383,9 +499,10 @@ function shadePixel(
       const f = nY * 0.5 + 0.5;
       const sky = light.skyColor ?? [1, 1, 1];
       const ground = light.groundColor ?? [0.3, 0.3, 0.3];
-      r += albR * (ground[0] + (sky[0] - ground[0]) * f) * light.intensity;
-      g += albG * (ground[1] + (sky[1] - ground[1]) * f) * light.intensity;
-      b += albB * (ground[2] + (sky[2] - ground[2]) * f) * light.intensity;
+      const inten = light.intensity * ao;
+      r += albR * (ground[0] + (sky[0] - ground[0]) * f) * inten;
+      g += albG * (ground[1] + (sky[1] - ground[1]) * f) * inten;
+      b += albB * (ground[2] + (sky[2] - ground[2]) * f) * inten;
       continue;
     }
     let lX: number, lY: number, lZ: number;

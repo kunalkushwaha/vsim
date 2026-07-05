@@ -444,8 +444,11 @@ function dilate(mask: Uint8Array, width: number, height: number, r: number): Uin
   return out;
 }
 
-/** Bilinear sample of a base-color texture → linear-RGB albedo (sRGB-decoded), repeat-wrapped. */
-export function sampleAlbedo(tex: Texture, u: number, v: number): [number, number, number] {
+/**
+ * Bilinear sample of a texture, repeat-wrapped. `srgb` decodes color maps (base colour /
+ * emissive) to linear; data maps (normal / metallic-roughness / occlusion) stay raw 0..1.
+ */
+export function sampleTexel(tex: Texture, u: number, v: number, srgb: boolean): [number, number, number] {
   const { width: w, height: h, data } = tex;
   const fx = (u - Math.floor(u)) * w - 0.5;
   const fy = (v - Math.floor(v)) * h - 0.5;
@@ -456,9 +459,15 @@ export function sampleAlbedo(tex: Texture, u: number, v: number): [number, numbe
   const ch = (o: number): number => {
     const top = data[(sy0 * w + sx0) * 4 + o]! + (data[(sy0 * w + sx1) * 4 + o]! - data[(sy0 * w + sx0) * 4 + o]!) * tx;
     const bot = data[(sy1 * w + sx0) * 4 + o]! + (data[(sy1 * w + sx1) * 4 + o]! - data[(sy1 * w + sx0) * 4 + o]!) * tx;
-    return Math.pow((top + (bot - top) * ty) / 255, 2.2); // sRGB → linear
+    const value = (top + (bot - top) * ty) / 255;
+    return srgb ? Math.pow(value, 2.2) : value; // sRGB → linear for color maps only
   };
   return [ch(0), ch(1), ch(2)];
+}
+
+/** Bilinear sample of a base-color texture → linear-RGB albedo (sRGB-decoded), repeat-wrapped. */
+export function sampleAlbedo(tex: Texture, u: number, v: number): [number, number, number] {
+  return sampleTexel(tex, u, v, true);
 }
 
 function edge(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {

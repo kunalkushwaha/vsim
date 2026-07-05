@@ -39,6 +39,7 @@
     "example:dog": "tsx packages/cli/src/index.ts render examples/19-dog/scene.ts -o out/dog.mp4",
     "example:titles": "tsx packages/cli/src/index.ts render examples/20-titles/scene.ts -o out/titles.mp4",
     "example:mouse": "tsx packages/cli/src/index.ts render examples/21-mouse/scene.ts -o out/mouse.mp4",
+    "example:normalmap": "tsx packages/cli/src/index.ts render examples/22-normalmap/scene.ts -o out/normalmap.mp4",
     "studio": "pnpm --filter @vsim/studio dev",
     "studio:build": "pnpm --filter @vsim/studio build",
     "studio:server": "tsx apps/studio/server.ts"
