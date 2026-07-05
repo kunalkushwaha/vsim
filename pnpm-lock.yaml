@@ -429,6 +429,10 @@ importers:
       three:
         specifier: ^0.171.0
         version: 0.171.0
+    devDependencies:
+      '@vsim/engine-software':
+        specifier: workspace:*
+        version: link:../engine-software
 
   packages/render:
     dependencies:
