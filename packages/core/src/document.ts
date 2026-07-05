@@ -19,6 +19,8 @@ export const MetaSchema = z.object({
   background: color.default([0.05, 0.06, 0.09]),
   /** Render style: "realistic" (smooth Lambert) or "manga" (banded cel-shading + outlines). */
   style: z.enum(["realistic", "manga"]).default("realistic"),
+  /** Tone mapping applied at output: "none" (raw clamp) or "aces" (filmic rolloff for HDR highlights). */
+  tone: z.enum(["none", "aces"]).default("none"),
 });
 
 export const AssetSchema = z.object({

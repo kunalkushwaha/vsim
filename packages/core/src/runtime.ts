@@ -322,6 +322,7 @@ export class SceneRuntime {
           : undefined,
       fog: this.doc.environment?.fog,
       style: this.doc.meta.style,
+      tone: this.doc.meta.tone,
       nodes,
       lights,
       camera: this.resolveCamera(frame, computeWorld, cameraOverrides),
