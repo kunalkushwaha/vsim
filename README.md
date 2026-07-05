@@ -1,14 +1,19 @@
-# vsim — code → 3D video
+<p align="center">
+  <img src="docs/media/banner.svg" width="100%" alt="vsim — code → deterministic 3D video. TypeScript in, MP4 out, byte-identical everywhere, no GPU required." />
+</p>
 
-**"Remotion for real 3D."** Write a 3D scene in TypeScript — meshes, physics, glTF
-models, beat-synced audio — run one command, and get a **deterministic** MP4. The same
-scene also plays live in the browser. Preview == final render == N personalized variants,
-because the runtime is byte-for-byte reproducible.
+**"Remotion for real 3D."** Write a 3D scene in TypeScript — meshes, characters, physics,
+audio — run one command, and get a **deterministic** MP4. The same scene plays live in the
+browser, byte-for-byte identical to the export.
 
 ```bash
 npm i -D @vsim/cli @vsim/authoring
-npx vsim render scene.ts -o out.mp4
+npx vsim render scene.ts -o out.mp4          # add --workers 4 for multi-core
 ```
+
+<table>
+<tr>
+<td>
 
 ```ts
 // scene.ts
@@ -18,8 +23,10 @@ export default scene({ fps: 30, duration: 90, width: 640, height: 360 })
   .material("cube", { color: [0.95, 0.4, 0.4], roughness: 0.5 })
   .light({ type: "ambient", intensity: 0.35 })
   .light({ type: "directional", intensity: 1.2, direction: [-0.5, -1, -0.35] })
-  .mesh("floor", { geometry: { kind: "plane", size: [20, 20] }, material: "cube", position: [0, -1, 0] })
-  .mesh("cube", { geometry: { kind: "box", size: [1.4, 1.4, 1.4] }, material: "cube" })
+  .mesh("floor", { geometry: { kind: "plane", size: [20, 20] },
+                   material: "cube", position: [0, -1, 0] })
+  .mesh("cube", { geometry: { kind: "box", size: [1.4, 1.4, 1.4] },
+                  material: "cube" })
   .camera({ position: [3, 2.2, 4.5], lookAt: [0, 0.3, 0], fov: 45 })
   .animate("cube", "rotation.y", [
     { frame: 0, value: 0 },
@@ -28,23 +35,66 @@ export default scene({ fps: 30, duration: 90, width: 640, height: 360 })
   .build();
 ```
 
-That's the whole loop: a `.ts` file in, a reproducible `.mp4` out — no GPU required (the
-default renderer is a pure-TypeScript rasterizer that runs anywhere, with per-pixel lighting,
-specular highlights, and supersampled anti-aliasing).
+</td>
+<td width="40%" align="center">
+  <img src="docs/media/quickstart.gif" width="100%" alt="The exact scene.ts on the left, rendered: a red cube rotating over a floor with a moving shadow" /><br/>
+  <sub>← this file, rendered. Nothing else involved.</sub>
+</td>
+</tr>
+</table>
 
-## Why deterministic?
+That's the whole loop: a `.ts` file in, a reproducible `.mp4` out — no GPU, no native
+renderer, no cloud account. The default engine is a pure-TypeScript rasterizer with
+per-pixel PBR lighting, shadow maps, and supersampling, so it runs identically on your
+laptop, in CI, and in the browser.
 
-The same scene must produce the **same** pixels whether previewed live, rendered on a
-server, or fanned out into 100 personalized variants. So the runtime uses a fixed
-timestep, **frame-based time** (beats and physics steps map to frame indices, never wall
-clock), and a **seeded RNG** — global `Math.random` is banned in runtime code by a lint
-rule. Determinism is enforced in CI via golden-frame hashes: two renders of the same
-scene are byte-identical, and the live preview matches the headless render frame-for-frame.
+## Show me
+
+Everything below is rendered by vsim itself — clone the repo and `pnpm showreel` rebuilds
+all of it from source.
+
+<p align="center">
+  <img src="docs/media/fox.gif" width="640" alt="A low-poly fox running through a golden-hour park — sun disc, long shadows, wind-blown grass, distance fog" />
+  <br/>
+  <sub><code>examples/06-fox</code> — golden-hour sun + glow, sky-derived ambient, fog, 700 blades of grass. Pure TypeScript, no GPU.</sub>
+</p>
+
+| | | |
+|:---:|:---:|:---:|
+| ![cartoon mouse waving](docs/media/mouse.gif) | ![normal-mapped brick walls under a raking light](docs/media/normalmap.gif) | ![deterministic physics tower collapse](docs/media/physics.gif) |
+| **Character from primitives** — no rig, just pivoted node groups ([`21-mouse`](examples/21-mouse)) | **Normal mapping** — both walls are the same flat quad; the right one carries a tangent-space map ([`22-normalmap`](examples/22-normalmap)) | **Deterministic physics** — Rapier rigid bodies, the same collapse every run ([`02-physics`](examples/02-physics)) |
+| ![manga cel-shaded scene](docs/media/manga.gif) | ![hand-animated soccer kick](docs/media/soccer.gif) | ![vector text titles over 3D](docs/media/titles.png) |
+| **Manga mode** — cel-shading + ink outlines with one flag: `style: "manga"` ([`09-manga`](examples/09-manga)) | **Keyframe animation** — a hand-animated kick and a launched ball ([`08-soccer`](examples/08-soccer)) | **Text & titles** — true vector type composited over the 3D ([`20-titles`](examples/20-titles)) |
+
+There are **23 examples** in [`examples/`](./examples) — rigged glTF characters,
+MakeHuman humans with real skin textures, a VRM avatar, beat-synced audio, morph-target
+lip-sync, procedural parks, a trotting quadruped, and more:
+
+```bash
+pnpm install
+pnpm example:fox      # → out/fox.mp4 (any example works: cube, physics, crossfade, …)
+pnpm showreel         # renders all 22 reel scenes in parallel → out/showreel.mp4
+```
+
+## Why vsim?
+
+- **Preview == render == every variant.** Time is frame-based (never wall-clock), all
+  randomness flows through a seeded RNG (`Math.random` is lint-banned in runtime code),
+  and CI enforces byte-identical renders with golden-frame hashes. Render one video or
+  fan out 100 personalized variants — every pixel is reproducible.
+- **Runs anywhere.** The reference renderer is pure TypeScript: no GPU, no node-gyp, no
+  headless-Chrome. CI boxes, serverless, browsers — same bytes everywhere. A Three.js
+  engine (GPU) is a drop-in swap for high-fidelity preview.
+- **Web-first.** The player, the rig loader, and even MP4 export (WebCodecs) run in the
+  browser on the exact same runtime as the headless renderer.
+- **Scriptable like code, editable like a doc.** Every scene is a plain, zod-validated
+  JSON document — authored fluently from TypeScript, diffable in git, and safely
+  editable by the AI copilot.
 
 ## What's in the box (v0.1)
 
-- **Code → video**: declarative scene builder → MP4 via `vsim render` (add `--workers N`
-  for multi-core rendering — byte-identical to single-threaded).
+- **Code → video**: declarative scene builder → MP4 via `vsim render` (`--workers N`
+  splits frames across cores, byte-identical to single-threaded).
 - **Realistic software rendering**: per-pixel PBR (roughness/metalness + full texture-map
   set with normal mapping), 2× supersampling in linear light, PCF-filtered directional
   shadows and point-light cube shadows, mip-mapped trilinear texture sampling,
@@ -55,59 +105,15 @@ scene are byte-identical, and the live preview matches the headless render frame
   (`idle → walk → run`), ground-contact IK with **stance locking** (in-place walk cycles
   drive real locomotion), spring bones for secondary motion, and morph-target lip-sync.
 - **Physics**: deterministic Rapier rigid bodies, fixed-step, reproducible.
-- **Assets**: glTF/GLB load + export — including browser-safe rig parsing (`loadRigFromUrl`).
+- **Assets**: glTF/GLB load + export — including browser-safe rig parsing (`loadRigFromUrl`),
+  plus a bundled [character library](./packages/assets/library/CREDITS.md) (fox, humans,
+  clothing) loaded by name with `loadCharacter()`.
 - **Audio**: mux a track into the MP4 and drive properties from beat frames.
 - **Live preview**: a browser player that shares the exact runtime with the renderer,
   plus in-browser MP4 export via WebCodecs (`renderToSink`).
-
-## Examples & showreel
-
-Twenty-three canonical scenes live in [`examples/`](./examples): cube, collapsing box stack, glTF model,
-beat-synced pulse, a procedural **walking character** filmed from three angles, a **kid playing
-soccer** (a hand-animated kick + a ball that launches), an original **cartoon puppy** (a
-procedural quadruped with a trot gait + waggy tail), rigged characters from the bundled
-[character library](./packages/assets/library/CREDITS.md) — a **Fox**, a realistic **person**, and a
-cast of **MakeHuman humans with real skin textures** (a woman, a man, and a child, generated headlessly
-by `scripts/blender/make-human.py`; a **walk/run/idle/wave clip library** in `examples/13-clips`, the
-**body variety** side-by-side in `examples/14-cast`, and one wearing **real clothing geometry**
-— a suit + shoes as separate skinned meshes — in `examples/15-clothing`), plus a **VRM avatar**
-(the web-3D humanoid format; `loadVrm` parses the humanoid bone map + license) in `examples/16-vrm`,
-and **morph-target lip-sync** — a face whose mouth opens on every audio beat — in `examples/17-lipsync`,
-and a character walking through a **park of procedural props** (`.tree()`/`.rock()` from cylinder/cone
-primitives) in `examples/18-park`, and a procedural **quadruped** trotting in `examples/19-dog` —
-loaded by name with `loadCharacter()` and **rendered with their real glTF textures** (PNG/JPEG
-base-color, sampled in the software renderer), a **manga** scene (one-flag cel-shading +
-outlines via `style: "manga"`), and **text & titles** — a title card, a sliding lower-third, and a
-caption, as true vector type composited on top of the 3D — in `examples/20-titles`, and an original
-big-eared **cartoon mouse** waving at the camera — built from primitive spheres/cylinders as pivoted
-node groups (no rig needed) — in `examples/21-mouse`, **normal-mapped brick walls** under a raking
-light (tangent-space bump relief on an inline mesh) in `examples/22-normalmap`, and a character
-crossfading **idle → walk → run** with layered clips in `examples/23-crossfade`. Render any of
-them, or build the montage:
-
-```bash
-pnpm install
-pnpm example:cube     # → out/cube.mp4
-pnpm showreel         # renders all examples → out/showreel.mp4
-```
-
-`out/showreel.mp4` is produced entirely by vsim (ffmpeg only concatenates the clips).
-
-## Packages
-
-| Package | Role |
-|---------|------|
-| `@vsim/core` | Scene document schema, fixed-timestep clock, seeded RNG, animation eval, math, engine interface — **zero engine deps** |
-| `@vsim/engine-software` | Pure-TS reference rasterizer. Runs anywhere (no GPU), bit-identical — the determinism oracle & default renderer |
-| `@vsim/engine-three` | Three.js production renderer (GPU, high fidelity) |
-| `@vsim/text` | Deterministic vector text rasterizer (bundled font → glyph fill) for screen-space titles/captions |
-| `@vsim/physics-rapier` | Deterministic Rapier physics adapter |
-| `@vsim/render` | Headless frame capture → ffmpeg → MP4 (+ audio mux) |
-| `@vsim/authoring` | Declarative builder API: code → scene document |
-| `@vsim/player` | Browser real-time preview component |
-| `@vsim/assets` | glTF/GLB asset pipeline (load + export) |
-| `@vsim/ai` | AI copilot: natural-language prompt → schema-constrained scene-document edits (Claude tool-use) |
-| `@vsim/cli` | `vsim render scene.ts -o out.mp4` · `vsim edit scene.ts --prompt "…"` |
+- **Photoreal finals**: hand the same scene document to Blender Cycles for a path-traced
+  master (`apps/studio/cycles-render.mjs`; works with just `pip install bpy`) — see the
+  [Blender guide](./docs/guides/blender-characters.md).
 
 ## AI copilot (preview)
 
@@ -157,6 +163,22 @@ Built with Vite + vanilla TS (no UI framework), reusing `@vsim/player` + `@vsim/
 browser and `@vsim/ai` + `@vsim/render` in a tiny Node backend (the seed of the eventual cloud layer;
 the AI uses `ANTHROPIC_API_KEY` or the `claude` CLI). See
 [`docs/plan-platform-studio.md`](./docs/plan-platform-studio.md) for the roadmap to a full platform.
+
+## Packages
+
+| Package | Role |
+|---------|------|
+| `@vsim/core` | Scene document schema, fixed-timestep clock, seeded RNG, animation eval, math, engine interface — **zero engine deps** |
+| `@vsim/engine-software` | Pure-TS reference rasterizer. Runs anywhere (no GPU), bit-identical — the determinism oracle & default renderer |
+| `@vsim/engine-three` | Three.js production renderer (GPU, high fidelity) + experimental path-tracer / WebGPU backends |
+| `@vsim/text` | Deterministic vector text rasterizer (bundled font → glyph fill) for screen-space titles/captions |
+| `@vsim/physics-rapier` | Deterministic Rapier physics adapter |
+| `@vsim/render` | Headless frame capture → ffmpeg → MP4 (+ audio mux, multi-core workers) |
+| `@vsim/authoring` | Declarative builder API: code → scene document |
+| `@vsim/player` | Browser real-time preview component |
+| `@vsim/assets` | glTF/GLB asset pipeline (load + export) + character library |
+| `@vsim/ai` | AI copilot: natural-language prompt → schema-constrained scene-document edits (Claude tool-use) |
+| `@vsim/cli` | `vsim render scene.ts -o out.mp4` · `vsim edit scene.ts --prompt "…"` |
 
 ## Docs
 

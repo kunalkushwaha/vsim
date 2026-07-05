@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="280" viewBox="0 0 1200 280" role="img" aria-label="vsim — code to 3D video">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#10131c"/>
+      <stop offset="1" stop-color="#181d2b"/>
+    </linearGradient>
+    <linearGradient id="cubeTop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8d7a"/>
+      <stop offset="1" stop-color="#f2664e"/>
+    </linearGradient>
+    <linearGradient id="cubeLeft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c2442f"/>
+      <stop offset="1" stop-color="#9c3322"/>
+    </linearGradient>
+    <linearGradient id="cubeRight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e85a42"/>
+      <stop offset="1" stop-color="#c74631"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd9a0"/>
+      <stop offset="1" stop-color="#ffb060"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="280" rx="14" fill="url(#bg)"/>
+
+  <!-- faint perspective grid (the raster floor) -->
+  <g stroke="#2a3148" stroke-width="1">
+    <line x1="0"    y1="279" x2="530"  y2="150"/>
+    <line x1="140"  y1="279" x2="580"  y2="150"/>
+    <line x1="280"  y1="279" x2="630"  y2="150"/>
+    <line x1="420"  y1="279" x2="680"  y2="150"/>
+    <line x1="1200" y1="270" x2="700"  y2="150"/>
+    <line x1="1080" y1="279" x2="672"  y2="150"/>
+    <line x1="920"  y1="279" x2="648"  y2="150"/>
+    <line x1="0"    y1="235" x2="1200" y2="235" opacity="0.55"/>
+    <line x1="0"    y1="196" x2="1200" y2="196" opacity="0.4"/>
+    <line x1="0"    y1="168" x2="1200" y2="168" opacity="0.25"/>
+    <line x1="0"    y1="150" x2="1200" y2="150" opacity="0.35"/>
+  </g>
+
+  <!-- sun disc + glow (environment.sky.sun) -->
+  <circle cx="1043" cy="72" r="34" fill="#ffb060" opacity="0.16"/>
+  <circle cx="1043" cy="72" r="24" fill="#ffc27d" opacity="0.28"/>
+  <circle cx="1043" cy="72" r="15" fill="url(#sun)"/>
+
+  <!-- the cube from example 01, isometric, with its shadow -->
+  <g transform="translate(875,128)">
+    <ellipse cx="12" cy="106" rx="86" ry="16" fill="#0b0e15" opacity="0.55"/>
+    <polygon points="0,-62 62,-31 62,41 0,72 -62,41 -62,-31" fill="none"/>
+    <polygon points="0,-62 62,-31 0,0 -62,-31" fill="url(#cubeTop)"/>
+    <polygon points="-62,-31 0,0 0,72 -62,41" fill="url(#cubeLeft)"/>
+    <polygon points="62,-31 0,0 0,72 62,41" fill="url(#cubeRight)"/>
+    <!-- specular hint -->
+    <polygon points="0,-62 26,-49 -22,-25 -40,-42" fill="#ffffff" opacity="0.18"/>
+  </g>
+
+  <!-- film-strip sprockets: frames, not seconds -->
+  <g fill="#39415d">
+    <rect x="60"  y="30" width="14" height="10" rx="2"/>
+    <rect x="92"  y="30" width="14" height="10" rx="2"/>
+    <rect x="124" y="30" width="14" height="10" rx="2"/>
+    <rect x="156" y="30" width="14" height="10" rx="2"/>
+    <rect x="188" y="30" width="14" height="10" rx="2"/>
+    <rect x="220" y="30" width="14" height="10" rx="2"/>
+    <rect x="252" y="30" width="14" height="10" rx="2"/>
+    <rect x="284" y="30" width="14" height="10" rx="2"/>
+  </g>
+  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="13" fill="#525d80">
+    <text x="60" y="60">f=0</text>
+    <text x="252" y="60">f=90</text>
+  </g>
+
+  <!-- wordmark -->
+  <text x="60" y="152" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
+        font-size="92" font-weight="700" fill="#f4f6fb" letter-spacing="-3">vsim</text>
+
+  <!-- tagline as a line of code -->
+  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="21">
+    <text x="62" y="196" fill="#7d8ab0">$</text>
+    <text x="82" y="196" fill="#c7cfe4">code</text>
+    <text x="140" y="196" fill="#f2664e">→</text>
+    <text x="168" y="196" fill="#c7cfe4">deterministic 3D video</text>
+  </g>
+
+  <!-- capability strip -->
+  <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="15" fill="#7d8ab0">
+    <text x="62" y="230">TypeScript in · MP4 out · byte-identical everywhere · no GPU required</text>
+  </g>
+</svg>
