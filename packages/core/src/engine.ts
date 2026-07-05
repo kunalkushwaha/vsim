@@ -63,6 +63,15 @@ export interface FrameState {
   camera: ResolvedCamera;
   /** Screen-space text overlays for this frame (animation already applied). */
   overlays: ResolvedTextOverlay[];
+  /** Live particles this frame (world position, radius, color, opacity 0..1). */
+  particles: ResolvedParticle[];
+}
+
+export interface ResolvedParticle {
+  position: Vec3;
+  size: number;
+  color: Vec3;
+  opacity: number;
 }
 
 /**
