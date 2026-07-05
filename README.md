@@ -67,7 +67,9 @@ primitives) in `examples/18-park`, and a procedural **quadruped** trotting in `e
 loaded by name with `loadCharacter()` and **rendered with their real glTF textures** (PNG/JPEG
 base-color, sampled in the software renderer), a **manga** scene (one-flag cel-shading +
 outlines via `style: "manga"`), and **text & titles** — a title card, a sliding lower-third, and a
-caption, as true vector type composited on top of the 3D — in `examples/20-titles`. Render any of
+caption, as true vector type composited on top of the 3D — in `examples/20-titles`, and an original
+big-eared **cartoon mouse** waving at the camera — built from primitive spheres/cylinders as pivoted
+node groups (no rig needed) — in `examples/21-mouse`. Render any of
 them, or build the montage:
 
 ```bash
