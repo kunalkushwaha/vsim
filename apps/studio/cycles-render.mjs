@@ -17,9 +17,29 @@ const run = (cmd, args, opts = {}) =>
     p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${cmd} exited ${code}`))));
   });
 
+/** Resolve how to run Blender: an explicit binary, PATH `blender`, or the pip `bpy` module. */
+async function resolveBlenderRunner(explicit) {
+  const candidate = explicit || process.env.VSIM_BLENDER;
+  if (candidate) return (script, args) => run(candidate, ["--background", "--python", script, "--", ...args]);
+  const which = await new Promise((res) => {
+    const p = spawn("blender", ["--version"], { stdio: "ignore" });
+    p.on("error", () => res(false));
+    p.on("exit", (code) => res(code === 0));
+  });
+  if (which) return (script, args) => run("blender", ["--background", "--python", script, "--", ...args]);
+  // Fallback: Blender as a Python module (pip install bpy) — same script, plain python3.
+  const hasBpy = await new Promise((res) => {
+    const p = spawn("python3", ["-c", "import bpy"], { stdio: "ignore" });
+    p.on("error", () => res(false));
+    p.on("exit", (code) => res(code === 0));
+  });
+  if (hasBpy) return (script, args) => run("python3", [script, "--", ...args]);
+  throw new Error("Cycles rendering needs Blender: set VSIM_BLENDER, put `blender` on PATH, or `pip install bpy`.");
+}
+
 /** @param scenePath path to a scene-document .json OR a scene .ts module. opts: { output, samples, step, fps, blender } */
 export async function renderCycles(scenePath, { output, samples = 40, step = 1, fps, blender } = {}) {
-  blender = blender || process.env.VSIM_BLENDER || "blender";
+  const runBlender = await resolveBlenderRunner(blender);
   const dir = await mkdtemp(join(tmpdir(), "vsim-cycles-"));
   const framesDir = join(dir, "frames"), pngDir = join(dir, "png");
   await mkdir(pngDir, { recursive: true });
@@ -33,7 +53,7 @@ export async function renderCycles(scenePath, { output, samples = 40, step = 1, 
     const items = man.frames.map((f, i) => ({ in: join(framesDir, f), out: join(pngDir, `f_${String(i).padStart(4, "0")}.png`) }));
     const renderManifest = join(dir, "render.json");
     await writeFile(renderManifest, JSON.stringify({ items }));
-    await run(blender, ["--background", "--python", join(ROOT, "scripts/blender/render-scene-cycles.py"), "--", `manifest=${renderManifest}`, `samples=${samples}`]);
+    await runBlender(join(ROOT, "scripts/blender/render-scene-cycles.py"), [`manifest=${renderManifest}`, `samples=${samples}`]);
     // 2b) composite screen-space text overlays onto the path-traced PNGs (same compositor as draft)
     await run("pnpm", ["exec", "tsx", join(HERE, "cycles-overlay.ts"), framesDir, pngDir], { cwd: ROOT });
     // 3) ffmpeg → MP4 (play at srcFps/step so the clip keeps real-time duration)
