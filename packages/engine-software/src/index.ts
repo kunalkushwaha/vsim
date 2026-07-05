@@ -167,18 +167,25 @@ function buildShadow(sun: ResolvedLight, batches: MeshBatch[], map: DepthMap): S
       const ix = Math.floor(lx), iy = Math.floor(ly);
       // Slope-scaled bias in normalized depth: steeper grazing angles need more to avoid acne.
       const bias = 0.004 + 0.014 * (1 - lambert);
-      let lit = 0, taps = 0;
+      // Bilinear PCF: tent-weight each 3×3 tap by its distance to the exact sample position
+      // (radius 1.5 texels), so the lit fraction ramps continuously as the sample point moves
+      // across texels instead of stepping — shadow edges lose the residual stair pattern.
+      // Taps OUTSIDE the map count as lit (empty space casts nothing): the map bounds are
+      // fitted tightly to the casters, so a caster silhouette often IS the map boundary, and
+      // skipping those taps would turn that edge into a hard binary cutoff.
+      let lit = 0, total = 0;
       for (let dy = -1; dy <= 1; dy++) {
         const yy = iy + dy;
-        if (yy < 0 || yy >= size) continue;
+        const wy = Math.max(0, 1.5 - Math.abs(yy + 0.5 - ly));
         for (let dx = -1; dx <= 1; dx++) {
           const xx = ix + dx;
-          if (xx < 0 || xx >= size) continue;
-          taps++;
-          if (lz - bias <= data[yy * size + xx]!) lit++;
+          const w = wy * Math.max(0, 1.5 - Math.abs(xx + 0.5 - lx));
+          total += w;
+          const outside = xx < 0 || xx >= size || yy < 0 || yy >= size;
+          if (outside || lz - bias <= data[yy * size + xx]!) lit += w;
         }
       }
-      return taps === 0 ? 1 : lit / taps;
+      return total === 0 ? 1 : lit / total;
     },
   };
 }
@@ -191,6 +198,8 @@ export interface SoftwareEngineOptions {
   supersample?: number;
   /** Disable the directional-light shadow map (on by default). */
   shadows?: boolean;
+  /** Shadow map resolution (texels per side). Default 1024; lower = softer/cheaper shadows. */
+  shadowMapSize?: number;
 }
 
 /**
@@ -207,7 +216,7 @@ export class SoftwareEngine implements Engine {
   readonly shadows: boolean;
   private hi: LinearBuffer; // hi-res linear-space target: all 3D shading lands here
   private fb: Framebuffer; // output-res gamma-space target: resolve + overlays
-  private shadowMap = new DepthMap(SHADOW_MAP_SIZE);
+  private shadowMap: DepthMap;
   private meshes = new Map<string, MeshData>();
   private tangentCache = new WeakMap<MeshData, Float32Array>();
 
@@ -216,6 +225,7 @@ export class SoftwareEngine implements Engine {
     this.height = height;
     this.supersample = Math.max(1, Math.floor(opts.supersample ?? 2));
     this.shadows = opts.shadows ?? true;
+    this.shadowMap = new DepthMap(Math.max(2, Math.floor(opts.shadowMapSize ?? SHADOW_MAP_SIZE)));
     this.hi = new LinearBuffer(width, height, this.supersample);
     this.fb = new Framebuffer(width, height);
   }
