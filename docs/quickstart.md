@@ -23,7 +23,7 @@ pnpm example:crossfade  # a human blending idle → walk → run (layered clips)
 pnpm example:normalmap  # tangent-space bump relief under a raking light
 ```
 
-There are 24 in all — see [`examples/`](../examples) or `pnpm showreel` to render every one
+There are 25 in all — see [`examples/`](../examples) or `pnpm showreel` to render every one
 into a single reel.
 
 ## Render faster (multi-core)

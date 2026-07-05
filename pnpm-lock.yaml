@@ -335,6 +335,15 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
 
+  examples/25-weather:
+    dependencies:
+      '@vsim/authoring':
+        specifier: workspace:*
+        version: link:../../packages/authoring
+      '@vsim/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
   packages/ai:
     dependencies:
       '@anthropic-ai/sdk':
