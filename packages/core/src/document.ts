@@ -194,6 +194,14 @@ export const NodeSchema = z.object({
     .object({
       feet: z.array(z.string()),
       ground: z.number().default(0),
+      /**
+       * Stance locking (v2): while a foot is planted on the ground, this node shifts in X/Z so
+       * that foot's world position stays FIXED between frames — in-place walk clips stop
+       * sliding and instead drive real locomotion (root-motion extraction). The accumulated
+       * offset persists across steps, so use it on characters WITHOUT authored position tracks
+       * (the clip becomes the mover). Stateful forward stepping, like physics/springs.
+       */
+      lock: z.boolean().default(false),
     })
     .optional(),
   /**
