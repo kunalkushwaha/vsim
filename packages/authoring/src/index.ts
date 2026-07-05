@@ -1,10 +1,68 @@
 import {
-  parseDocument,
+  parseDocument, tessellate,
   type SceneDocument, type SceneDocumentInput,
   type GeometryInput, type Vec3, type Quat, type Mat4, type MeshData, type Clip,
 } from "@vsim/core";
 
 type Keyframes = { frame: number; value: number | number[]; easing?: any }[];
+
+/** Deterministic FNV-1a hash of `s` + stream `k`, mapped to [0, 1). Prop variation, never random. */
+function hash01(s: string, k: number): number {
+  let h = 2166136261 >>> 0;
+  const str = `${s}:${k}`;
+  for (let i = 0; i < str.length; i++) {
+    h = (h ^ str.charCodeAt(i)) >>> 0;
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return (h >>> 8) / 16777216;
+}
+
+/**
+ * An organic foliage blob: a sphere with vertices displaced radially by smooth deterministic
+ * noise (product of phase-shifted sines — no randomness), then smooth normals recomputed with
+ * position-welded accumulation so the tessellation's seam/pole duplicates shade seamlessly.
+ */
+function lumpyCanopy(radius: number, seed: number): { positions: number[]; normals: number[]; indices: number[] } {
+  const md = tessellate({ kind: "sphere", radius, segments: 10 });
+  const positions = [...md.positions];
+  const n = positions.length / 3;
+  for (let i = 0; i < n; i++) {
+    const x = positions[i * 3]! / radius, y = positions[i * 3 + 1]! / radius, z = positions[i * 3 + 2]! / radius;
+    const noise =
+      Math.sin(3.1 * x + seed) * Math.sin(2.7 * y + seed * 1.7) * Math.sin(3.7 * z + seed * 2.3) +
+      0.5 * Math.sin(6.3 * x + seed * 3.1) * Math.sin(5.9 * z + seed * 4.7);
+    const d = 1 + 0.14 * noise; // radial bump/dent
+    positions[i * 3] = positions[i * 3]! * d;
+    positions[i * 3 + 1] = positions[i * 3 + 1]! * d;
+    positions[i * 3 + 2] = positions[i * 3 + 2]! * d;
+  }
+  // Recompute smooth normals, accumulating per welded position so duplicated seam vertices match.
+  const key = (i: number) =>
+    `${Math.round(positions[i * 3]! * 1e5)},${Math.round(positions[i * 3 + 1]! * 1e5)},${Math.round(positions[i * 3 + 2]! * 1e5)}`;
+  const acc = new Map<string, [number, number, number]>();
+  const idx = md.indices;
+  for (let t = 0; t < idx.length; t += 3) {
+    const [a, b, c] = [idx[t]!, idx[t + 1]!, idx[t + 2]!];
+    const ax = positions[a * 3]!, ay = positions[a * 3 + 1]!, az = positions[a * 3 + 2]!;
+    const ux = positions[b * 3]! - ax, uy = positions[b * 3 + 1]! - ay, uz = positions[b * 3 + 2]! - az;
+    const vx = positions[c * 3]! - ax, vy = positions[c * 3 + 1]! - ay, vz = positions[c * 3 + 2]! - az;
+    // The sphere tessellation winds so (b-a)×(c-a) points inward — negate for outward normals.
+    const fx = -(uy * vz - uz * vy), fy = -(uz * vx - ux * vz), fz = -(ux * vy - uy * vx);
+    for (const i of [a, b, c]) {
+      const kk = key(i);
+      const e = acc.get(kk) ?? [0, 0, 0];
+      e[0] += fx; e[1] += fy; e[2] += fz;
+      acc.set(kk, e);
+    }
+  }
+  const normals = new Array<number>(positions.length);
+  for (let i = 0; i < n; i++) {
+    const e = acc.get(key(i)) ?? [0, 1, 0];
+    const len = Math.hypot(e[0], e[1], e[2]) || 1;
+    normals[i * 3] = e[0] / len; normals[i * 3 + 1] = e[1] / len; normals[i * 3 + 2] = e[2] / len;
+  }
+  return { positions, normals, indices: [...md.indices] };
+}
 
 /**
  * A loaded character rig (structurally `RiggedGltf` from `@vsim/assets`). Pass the result of
@@ -171,20 +229,73 @@ export class SceneBuilder {
   }
 
   /**
-   * A simple low-poly tree prop: a cylinder trunk + a cone of foliage, parented to a group `id` you
-   * can position/scale. `position` is the tree's base on the ground. Deterministic — vary `height`
-   * per call for a believable stand of trees. Adds shared "prop_bark"/"prop_leaves" materials.
+   * A procedural tree prop, parented to a group `id` you can position/scale. `position` is the
+   * tree's base on the ground. Two variants:
+   * - "conifer" (default): a cylinder trunk with a root flare + three stacked, slightly offset
+   *   foliage cones (tiered like a fir), the base tier keeping the classic `__leaves` node id.
+   * - "broadleaf": a taller trunk, two angled branches, and a lumpy organic canopy — a sphere
+   *   whose vertices are displaced by smooth deterministic noise (welded normals, no seams).
+   * Fully deterministic: all per-tree variation is hashed from the node `id`, never random —
+   * two builds of the same scene are identical. Adds shared "prop_bark"/"prop_leaves" materials.
    */
-  tree(id: string, opts: TransformInput & { height?: number; trunkColor?: Vec3; leafColor?: Vec3 } = {}): this {
+  tree(
+    id: string,
+    opts: TransformInput & { height?: number; trunkColor?: Vec3; leafColor?: Vec3; variant?: "conifer" | "broadleaf" } = {},
+  ): this {
     const h = opts.height ?? 2.4;
-    const trunkH = h * 0.42, leafH = h * 0.74, trunkR = h * 0.05, leafR = h * 0.28;
+    const variant = opts.variant ?? "conifer";
     this.ensureMaterial("prop_bark", opts.trunkColor ?? [0.40, 0.26, 0.13]);
     this.ensureMaterial("prop_leaves", opts.leafColor ?? [0.16, 0.42, 0.17]);
     this.group(id, opts);
+    // Per-tree variation, hashed from the id (deterministic).
+    const j1 = hash01(id, 1) - 0.5, j2 = hash01(id, 2) - 0.5, j3 = hash01(id, 3) - 0.5;
+
+    if (variant === "broadleaf") {
+      const trunkH = h * 0.52, trunkR = h * 0.035;
+      this.node(`${id}__trunk`, { parent: id, position: [0, trunkH / 2, 0], rotation: [0, 0, j1 * 0.12] },
+        { mesh: { geometry: { kind: "cylinder", radius: trunkR, height: trunkH, segments: 10 }, materialId: "prop_bark" } });
+      this.node(`${id}__flare`, { parent: id, position: [0, h * 0.05, 0] },
+        { mesh: { geometry: { kind: "cone", radius: trunkR * 2.1, height: h * 0.12, segments: 10 }, materialId: "prop_bark" } });
+      // Two angled branches reaching into the canopy.
+      for (const [k, side] of [[1, -1], [2, 1]] as const) {
+        this.node(`${id}__branch${k}`, {
+          parent: id,
+          position: [side * h * 0.04, trunkH * 0.88, 0],
+          rotation: [j2 * 0.4, 0, side * (0.55 + Math.abs(j3) * 0.3)],
+        }, { mesh: { geometry: { kind: "cylinder", radius: trunkR * 0.55, height: h * 0.34, segments: 8 }, materialId: "prop_bark" } });
+      }
+      // Lumpy organic canopy: a main crown + a smaller offset blob for silhouette variety.
+      const crownR = h * 0.30;
+      this.node(`${id}__leaves`, {
+        parent: id,
+        position: [j1 * h * 0.06, trunkH + crownR * 0.58, j2 * h * 0.06],
+        scale: [1.2, 0.88, 1.2],
+      }, { mesh: { geometry: { kind: "mesh", data: lumpyCanopy(crownR, hash01(id, 4) * 100) }, materialId: "prop_leaves" } });
+      this.node(`${id}__leaves1`, {
+        parent: id,
+        position: [j3 * h * 0.3, trunkH + crownR * 0.35, j1 * h * 0.24],
+        scale: [1, 0.85, 1],
+      }, { mesh: { geometry: { kind: "mesh", data: lumpyCanopy(crownR * 0.62, hash01(id, 5) * 100) }, materialId: "prop_leaves" } });
+      return this;
+    }
+
+    // Conifer: trunk + root flare + three tiered cones (base tier keeps the `__leaves` id).
+    const trunkH = h * 0.42, trunkR = h * 0.05, leafR = h * 0.28;
     this.node(`${id}__trunk`, { parent: id, position: [0, trunkH / 2, 0] },
       { mesh: { geometry: { kind: "cylinder", radius: trunkR, height: trunkH, segments: 10 }, materialId: "prop_bark" } });
-    this.node(`${id}__leaves`, { parent: id, position: [0, trunkH + leafH / 2 - h * 0.05, 0] },
-      { mesh: { geometry: { kind: "cone", radius: leafR, height: leafH, segments: 12 }, materialId: "prop_leaves" } });
+    this.node(`${id}__flare`, { parent: id, position: [0, h * 0.04, 0] },
+      { mesh: { geometry: { kind: "cone", radius: trunkR * 1.9, height: h * 0.1, segments: 10 }, materialId: "prop_bark" } });
+    const tiers = [
+      { r: leafR, len: h * 0.42, y: trunkH + h * 0.14 },
+      { r: leafR * 0.74, len: h * 0.36, y: trunkH + h * 0.34 },
+      { r: leafR * 0.5, len: h * 0.30, y: trunkH + h * 0.52 },
+    ];
+    tiers.forEach((t, k) => {
+      const jx = [j1, j2, j3][k]! * h * 0.05;
+      const jz = [j2, j3, j1][k]! * h * 0.05;
+      this.node(k === 0 ? `${id}__leaves` : `${id}__leaves${k}`, { parent: id, position: [jx, t.y + t.len / 2, jz] },
+        { mesh: { geometry: { kind: "cone", radius: t.r, height: t.len, segments: 12 }, materialId: "prop_leaves" } });
+    });
     return this;
   }
 

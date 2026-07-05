@@ -21,6 +21,28 @@ describe("prop builders", () => {
     expect(doc.materials.filter((m) => m.id === "prop_leaves")).toHaveLength(1);
   });
 
+  it("tree({variant:'broadleaf'}) builds an organic canopy mesh with outward welded normals", () => {
+    const build = () =>
+      scene({ fps: 30, duration: 1, width: 16, height: 16 })
+        .tree("oak", { variant: "broadleaf", height: 3 })
+        .camera({ position: [0, 1, 5], lookAt: [0, 0, 0] })
+        .build();
+    const doc = build();
+    const leaves = doc.nodes.find((n) => n.id === "oak__leaves")!;
+    expect(leaves.mesh!.geometry.kind).toBe("mesh");
+    const data = (leaves.mesh!.geometry as { kind: "mesh"; data: { positions: number[]; normals: number[] } }).data;
+    // Normals point outward: positive dot with the (origin-centered) vertex direction.
+    for (let i = 0; i < data.positions.length / 3; i += 7) {
+      const d =
+        data.positions[i * 3]! * data.normals[i * 3]! +
+        data.positions[i * 3 + 1]! * data.normals[i * 3 + 1]! +
+        data.positions[i * 3 + 2]! * data.normals[i * 3 + 2]!;
+      expect(d).toBeGreaterThan(0);
+    }
+    // Deterministic: two builds produce identical canopy data (hashed variation, no randomness).
+    expect(build()).toEqual(doc);
+  });
+
   it("rock() sits on the ground (lifted by its squashed radius)", () => {
     const doc = scene({ fps: 30, duration: 1, width: 16, height: 16 })
       .rock("r0", { position: [0, 0, 0], radius: 0.5 })
