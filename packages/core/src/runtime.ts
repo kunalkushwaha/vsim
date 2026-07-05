@@ -139,6 +139,8 @@ export class SceneRuntime {
   private channelKeysCache = new Map<string, Set<string>>();
   private springState = new Map<string, Quat>(); // smoothed rotation per spring node
   private springFrame = -1; // last frame the springs advanced to (same-frame recompute guard)
+  private lockState = new Map<string, { ox: number; oz: number; foot?: string; ax: number; az: number }>();
+  private lockFrame = -1;
 
   constructor(doc: SceneDocument, opts: { physics?: PhysicsAdapter } = {}) {
     this.doc = doc;
@@ -160,6 +162,8 @@ export class SceneRuntime {
     this.clock.reset();
     this.springState.clear();
     this.springFrame = -1;
+    this.lockState.clear();
+    this.lockFrame = -1;
     if (this.physics) await this.physics.reset();
   }
 
@@ -335,23 +339,68 @@ export class SceneRuntime {
       return world;
     };
 
-    // Ground-contact IK (v1): with the posed skeleton, lift each ik-tagged node so its deepest
-    // foot joint touches (never penetrates) the ground plane. World caches are invalidated so
+    // Ground-contact IK: lift each ik-tagged node so its deepest foot joint touches (never
+    // penetrates) the ground plane; with `lock`, additionally pin the planted foot's world X/Z
+    // between frames (anti-slide / root-motion extraction). World caches are invalidated so
     // the final resolve sees the corrected pose.
+    const advanceLock = frame > this.lockFrame;
     for (const n of this.doc.nodes) {
       if (!n.ik?.feet.length) continue;
+      const lt = locals.get(n.id)!;
+
+      // Carry the accumulated locomotion offset before measuring feet.
+      const ls = n.ik.lock ? this.lockState.get(n.id) ?? { ox: 0, oz: 0, ax: 0, az: 0 } : undefined;
+      if (ls) {
+        lt.position[0] += ls.ox;
+        lt.position[2] += ls.oz;
+        worldMatrices.clear();
+      }
+
       let deepest = Infinity;
+      let deepestFoot: string | undefined;
       for (const foot of n.ik.feet) {
         if (!this.nodeMap.has(foot)) continue;
-        deepest = Math.min(deepest, mat4.getTranslation(computeWorld(foot))[1]);
+        const y = mat4.getTranslation(computeWorld(foot))[1];
+        if (y < deepest) {
+          deepest = y;
+          deepestFoot = foot;
+        }
       }
       if (deepest === Infinity) continue;
       const penetration = n.ik.ground - deepest;
       if (penetration > 0) {
-        locals.get(n.id)!.position[1] += penetration;
+        lt.position[1] += penetration;
         worldMatrices.clear();
       }
+
+      // Stance lock: if the deepest foot is on (or was pushed onto) the ground, pin its world
+      // X/Z to where it first planted; the correction accumulates into the locomotion offset.
+      if (ls && deepestFoot && advanceLock) {
+        const planted = penetration >= -1e-6; // touching the ground after the lift
+        if (planted) {
+          const fp = mat4.getTranslation(computeWorld(deepestFoot));
+          if (ls.foot !== deepestFoot) {
+            ls.foot = deepestFoot; // new stance foot: anchor where it landed
+            ls.ax = fp[0];
+            ls.az = fp[2];
+          } else {
+            const dx = ls.ax - fp[0];
+            const dz = ls.az - fp[2];
+            if (dx !== 0 || dz !== 0) {
+              lt.position[0] += dx;
+              lt.position[2] += dz;
+              ls.ox += dx;
+              ls.oz += dz;
+              worldMatrices.clear();
+            }
+          }
+        } else {
+          ls.foot = undefined; // airborne: next plant re-anchors
+        }
+        this.lockState.set(n.id, ls);
+      }
     }
+    if (advanceLock) this.lockFrame = frame;
 
     const nodes: ResolvedNode[] = [];
     const lights: ResolvedLight[] = [];
