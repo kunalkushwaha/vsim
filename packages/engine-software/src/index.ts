@@ -116,7 +116,7 @@ function buildShadow(sun: ResolvedLight, batches: MeshBatch[], map: DepthMap): S
   // Planes are ground/backdrop: they RECEIVE shadows but don't cast them. Excluding them keeps
   // the map bounds tight around the actual objects (a big ground plane would blow the texel
   // size up ~10× and turn every shadow edge into blocks). Points outside the map sample as lit.
-  const casters = batches.filter((b) => b.node.mesh?.geometry.kind !== "plane");
+  const casters = batches.filter((b) => b.node.mesh?.geometry.kind !== "plane" && b.material.opacity >= 1);
   if (casters.length === 0) return undefined;
 
   // Orthonormal light basis: f along the light's travel direction, r/u spanning the map plane.
@@ -336,8 +336,9 @@ export class SoftwareEngine implements Engine {
     const sun = this.shadows ? state.lights.find((l) => l.type === "directional") : undefined;
     const shadow = sun ? buildShadow(sun, batches, this.shadowMap) : undefined;
 
-    // ---- pass 3: shade + rasterize ----
-    for (const b of batches) {
+    // ---- pass 3: shade + rasterize. Opaque first; then transparent triangles (opacity < 1)
+    // sorted back-to-front across ALL transparent meshes, alpha-blended without depth writes. ----
+    const prepareDraw = (b: MeshBatch) => {
       const { md, material, useUV } = b;
       const tex = md.texture, nrmMap = md.normalMap, mrMap = md.metallicRoughnessMap;
       const aoMap = md.occlusionMap, emiMap = md.emissiveMap;
@@ -435,33 +436,57 @@ export class SoftwareEngine implements Engine {
         return a;
       };
 
-      const idx = md.indices;
-      for (let t = 0; t < idx.length; t += 3) {
-        const a = idx[t]!, b2 = idx[t + 1]!, c = idx[t + 2]!;
+      const uvIdx = useUV && wantLod ? 6 : -1;
+      // Draw triangle t (index into md.indices) with the given alpha (1 = opaque).
+      const drawTri = (t: number, alpha: number): void => {
+        const a = md.indices[t]!, b2 = md.indices[t + 1]!, c = md.indices[t + 2]!;
         const ain = b.cw[a]! >= W_NEAR, bin = b.cw[b2]! >= W_NEAR, cin = b.cw[c]! >= W_NEAR;
 
         if (ain && bin && cin) {
           // Fully in front: project directly.
-          const uvIdx = useUV && wantLod ? 6 : -1;
-          this.hi.triangleShaded(project(a), attrsOf(a), project(b2), attrsOf(b2), project(c), attrsOf(c), shadePx, uvIdx);
-          continue;
+          this.hi.triangleShaded(project(a), attrsOf(a), project(b2), attrsOf(b2), project(c), attrsOf(c), shadePx, uvIdx, alpha);
+          return;
         }
-        if (!ain && !bin && !cin) continue; // wholly behind the near plane
+        if (!ain && !bin && !cin) return; // wholly behind the near plane
 
         // Straddles the near plane: clip to a polygon, then fan-triangulate the visible part.
         const vert = (i: number): number[] => [b.cx[i]!, b.cy[i]!, b.cz[i]!, b.cw[i]!, ...attrsOf(i)];
         const poly = clipNear([vert(a), vert(b2), vert(c)]);
         for (let k = 1; k + 1 < poly.length; k++) {
           const v0 = poly[0]!, v1 = poly[k]!, v2 = poly[k + 1]!;
-          const uvIdx = useUV && wantLod ? 6 : -1;
           this.hi.triangleShaded(
             projectV(v0), v0.slice(4),
             projectV(v1), v1.slice(4),
             projectV(v2), v2.slice(4),
-            shadePx, uvIdx,
+            shadePx, uvIdx, alpha,
           );
         }
+      };
+      return drawTri;
+    };
+
+    // Opaque pass.
+    for (const b of batches) {
+      if (b.material.opacity < 1) continue;
+      const drawTri = prepareDraw(b);
+      for (let t = 0; t < b.md.indices.length; t += 3) drawTri(t, 1);
+    }
+
+    // Transparent pass: painter's algorithm across every transparent mesh — sort by mean view
+    // depth (clip w), farthest first, blend over the opaque image without writing depth.
+    const transparent = batches.filter((b) => b.material.opacity < 1);
+    if (transparent.length) {
+      const items: { drawTri: (t: number, alpha: number) => void; t: number; alpha: number; depth: number }[] = [];
+      for (const b of transparent) {
+        const drawTri = prepareDraw(b);
+        const alpha = b.material.opacity;
+        for (let t = 0; t < b.md.indices.length; t += 3) {
+          const a = b.md.indices[t]!, b2 = b.md.indices[t + 1]!, c = b.md.indices[t + 2]!;
+          items.push({ drawTri, t, alpha, depth: (b.cw[a]! + b.cw[b2]! + b.cw[c]!) / 3 });
+        }
       }
+      items.sort((x, y) => y.depth - x.depth);
+      for (const it of items) it.drawTri(it.t, it.alpha);
     }
 
     if (toon) this.hi.outline([0.04, 0.05, 0.08]); // manga: dark silhouette/edge lines

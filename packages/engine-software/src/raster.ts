@@ -291,6 +291,7 @@ export class LinearBuffer {
     p2: [number, number, number, number], a2: ArrayLike<number>,
     shade: (attrs: Float64Array, out: Vec3) => void,
     uvIndex = -1,
+    alpha = 1,
   ): void {
     const { width, height, rgb, depth } = this;
     const area = edge(p0[0], p0[1], p1[0], p1[1], p2[0], p2[1]);
@@ -330,6 +331,20 @@ export class LinearBuffer {
       dPVdy = pa0[uvIndex + 1]! * dw0dy + pa1[uvIndex + 1]! * dw1dy + pa2[uvIndex + 1]! * dw2dy;
     }
 
+    // Fill-rule tie-break: samples landing EXACTLY on a shared edge must belong to exactly one
+    // of the two adjacent triangles, or translucent geometry double-blends along seams. After
+    // barycentric normalization (·1/area) interiors are w>0 in every winding; boundary samples
+    // (w===0) are accepted only when their opposite edge is a "top-left" edge in the
+    // winding-normalized direction.
+    const s = area > 0 ? 1 : -1;
+    const topLeft = (ax: number, ay: number, bx: number, by: number): boolean => {
+      const dx = (bx - ax) * s, dy = (by - ay) * s;
+      return dy < 0 || (dy === 0 && dx < 0);
+    };
+    const tl0 = topLeft(p1[0], p1[1], p2[0], p2[1]);
+    const tl1 = topLeft(p2[0], p2[1], p0[0], p0[1]);
+    const tl2 = topLeft(p0[0], p0[1], p1[0], p1[1]);
+
     for (let y = minY; y <= maxY; y++) {
       const py = y + 0.5;
       for (let x = minX; x <= maxX; x++) {
@@ -337,13 +352,13 @@ export class LinearBuffer {
         const w0 = edge(p1[0], p1[1], p2[0], p2[1], px, py) * inv;
         const w1 = edge(p2[0], p2[1], p0[0], p0[1], px, py) * inv;
         const w2 = edge(p0[0], p0[1], p1[0], p1[1], px, py) * inv;
-        // accept either winding
-        if (!((w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 <= 0 && w1 <= 0 && w2 <= 0))) continue;
+        if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+        if ((w0 === 0 && !tl0) || (w1 === 0 && !tl1) || (w2 === 0 && !tl2)) continue;
 
         const z = w0 * p0[2] + w1 * p1[2] + w2 * p2[2];
         const di = y * width + x;
         if (z >= depth[di]!) continue;
-        depth[di] = z;
+        if (alpha >= 1) depth[di] = z; // translucent fragments blend without occluding
 
         const iw = w0 * iw0 + w1 * iw1 + w2 * iw2;
         const rw = iw !== 0 ? 1 / iw : 0;
@@ -356,9 +371,15 @@ export class LinearBuffer {
         }
         shade(attrs, out);
         const p = di * 3;
-        rgb[p] = out[0];
-        rgb[p + 1] = out[1];
-        rgb[p + 2] = out[2];
+        if (alpha >= 1) {
+          rgb[p] = out[0];
+          rgb[p + 1] = out[1];
+          rgb[p + 2] = out[2];
+        } else {
+          rgb[p] = out[0] * alpha + rgb[p]! * (1 - alpha);
+          rgb[p + 1] = out[1] * alpha + rgb[p + 1]! * (1 - alpha);
+          rgb[p + 2] = out[2] * alpha + rgb[p + 2]! * (1 - alpha);
+        }
       }
     }
   }
