@@ -729,12 +729,15 @@ function shadePixel(
       continue;
     }
     let lX: number, lY: number, lZ: number;
+    let atten = 1;
     if (light.type === "directional") {
       lX = -light.direction[0]; lY = -light.direction[1]; lZ = -light.direction[2];
     } else {
       lX = light.position[0] - px; lY = light.position[1] - py; lZ = light.position[2] - pz;
       const ll = Math.sqrt(lX * lX + lY * lY + lZ * lZ) || 1;
       lX /= ll; lY /= ll; lZ /= ll;
+      // Distance falloff: 1/(1+d^decay) — decay 0 keeps the legacy unattenuated look.
+      if (light.decay) atten = 1 / (1 + Math.pow(ll, light.decay));
     }
     let lambert = nX * lX + nY * lY + nZ * lZ;
     if (lambert <= 0) continue;
@@ -750,13 +753,13 @@ function shadePixel(
 
     if (toon) {
       // Cel shading: banded diffuse, no specular.
-      const f = bandLambert(lambert) * light.intensity * vis;
+      const f = bandLambert(lambert) * light.intensity * atten * vis;
       r += albR * light.color[0] * f;
       g += albG * light.color[1] * f;
       b += albB * light.color[2] * f;
       continue;
     }
-    const diff = lambert * light.intensity * kd * vis;
+    const diff = lambert * light.intensity * atten * kd * vis;
     r += albR * light.color[0] * diff;
     g += albG * light.color[1] * diff;
     b += albB * light.color[2] * diff;
@@ -768,7 +771,7 @@ function shadePixel(
     hX /= hl; hY /= hl; hZ /= hl;
     const ndh = nX * hX + nY * hY + nZ * hZ;
     if (ndh <= 0) continue;
-    const s = Math.pow(ndh, specExp) * specNorm * lambert * light.intensity * vis;
+    const s = Math.pow(ndh, specExp) * specNorm * lambert * light.intensity * atten * vis;
     r += f0r * light.color[0] * s;
     g += f0g * light.color[1] * s;
     b += f0b * light.color[2] * s;

@@ -238,6 +238,7 @@ export class ThreeEngine implements Engine {
       p.color.setRGB(l.color[0], l.color[1], l.color[2]);
       p.intensity = l.intensity;
       p.position.set(l.position[0], l.position[1], l.position[2]);
+      p.decay = l.decay ?? 0; // 0 matches the software renderer's unattenuated legacy default
     });
     this.ensure(this.lightObjs.hemis, hemis.length, () => {
       const h = new THREE.HemisphereLight();

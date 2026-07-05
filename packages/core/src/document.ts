@@ -121,6 +121,12 @@ export const LightSchema = z.object({
   intensity: z.number().default(1),
   /** World-space direction a directional light travels (e.g. [0,-1,0] = straight down). */
   direction: vec3.optional(),
+  /**
+   * Point light only: distance-falloff exponent, attenuated as `1 / (1 + d^decay)` (well-behaved
+   * at the light itself). 0 (default) = no attenuation, which keeps existing scenes identical;
+   * 2 = physically-based inverse-square — what firelight/lamps want.
+   */
+  decay: z.number().min(0).default(0),
   /** Hemisphere light only: sky tint (lights upward-facing surfaces). */
   skyColor: color.optional(),
   /** Hemisphere light only: ground tint (lights downward-facing surfaces). */

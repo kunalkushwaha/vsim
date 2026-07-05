@@ -75,12 +75,16 @@ Light {
   type: "ambient" | "directional" | "point" | "hemisphere"
   color: [r,g,b], intensity: number
   direction?: [x,y,z]        // directional: travel direction, e.g. [0,-1,0]
+  decay?: number             // point: distance falloff — 0 (default) none, 2 = inverse-square
   skyColor?, groundColor?: [r,g,b]   // hemisphere: tint for up/down-facing surfaces
 }
 ```
 
 Directional lights cast shadow-mapped shadows in the software renderer; point
-lights cast 6-face cube shadows.
+lights cast 6-face cube shadows. Point-light `decay` attenuates as
+`1 / (1 + d^decay)` (well-behaved at the light itself) — use `decay: 2` for
+physically-plausible firelight/lamps whose glow pools locally instead of
+lighting the whole scene.
 
 ### Geometry (discriminated by `kind`)
 

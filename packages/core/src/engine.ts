@@ -33,6 +33,8 @@ export interface ResolvedLight {
   /** World position (point) or normalized direction (directional). */
   position: Vec3;
   direction: Vec3;
+  /** Point light distance-falloff exponent: 0 = none (legacy), 2 = inverse-square. */
+  decay?: number;
   /** Hemisphere light only. */
   skyColor?: Vec3;
   groundColor?: Vec3;
