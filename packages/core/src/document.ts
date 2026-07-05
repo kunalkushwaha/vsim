@@ -287,6 +287,35 @@ export const TextOverlaySchema = z.object({
     .optional(),
 });
 
+/**
+ * A deterministic particle system. Every particle's position is a CLOSED-FORM function of
+ * (particle index, frame, seed) — spawn point, velocity, and lifetime staggering all come from
+ * hashes, and motion is ballistic (v·t + ½g·t²). No integration state → scrub-safe, and two
+ * renders are always identical.
+ */
+export const ParticlesSchema = z.object({
+  id: z.string(),
+  /** Emitter origin (world). */
+  position: vec3.default([0, 0, 0]),
+  /** Spawn jitter half-extents around the origin. */
+  spread: vec3.default([0, 0, 0]),
+  count: z.number().int().positive().default(100),
+  /** Mean initial velocity (world units/second). */
+  velocity: vec3.default([0, 1, 0]),
+  /** Per-axis random velocity variation (± half-range). */
+  velocitySpread: vec3.default([0.5, 0.5, 0.5]),
+  gravity: vec3.default([0, -9.81, 0]),
+  lifeFrames: z.number().positive().default(60),
+  startFrame: z.number().default(0),
+  /** Respawn continuously (staggered births); false = one burst. */
+  loop: z.boolean().default(true),
+  /** Particle radius in world units. */
+  size: z.number().positive().default(0.05),
+  color: color.default([1, 1, 1]),
+  opacity: z.number().min(0).max(1).default(1),
+  seed: z.number().int().default(0),
+});
+
 export const SceneDocumentSchema = z.object({
   version: z.literal("0.1").default("0.1"),
   meta: MetaSchema,
@@ -306,6 +335,8 @@ export const SceneDocumentSchema = z.object({
   shots: z.array(ShotSchema).default([]),
   /** Screen-space text overlays (titles / captions / lower-thirds), drawn on top of the render. */
   overlays: z.array(TextOverlaySchema).default([]),
+  /** Deterministic particle systems (leaves, dust, rain, sparks). */
+  particles: z.array(ParticlesSchema).default([]),
 });
 
 export type SceneDocument = z.infer<typeof SceneDocumentSchema>;
@@ -328,6 +359,7 @@ export type Camera = z.infer<typeof CameraSchema>;
 export type Shot = z.infer<typeof ShotSchema>;
 export type TextOverlay = z.infer<typeof TextOverlaySchema>;
 export type Asset = z.infer<typeof AssetSchema>;
+export type Particles = z.infer<typeof ParticlesSchema>;
 
 /** Validate + apply defaults. Throws a readable error on invalid input. */
 export function parseDocument(input: unknown): SceneDocument {

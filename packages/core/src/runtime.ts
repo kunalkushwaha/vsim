@@ -11,6 +11,7 @@ import type {
   ResolvedCamera,
   ResolvedLight,
   ResolvedNode,
+  ResolvedParticle,
 } from "./engine.js";
 
 interface LocalTransform {
@@ -35,6 +36,42 @@ function applyToTransform(lt: LocalTransform, path: string, value: number | numb
     }
   } else if (comp in AXIS && typeof value === "number") {
     target[AXIS[comp]!] = value;
+  }
+}
+
+/** Deterministic integer hash → [0, 1). Splits particle randomness into independent streams. */
+function hashN(a: number, b: number, c: number): number {
+  let h = (Math.imul(a, 374761393) + Math.imul(b, 668265263) + Math.imul(c, 2246822519) + 374761393) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 3266489917) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 8) / 16777216;
+}
+
+/**
+ * Evaluate one particle system at `frame` — pure closed form: births are staggered across the
+ * lifetime, each (particle, cycle) pair hashes its own spawn offset and velocity, and motion is
+ * ballistic. Fades out over the last quarter of the lifetime.
+ */
+function evaluateParticles(ps: import("./document.js").Particles, frame: number, fps: number, out: ResolvedParticle[]): void {
+  const local = frame - ps.startFrame;
+  if (local < 0) return;
+  for (let i = 0; i < ps.count; i++) {
+    // Looping streams stagger births across one lifetime for a steady population; a one-shot
+    // burst spawns everything together at startFrame.
+    const birthOffset = ps.loop ? hashN(ps.seed, i, 0) * ps.lifeFrames : 0;
+    const since = local - birthOffset;
+    if (since < 0) continue;
+    const cycle = Math.floor(since / ps.lifeFrames);
+    if (!ps.loop && cycle > 0) continue;
+    const age = since - cycle * ps.lifeFrames;
+    const k = i + cycle * ps.count + 1; // fresh randomness every respawn
+    const t = age / fps;
+    const px = ps.position[0] + (hashN(ps.seed, k, 1) * 2 - 1) * ps.spread[0] + (ps.velocity[0] + (hashN(ps.seed, k, 4) * 2 - 1) * ps.velocitySpread[0]) * t + 0.5 * ps.gravity[0] * t * t;
+    const py = ps.position[1] + (hashN(ps.seed, k, 2) * 2 - 1) * ps.spread[1] + (ps.velocity[1] + (hashN(ps.seed, k, 5) * 2 - 1) * ps.velocitySpread[1]) * t + 0.5 * ps.gravity[1] * t * t;
+    const pz = ps.position[2] + (hashN(ps.seed, k, 3) * 2 - 1) * ps.spread[2] + (ps.velocity[2] + (hashN(ps.seed, k, 6) * 2 - 1) * ps.velocitySpread[2]) * t + 0.5 * ps.gravity[2] * t * t;
+    const lifeT = age / ps.lifeFrames;
+    const fade = lifeT > 0.75 ? (1 - lifeT) / 0.25 : 1;
+    out.push({ position: [px, py, pz], size: ps.size, color: ps.color, opacity: ps.opacity * fade });
   }
 }
 
@@ -324,6 +361,9 @@ export class SceneRuntime {
       }
     }
 
+    const particles: ResolvedParticle[] = [];
+    for (const ps of this.doc.particles) evaluateParticles(ps, frame, this.doc.meta.fps, particles);
+
     return {
       frame,
       time: frame / this.doc.meta.fps,
@@ -341,6 +381,7 @@ export class SceneRuntime {
       lights,
       camera: this.resolveCamera(frame, computeWorld, cameraOverrides),
       overlays: this.doc.overlays.map((o) => overlays.get(o.id)!),
+      particles,
     };
   }
 

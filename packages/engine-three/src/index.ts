@@ -154,6 +154,7 @@ export class ThreeEngine implements Engine {
       ? [(state.sky.top[0] + state.sky.bottom[0]) / 2, (state.sky.top[1] + state.sky.bottom[1]) / 2, (state.sky.top[2] + state.sky.bottom[2]) / 2]
       : state.background;
     this.scene.background = new THREE.Color(bg[0], bg[1], bg[2]);
+    this.syncParticles(state);
     // Linear distance fog, matching the software renderer's environment.fog.
     this.scene.fog = state.fog
       ? new THREE.Fog(new THREE.Color(state.fog.color[0], state.fog.color[1], state.fog.color[2]), state.fog.near, state.fog.far)
@@ -256,6 +257,39 @@ export class ThreeEngine implements Engine {
   private ensure<T extends THREE.Object3D>(arr: T[], n: number, make: () => T): void {
     while (arr.length < n) arr.push(make());
     for (let i = 0; i < arr.length; i++) arr[i]!.visible = i < n;
+  }
+
+  private particlePoints?: THREE.Points;
+  private particleMat?: THREE.PointsMaterial;
+
+  /** Approximate particle rendering for the preview: one Points cloud rebuilt per frame. */
+  private syncParticles(state: FrameState): void {
+    const list = state.particles ?? [];
+    if (!list.length) {
+      if (this.particlePoints) this.particlePoints.visible = false;
+      return;
+    }
+    if (!this.particlePoints) {
+      this.particleMat = new THREE.PointsMaterial({ size: 0.1, sizeAttenuation: true, transparent: true, vertexColors: true, depthWrite: false });
+      this.particlePoints = new THREE.Points(new THREE.BufferGeometry(), this.particleMat);
+      this.particlePoints.frustumCulled = false;
+      this.scene.add(this.particlePoints);
+    }
+    this.particlePoints.visible = true;
+    const pos = new Float32Array(list.length * 3);
+    const col = new Float32Array(list.length * 3);
+    let sizeSum = 0, opacitySum = 0;
+    list.forEach((pt, i) => {
+      pos.set(pt.position, i * 3);
+      col.set(pt.color, i * 3);
+      sizeSum += pt.size;
+      opacitySum += pt.opacity;
+    });
+    const g = this.particlePoints.geometry;
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    this.particleMat!.size = (sizeSum / list.length) * 2;
+    this.particleMat!.opacity = opacitySum / list.length;
   }
 
   readPixels(): Uint8ClampedArray {

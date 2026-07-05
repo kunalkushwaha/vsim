@@ -417,6 +417,29 @@ export class LinearBuffer {
   }
 
   /**
+   * Splat a camera-facing particle: a filled circle of screen radius `r` at (cx, cy), depth-
+   * tested against the z-buffer (no write) and alpha-blended in linear space.
+   */
+  splat(cx: number, cy: number, r: number, z: number, color: Vec3, alpha: number): void {
+    if (alpha <= 0 || r <= 0) return;
+    const { width, height, rgb, depth } = this;
+    const minX = Math.max(0, Math.floor(cx - r)), maxX = Math.min(width - 1, Math.ceil(cx + r));
+    const minY = Math.max(0, Math.floor(cy - r)), maxY = Math.min(height - 1, Math.ceil(cy + r));
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+        if (dx * dx + dy * dy > r * r) continue;
+        const di = y * width + x;
+        if (z >= depth[di]!) continue;
+        const p = di * 3;
+        rgb[p] = color[0] * alpha + rgb[p]! * (1 - alpha);
+        rgb[p + 1] = color[1] * alpha + rgb[p + 1]! * (1 - alpha);
+        rgb[p + 2] = color[2] * alpha + rgb[p + 2]! * (1 - alpha);
+      }
+    }
+  }
+
+  /**
    * Paint a sun disc + radial glow into the (freshly cleared) sky: a solid HDR core of radius
    * `discR` and an additive falloff halo out to `glowR`, centered at (cx, cy).
    */
