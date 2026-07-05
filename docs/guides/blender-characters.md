@@ -16,6 +16,18 @@ curl -L https://download.blender.org/release/Blender4.5/blender-4.5.9-linux-x64.
 (Or `apt install blender` / `snap install blender` / `flatpak install flathub org.blender.Blender`
 if you have the rights.)
 
+**No Blender binary at all? `pip install bpy`.** Blender is also published as a Python module
+on PyPI — the same headless scripts run under plain `python3`:
+
+```bash
+pip install bpy                                     # Blender 5.x as a Python module
+python3 scripts/blender/make-character.py -- character.glb
+```
+
+This is how vsim's Cycles renders work in CI/containers where no binary can be installed. The
+Cycles runner (`apps/studio/cycles-render.mjs`) resolves Blender automatically: an explicit
+path → `$VSIM_BLENDER` → `blender` on PATH → the pip `bpy` module.
+
 ## 2. Generate a rigged, animated character
 
 [`scripts/blender/make-character.py`](../../scripts/blender/make-character.py) builds a humanoid
@@ -89,3 +101,17 @@ blender --background --python scripts/blender/render-cycles.py -- character.glb 
 This is the seed of vsim's photoreal backend (see [`docs/plan-photoreal.md`](../plan-photoreal.md)) —
 the model is *preview fast in the editor, render the final in Cycles*. A bundled `suited` character
 renders photoreal (real skin + a fabric suit + soft shadows) in a few seconds on CPU.
+
+### Path-trace a whole scene document to MP4
+
+[`apps/studio/cycles-render.mjs`](../../apps/studio/cycles-render.mjs) runs the full pipeline for
+any scene document: bake the animation to per-frame glTF, path-trace every frame with Cycles in one
+Blender session, composite text overlays, and encode with ffmpeg:
+
+```bash
+node apps/studio/cycles-render.mjs my.scene.json out/photoreal.mp4 40 2
+# args: <doc.json> <out.mp4> [samples=40] [frame step=1]
+```
+
+It resolves Blender the same way as above (binary → `$VSIM_BLENDER` → PATH → pip `bpy`), so it
+works on machines with nothing but `python3` + `pip install bpy` + `ffmpeg`.

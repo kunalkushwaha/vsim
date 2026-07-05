@@ -15,11 +15,26 @@ pnpm render examples/01-cube/scene.ts -o out/cube.mp4
 Or use any of the bundled examples:
 
 ```bash
-pnpm example:cube      # keyframed spinning/bouncing cube
-pnpm example:physics   # deterministic Rapier leaning tower
-pnpm example:beat      # audio beat-synced pulse (muxes audio)
-pnpm example:gltf      # loads a glTF/GLB torus
+pnpm example:cube       # keyframed spinning/bouncing cube
+pnpm example:physics    # deterministic Rapier leaning tower
+pnpm example:beat       # audio beat-synced pulse (muxes audio)
+pnpm example:gltf       # loads a glTF/GLB torus
+pnpm example:crossfade  # a human blending idle → walk → run (layered clips)
+pnpm example:normalmap  # tangent-space bump relief under a raking light
 ```
+
+There are 23 in all — see [`examples/`](../examples) or `pnpm showreel` to render every one
+into a single reel.
+
+## Render faster (multi-core)
+
+```bash
+pnpm render examples/23-crossfade/scene.ts -o out/crossfade.mp4 --workers 4
+```
+
+`--workers N` splits every frame into horizontal bands rendered by N worker threads —
+**byte-identical** to a single-threaded render, ~2.5× faster on 4 cores. Scenes with
+physics fall back to single-threaded automatically (the simulation is stateful).
 
 ## Author a scene in code
 
@@ -72,7 +87,8 @@ pnpm render examples/01-cube/scene.ts --still out/frame.png --frame 30
 ## CLI
 
 ```
-vsim render <scene.ts|scene.json> [-o out.mp4] [--still frame.png --frame N] [--audio file]
+vsim render <scene.ts|scene.json> [-o out.mp4] [--workers N] [--still frame.png --frame N] [--audio file]
+vsim edit <scene.ts|scene.json> --prompt "..." [-o out.scene.json] [--render out.mp4]
 ```
 
 See [scene-document.md](./scene-document.md) for the full document reference and
