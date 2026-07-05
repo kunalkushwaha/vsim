@@ -106,6 +106,11 @@ export const ClipPlaybackSchema = z.object({
   startFrame: z.number().default(0),
   speed: z.number().default(1),
   loop: z.boolean().default(false),
+  /**
+   * Ease from the static (bind) pose into the clip over this many frames after `startFrame` —
+   * the graphics→animation transition. 0 = snap straight to the clip's first pose.
+   */
+  blendInFrames: z.number().min(0).default(0),
 });
 
 export const LightSchema = z.object({

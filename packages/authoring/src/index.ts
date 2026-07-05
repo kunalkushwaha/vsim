@@ -84,6 +84,8 @@ interface CharacterInput extends TransformInput {
   loop?: boolean;
   speed?: number;
   startFrame?: number;
+  /** Ease from the static bind pose into the clip over this many frames (default 0 = snap). */
+  blendIn?: number;
   material?: string;
 }
 
@@ -351,7 +353,7 @@ export class SceneBuilder {
     }
 
     const clipName = opts.clip ?? rig.clips[0]?.id;
-    const clip = clipName ? { clipId: `${id}/${clipName}`, loop: opts.loop, speed: opts.speed, startFrame: opts.startFrame } : undefined;
+    const clip = clipName ? { clipId: `${id}/${clipName}`, loop: opts.loop, speed: opts.speed, startFrame: opts.startFrame, blendInFrames: opts.blendIn } : undefined;
     // One mesh node per skinned mesh (body + garments), all bound to the same skin. The clip poses
     // shared joints, so it rides on the first mesh node only. Each mesh keeps its own texture.
     const meshes = rig.meshes ?? [rig.mesh];
