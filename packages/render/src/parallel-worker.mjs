@@ -8,7 +8,14 @@ register();
 const { SceneRuntime, parseDocument } = await import("@vsim/core");
 const { SoftwareEngine } = await import("@vsim/engine-software");
 
-const { doc: rawDoc, y0, y1, width, height } = workerData;
+const { doc: rawDoc, y0, y1, width, height, fontPath } = workerData;
+// Custom overlay font: each worker has its own module graph, so it must register the font
+// itself before the engine rasterizes any text.
+if (fontPath) {
+  const { readFileSync } = await import("node:fs");
+  const { setFont } = await import("@vsim/text");
+  setFont(readFileSync(fontPath));
+}
 const doc = parseDocument(rawDoc);
 const engine = new SoftwareEngine(width, height, { region: { y0, y1 } });
 const runtime = new SceneRuntime(doc);

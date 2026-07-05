@@ -28,6 +28,7 @@ interface Args {
   frame: number;
   workers?: number;
   audio?: string;
+  font?: string;
   prompt?: string;
   render?: string;
 }
@@ -41,6 +42,7 @@ function parseArgs(argv: string[]): Args {
     else if (t === "--workers") a.workers = Number(argv[++i]);
     else if (t === "--frame") a.frame = Number(argv[++i]);
     else if (t === "--audio") a.audio = argv[++i]!;
+    else if (t === "--font") a.font = argv[++i]!;
     else if (t === "--prompt" || t === "-p") a.prompt = argv[++i]!;
     else if (t === "--render") a.render = argv[++i]!;
     else if (!t!.startsWith("-")) a.file = t;
@@ -49,7 +51,7 @@ function parseArgs(argv: string[]): Args {
 }
 
 /** Load a scene document from a .ts/.js module (default/`scene`/`document` export) or .json. */
-async function loadScene(file: string): Promise<{ doc: SceneDocument; audio?: string }> {
+async function loadScene(file: string): Promise<{ doc: SceneDocument; audio?: string; font?: string }> {
   const abs = resolve(file);
   if (extname(abs) === ".json") {
     return { doc: parseDocument(JSON.parse(await readFile(abs, "utf8"))) };
@@ -60,7 +62,19 @@ async function loadScene(file: string): Promise<{ doc: SceneDocument; audio?: st
   if (exported && typeof exported.then === "function") exported = await exported;
   if (!exported) throw new Error(`${file} must export a scene (default export, or \`scene\`/\`document\`).`);
   const doc: SceneDocument = exported.version ? exported : parseDocument(exported);
-  return { doc, audio: mod.audioPath };
+  return { doc, audio: mod.audioPath, font: mod.fontPath };
+}
+
+/**
+ * Register a custom overlay font (TTF/OTF) with the text rasterizer. Scenes are imported in
+ * an isolated tsx module graph, so a scene calling setFont() itself would hit a different
+ * instance — the CLI (which shares the renderer's graph) must do it. `--font` wins over the
+ * scene's exported `fontPath`.
+ */
+async function applyFont(path: string | undefined): Promise<void> {
+  if (!path) return;
+  const { setFont } = await import("@vsim/text");
+  setFont(await readFile(resolve(path)));
 }
 
 /** Lazily create a Rapier physics adapter only if the scene needs one. */
@@ -84,8 +98,10 @@ function progressBar(frame: number, total: number): void {
 }
 
 /** Render `doc` to video (or a still). Shared by `render` and `edit --render`. */
-async function renderDoc(doc: SceneDocument, args: Args, audioPath?: string): Promise<void> {
+async function renderDoc(doc: SceneDocument, args: Args, audioPath?: string, fontPath?: string): Promise<void> {
   const physics = await maybePhysics(doc);
+  const font = args.font ?? fontPath;
+  await applyFont(font);
   try {
     if (args.still) {
       await renderStill(doc, args.frame, args.still, { physics });
@@ -98,6 +114,7 @@ async function renderDoc(doc: SceneDocument, args: Args, audioPath?: string): Pr
       output,
       physics,
       workers: args.workers,
+      fontPath: font,
       audioPath,
       audioGain: doc.audio?.gain,
       onProgress: progressBar,
@@ -110,8 +127,8 @@ async function renderDoc(doc: SceneDocument, args: Args, audioPath?: string): Pr
 }
 
 async function runRender(args: Args): Promise<void> {
-  const { doc, audio } = await loadScene(args.file!);
-  await renderDoc(doc, args, args.audio ?? audio);
+  const { doc, audio, font } = await loadScene(args.file!);
+  await renderDoc(doc, args, args.audio ?? audio, font);
 }
 
 /** AI copilot: turn a natural-language prompt into edits on a scene document. */

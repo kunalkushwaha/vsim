@@ -12,16 +12,17 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@vsim/assets": "workspace:*",
     "@vsim/core": "workspace:*",
     "@vsim/engine-software": "workspace:*",
-    "@vsim/assets": "workspace:*"
+    "@vsim/text": "workspace:*"
   },
   "devDependencies": {
     "@vsim/authoring": "workspace:*",
     "@vsim/physics-rapier": "workspace:*",
     "@vsim/player": "workspace:*"
   },
-  "description": "Headless frame capture → ffmpeg → MP4 (with audio mux) for vsim.",
+  "description": "Headless frame capture \u2192 ffmpeg \u2192 MP4 (with audio mux) for vsim.",
   "license": "MIT",
   "author": "Kunal Kushwaha",
   "homepage": "https://github.com/kunalkushwaha/vsim#readme",

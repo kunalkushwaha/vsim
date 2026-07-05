@@ -9,3 +9,8 @@ site/
 *.mp4
 *.webm
 !test/**/*.png
+
+# user-supplied image backdrops for the weather example (mind artwork licenses)
+examples/25-weather/landmarks/*.jpg
+examples/25-weather/landmarks/*.jpeg
+examples/25-weather/landmarks/*.png

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100">
+  <!-- Tower Bridge: two 65 m neo-gothic towers on piers, twin high-level walkways in the
+       towers' upper third, the bascule road deck, and suspension chains curving to shore. -->
+  <polygon fill="#8E9BB3" points="30,100 30,84 60,84 60,100"/>
+  <polygon fill="#8E9BB3" points="100,100 100,84 130,84 130,100"/>
+  <polygon fill="#C9CBBE" points="37,84 37,30 41,30 41,24 44,24 45,14 46,24 49,24 49,30 53,30 53,84"/>
+  <polygon fill="#C9CBBE" points="107,84 107,30 111,30 111,24 114,24 115,14 116,24 119,24 119,30 123,30 123,84"/>
+  <polygon fill="#C9CBBE" points="35,32 38,26 41,32"/>
+  <polygon fill="#C9CBBE" points="49,32 52,26 55,32"/>
+  <polygon fill="#C9CBBE" points="105,32 108,26 111,32"/>
+  <polygon fill="#C9CBBE" points="119,32 122,26 125,32"/>
+  <polygon fill="#7FA0C7" points="53,38 107,38 107,43 53,43"/>
+  <polygon fill="#7FA0C7" points="53,49 107,49 107,54 53,54"/>
+  <polygon fill="#7FA0C7" points="0,78 160,78 160,84 0,84"/>
+  <polygon fill="#8E9BB3" points="0,56 4,56 37,74 37,78 2,62 0,62"/>
+  <polygon fill="#8E9BB3" points="160,56 156,56 123,74 123,78 158,62 160,62"/>
+  <polygon fill="#8E9BB3" points="53,60 80,72 107,60 107,64 80,76 53,64"/>
+</svg>

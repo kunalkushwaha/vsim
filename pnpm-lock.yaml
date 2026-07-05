@@ -337,12 +337,18 @@ importers:
 
   examples/25-weather:
     dependencies:
+      '@vsim/assets':
+        specifier: workspace:*
+        version: link:../../packages/assets
       '@vsim/authoring':
         specifier: workspace:*
         version: link:../../packages/authoring
       '@vsim/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@vsim/text':
+        specifier: workspace:*
+        version: link:../../packages/text
 
   packages/ai:
     dependencies:
@@ -395,6 +401,9 @@ importers:
       '@vsim/render':
         specifier: workspace:*
         version: link:../render
+      '@vsim/text':
+        specifier: workspace:*
+        version: link:../text
       tsx:
         specifier: ^4.19.2
         version: 4.22.4
@@ -469,6 +478,9 @@ importers:
       '@vsim/engine-software':
         specifier: workspace:*
         version: link:../engine-software
+      '@vsim/text':
+        specifier: workspace:*
+        version: link:../text
     devDependencies:
       '@vsim/authoring':
         specifier: workspace:*

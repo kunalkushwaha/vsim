@@ -19,7 +19,7 @@ export class ParallelRenderer {
   private height = 0;
 
   /** Spawn workers, send each the document + its band. Resolves when all engines are ready. */
-  async init(input: unknown, workerCount: number): Promise<void> {
+  async init(input: unknown, workerCount: number, opts: { fontPath?: string } = {}): Promise<void> {
     const doc: SceneDocument = (input as SceneDocument)?.version ? (input as SceneDocument) : parseDocument(input);
     if (doc.physics?.bodies?.length) {
       throw new Error("ParallelRenderer: physics scenes must use the sequential renderer");
@@ -36,7 +36,7 @@ export class ParallelRenderer {
       this.bands.push({ y0, y1 });
       this.workers.push(
         new Worker(fileURLToPath(workerUrl), {
-          workerData: { doc, y0, y1, width: doc.meta.width, height: doc.meta.height },
+          workerData: { doc, y0, y1, width: doc.meta.width, height: doc.meta.height, fontPath: opts.fontPath },
         }),
       );
     }
