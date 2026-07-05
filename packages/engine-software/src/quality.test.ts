@@ -164,6 +164,69 @@ describe("shadow mapping", () => {
   });
 });
 
+describe("transparency (material opacity)", () => {
+  // A half-transparent red panel in front of a white panel; ambient light only.
+  const doc = (opacity: number) =>
+    parseDocument({
+      meta: { durationFrames: 1, width: 32, height: 32, background: [0, 0, 0] },
+      materials: [
+        { id: "glass", color: [1, 0, 0], opacity },
+        { id: "wall", color: [1, 1, 1] },
+      ],
+      nodes: [
+        { id: "wall", mesh: { geometry: { kind: "plane", size: [4, 4] }, materialId: "wall" }, position: [0, 0, -1], rotation: [Math.PI / 2, 0, 0] },
+        { id: "glass", mesh: { geometry: { kind: "plane", size: [2, 2] }, materialId: "glass" }, rotation: [Math.PI / 2, 0, 0] },
+        { id: "amb", light: { type: "ambient", intensity: 1 } },
+        { id: "__camera", position: [0, 0, 3] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, 0], fov: 45 },
+    });
+
+  it("blends the surface over what's behind it instead of occluding", () => {
+    const px = render(doc(0.5));
+    const p = (16 * 32 + 16) * 4;
+    // Linear blend 0.5·red(1,0,0) + 0.5·white(1,1,1) → (1, .5, .5) → gamma ≈ (255, 186, 186).
+    expect(px[p]!).toBe(255);
+    expect(Math.abs(px[p + 1]! - 186)).toBeLessThanOrEqual(3);
+    expect(px[p + 1]).toBe(px[p + 2]);
+  });
+
+  it("opacity 1 stays fully opaque (red only, wall hidden)", () => {
+    const px = render(doc(1));
+    const p = (16 * 32 + 16) * 4;
+    expect(px[p]!).toBe(255);
+    expect(px[p + 1]!).toBe(0);
+  });
+
+  it("transparent surfaces don't cast shadows (opaque ones do)", () => {
+    // Slanted sun throws the panel's would-be shadow to +x, clear of the panel itself in the
+    // top-down view — so the sampled ground region is never seen THROUGH the glass.
+    const shadowDoc = (opacity: number) =>
+      parseDocument({
+        meta: { durationFrames: 1, width: 64, height: 64, background: [0, 0, 0] },
+        materials: [{ id: "g", color: [0.6, 0.6, 0.6] }, { id: "glass", color: [1, 0, 0], opacity }],
+        nodes: [
+          { id: "ground", mesh: { geometry: { kind: "plane", size: [20, 20] }, materialId: "g" } },
+          { id: "panel", mesh: { geometry: { kind: "box", size: [1.5, 0.3, 1.5] }, materialId: "glass" }, position: [-2, 2, 0] },
+          { id: "sun", light: { type: "directional", intensity: 1, direction: [1, -1, 0] } },
+          { id: "amb", light: { type: "ambient", intensity: 0.15 } },
+          { id: "__camera", position: [0, 14, 0.01] },
+        ],
+        camera: { nodeId: "__camera", lookAt: [0, 0, 0], fov: 45 },
+      });
+    const shadowSpot = (px: Uint8ClampedArray) => px[(32 * 64 + 32) * 4]!; // world x≈0
+    const openSpot = (px: Uint8ClampedArray) => px[(32 * 64 + 48) * 4]!; // world x≈+3
+    const glass = render(shadowDoc(0.4));
+    const solid = render(shadowDoc(1));
+    expect(openSpot(solid) - shadowSpot(solid)).toBeGreaterThan(40); // opaque panel casts
+    expect(Math.abs(openSpot(glass) - shadowSpot(glass))).toBeLessThan(6); // glass doesn't
+  });
+
+  it("is deterministic", () => {
+    expect(Buffer.from(render(doc(0.5))).equals(Buffer.from(render(doc(0.5))))).toBe(true);
+  });
+});
+
 describe("ACES tone mapping (meta.tone)", () => {
   // An overbright emissive panel (HDR value 4.0) next to a mid-grey panel, no lights.
   const doc = (tone?: "none" | "aces") =>
