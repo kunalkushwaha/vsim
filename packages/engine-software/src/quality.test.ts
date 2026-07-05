@@ -164,6 +164,46 @@ describe("shadow mapping", () => {
   });
 });
 
+describe("point-light shadows", () => {
+  // A lamp above and to the side of a floating box over a ground plane: the box blocks the lamp
+  // for the ground on its far side. Ambient keeps shadowed areas visible.
+  const doc = () =>
+    parseDocument({
+      meta: { durationFrames: 1, width: 64, height: 64, background: [0, 0, 0] },
+      materials: [{ id: "g", color: [0.6, 0.6, 0.6] }, { id: "b", color: [0.6, 0.2, 0.2] }],
+      nodes: [
+        { id: "ground", mesh: { geometry: { kind: "plane", size: [20, 20] }, materialId: "g" } },
+        { id: "box", mesh: { geometry: { kind: "box", size: [1.5, 0.3, 1.5] }, materialId: "b" }, position: [-2, 2, 0] },
+        { id: "lamp", position: [-4, 4, 0], light: { type: "point", intensity: 1.2 } },
+        { id: "amb", light: { type: "ambient", intensity: 0.15 } },
+        { id: "__camera", position: [0, 14, 0.01] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, 0], fov: 45 },
+    });
+
+  // Lamp at (-4,4), box at (-2,2): the ray through the box lands around world x=0 → screen 32.
+  const SHADOWED: [number, number] = [32, 32];
+  const LIT: [number, number] = [48, 32]; // world x≈+3, clear line to the lamp
+
+  it("the box blocks the lamp for ground behind it", () => {
+    const px = render(doc());
+    expect(lumAt(px, 64, ...LIT)).toBeGreaterThan(lumAt(px, 64, ...SHADOWED) + 30);
+  });
+
+  it("disabling shadows restores smooth falloff", () => {
+    const eng = new SoftwareEngine(64, 64, { shadows: false });
+    eng.init(doc());
+    eng.renderFrame(new SceneRuntime(doc()).computeFrameState(0));
+    const px = eng.readPixels();
+    // Without shadowing, x≈0 is CLOSER to the lamp than x≈+3, so it must be at least as bright.
+    expect(lumAt(px, 64, ...SHADOWED)).toBeGreaterThanOrEqual(lumAt(px, 64, ...LIT));
+  });
+
+  it("is deterministic", () => {
+    expect(Buffer.from(render(doc())).equals(Buffer.from(render(doc())))).toBe(true);
+  });
+});
+
 describe("transparency (material opacity)", () => {
   // A half-transparent red panel in front of a white panel; ambient light only.
   const doc = (opacity: number) =>
