@@ -11,12 +11,12 @@ export default (async () => {
   const { rig, meta } = await loadCharacter("fox", 30);
 
   return scene({ fps: 30, duration: 96, width: 640, height: 360, background: [0.9, 0.78, 0.62] })
-    .sky([0.38, 0.55, 0.88], [0.96, 0.8, 0.62]) // clear sky fading to sunset haze
+    .sky([0.38, 0.55, 0.88], [0.96, 0.8, 0.62], { sun: { size: 0.045, glow: 0.4, color: [1, 0.86, 0.6] } }) // low sun + glow
     .fog([0.93, 0.82, 0.68], 8, 34) // warm evening haze — distant trees melt into the horizon
     .material("grass", { color: [0.23, 0.42, 0.19], roughness: 0.9 })
     .material("fox", { color: [0.78, 0.42, 0.18], roughness: 0.45 }) // sheen for the rim light
-    .light({ type: "hemisphere", intensity: 0.5, skyColor: [0.55, 0.65, 0.9], groundColor: [0.4, 0.42, 0.26] })
-    .light({ type: "directional", intensity: 1.2, color: [1.0, 0.8, 0.55], direction: [-0.6, -0.55, -0.45] }) // low warm sun
+    .light({ type: "hemisphere", intensity: 0.62, skyColor: [0.55, 0.65, 0.9], groundColor: [0.4, 0.42, 0.26] })
+    .light({ type: "directional", intensity: 1.2, color: [1.0, 0.8, 0.55], direction: [-0.2, -0.3, 0.93] }) // low sun ahead of camera — backlit golden hour
     .light({ type: "point", intensity: 0.5, color: [1.0, 0.72, 0.45], position: [-3, 1.6, -2.5] }) // warm rim from behind
     .mesh("ground", { geometry: { kind: "plane", size: [80, 80] }, material: "grass" })
     .tree("t1", { position: [-5.5, 0, -6], height: 3.2 })

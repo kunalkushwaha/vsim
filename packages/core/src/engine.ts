@@ -51,7 +51,7 @@ export interface FrameState {
   height: number;
   background: Vec3;
   /** Resolved gradient sky (top→horizon). When set, engines fill the background with it. */
-  sky?: { top: Vec3; bottom: Vec3 };
+  sky?: { top: Vec3; bottom: Vec3; sun?: { size: number; glow: number; color?: Vec3 } };
   /** Linear distance fog: geometry blends toward `color` between `near` and `far`. */
   fog?: { color: Vec3; near: number; far: number };
   /** Render style — "manga" = banded cel-shading + outlines. */

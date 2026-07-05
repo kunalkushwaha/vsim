@@ -164,6 +164,51 @@ describe("shadow mapping", () => {
   });
 });
 
+describe("sun disc (environment.sky.sun)", () => {
+  // Camera at +z looking toward -z: a sun travelling (0,-0.35,+1) — downward and toward the
+  // camera — has its SOURCE up-front in view; travel (0,-0.35,-1) puts the source behind.
+  const doc = (sun: boolean, direction = [0, -0.35, 1]) =>
+    parseDocument({
+      meta: { durationFrames: 1, width: 64, height: 64 },
+      environment: { sky: { type: "gradient", top: [0.2, 0.3, 0.6], bottom: [0.7, 0.8, 0.9], ...(sun ? { sun: { size: 0.12 } } : {}) } },
+      nodes: [
+        { id: "sun", light: { type: "directional", intensity: 1, color: [1, 0.9, 0.7], direction } },
+        { id: "__camera", position: [0, 0, 5] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, 0], fov: 50 },
+    });
+
+  it("draws a bright disc opposite the light direction; without the flag the sky is untouched", () => {
+    const plain = render(doc(false));
+    const withSun = render(doc(true));
+    // Light travels (0,-0.35,-1) → the source sits up-screen from center along +y.
+    // Centroid of the saturated HDR core.
+    let count = 0, sx = 0, sy = 0, brightest = 0;
+    for (let y = 0; y < 64; y++)
+      for (let x = 0; x < 64; x++) {
+        const l = lumAt(withSun, 64, x, y);
+        brightest = Math.max(brightest, l);
+        if (l === 765) { count++; sx += x; sy += y; }
+      }
+    expect(brightest).toBe(765); // saturated HDR core exists
+    expect(count).toBeGreaterThan(20); // a real disc, not a stray pixel
+    const bx = Math.round(sx / count), by = Math.round(sy / count);
+    expect(by).toBeLessThan(28); // above center (source up-screen)
+    expect(Math.abs(bx - 32)).toBeLessThanOrEqual(2); // horizontally centered
+    expect(brightest).toBeGreaterThan(lumAt(plain, 64, bx, by) + 200);
+  });
+
+  it("no disc when the sun is behind the camera", () => {
+    const behind = render(doc(true, [0, -0.35, -1]));
+    const plain = render(doc(false, [0, -0.35, -1]));
+    expect(Buffer.from(behind).equals(Buffer.from(plain))).toBe(true);
+  });
+
+  it("is deterministic", () => {
+    expect(Buffer.from(render(doc(true))).equals(Buffer.from(render(doc(true))))).toBe(true);
+  });
+});
+
 describe("point-light shadows", () => {
   // A lamp above and to the side of a floating box over a ground plane: the box blocks the lamp
   // for the ground on its far side. Ambient keeps shadowed areas visible.
