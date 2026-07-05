@@ -137,6 +137,8 @@ export class SceneRuntime {
   private clipMap = new Map<string, Clip>();
   private cameraById = new Map<string, Camera>();
   private channelKeysCache = new Map<string, Set<string>>();
+  private springState = new Map<string, Quat>(); // smoothed rotation per spring node
+  private springFrame = -1; // last frame the springs advanced to (same-frame recompute guard)
 
   constructor(doc: SceneDocument, opts: { physics?: PhysicsAdapter } = {}) {
     this.doc = doc;
@@ -156,6 +158,8 @@ export class SceneRuntime {
 
   async reset(): Promise<void> {
     this.clock.reset();
+    this.springState.clear();
+    this.springFrame = -1;
     if (this.physics) await this.physics.reset();
   }
 
@@ -290,6 +294,20 @@ export class SceneRuntime {
         if (ov) applyToOverlay(ov, track.target.path, value);
       }
     }
+
+    // Spring bones: the rendered rotation exponentially chases the animated target. Advance
+    // the state only when the frame moves forward; recomputing the same frame reuses it.
+    for (const n of this.doc.nodes) {
+      if (!n.spring) continue;
+      const lt = locals.get(n.id)!;
+      const target = lt.quat ?? quatFromEuler(lt.rotation[0], lt.rotation[1], lt.rotation[2]);
+      if (frame > this.springFrame) {
+        const prev = this.springState.get(n.id) ?? target;
+        this.springState.set(n.id, quat.slerp(prev, target, 1 - n.spring.smoothing));
+      }
+      lt.quat = this.springState.get(n.id) ?? target;
+    }
+    if (frame > this.springFrame) this.springFrame = frame;
 
     if (this.physics) {
       for (const [nodeId, tr] of this.physics.getTransforms()) {

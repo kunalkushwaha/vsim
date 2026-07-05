@@ -538,6 +538,14 @@ export class SceneBuilder {
     return this;
   }
 
+  /** Make a node a spring bone: its rotation lags the animation by `smoothing` per frame. */
+  spring(nodeId: string, smoothing: number): this {
+    const node = this.doc.nodes!.find((n) => n.id === nodeId) as { spring?: unknown } | undefined;
+    if (!node) throw new Error(`spring: no node '${nodeId}'`);
+    node.spring = { smoothing };
+    return this;
+  }
+
   animate(nodeId: string, path: string, keyframes: Keyframes): this {
     this.doc.animation!.push({ target: { nodeId, path }, keyframes });
     return this;

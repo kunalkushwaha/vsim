@@ -196,6 +196,13 @@ export const NodeSchema = z.object({
       ground: z.number().default(0),
     })
     .optional(),
+  /**
+   * Spring bone (secondary motion): this node's rendered rotation LAGS its animated target by
+   * `smoothing` per frame (0 = rigid, 0.9 = very floppy) — tails, ears, hair get free
+   * follow-through. Stateful forward stepping like physics: replay from frame 0 reproduces the
+   * identical sequence; the player already replays on backward seeks.
+   */
+  spring: z.object({ smoothing: z.number().min(0).max(0.98) }).optional(),
 });
 
 const EasingSchema = z.union([
