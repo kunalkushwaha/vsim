@@ -417,6 +417,35 @@ export class LinearBuffer {
   }
 
   /**
+   * Paint a sun disc + radial glow into the (freshly cleared) sky: a solid HDR core of radius
+   * `discR` and an additive falloff halo out to `glowR`, centered at (cx, cy).
+   */
+  paintSun(cx: number, cy: number, discR: number, glowR: number, color: Vec3): void {
+    const { width, height, rgb } = this;
+    const minX = Math.max(0, Math.floor(cx - glowR)), maxX = Math.min(width - 1, Math.ceil(cx + glowR));
+    const minY = Math.max(0, Math.floor(cy - glowR)), maxY = Math.min(height - 1, Math.ceil(cy + glowR));
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+        if (dist > glowR) continue;
+        const p = (y * width + x) * 3;
+        if (dist <= discR) {
+          // HDR core: well above 1 so ACES (when enabled) rolls it off like a real light source.
+          rgb[p] = color[0] * 3 + 1;
+          rgb[p + 1] = color[1] * 3 + 1;
+          rgb[p + 2] = color[2] * 3 + 1;
+        } else {
+          const t = 1 - (dist - discR) / (glowR - discR);
+          const k = t * t * 0.8; // quadratic falloff halo, additive
+          rgb[p] = rgb[p]! + color[0] * k;
+          rgb[p + 1] = rgb[p + 1]! + color[1] * k;
+          rgb[p + 2] = rgb[p + 2]! + color[2] * k;
+        }
+      }
+    }
+  }
+
+  /**
    * Box-filter the linear hi-res buffer down into `fb` (gamma-encoded once, per output pixel).
    * With `aces` the averaged linear value passes through the ACES filmic fit first, rolling
    * HDR highlights off smoothly instead of clipping at 1.

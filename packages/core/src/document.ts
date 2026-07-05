@@ -136,6 +136,18 @@ export const EnvironmentSchema = z.object({
       top: color.default([0.35, 0.55, 0.92]),
       /** Gradient: color at the horizon. */
       bottom: color.default([0.72, 0.83, 0.96]),
+      /**
+       * Draw a visible sun disc + glow in the sky, positioned opposite the first directional
+       * light's travel direction (so sky and lighting agree). Sizes are fractions of frame
+       * height; color defaults to the light's color.
+       */
+      sun: z
+        .object({
+          size: z.number().default(0.04),
+          glow: z.number().default(0.25),
+          color: color.optional(),
+        })
+        .optional(),
     })
     .optional(),
   /** Linear distance fog: geometry blends toward `color` between `near` and `far` (camera units). */

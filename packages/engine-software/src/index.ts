@@ -354,6 +354,25 @@ export class SoftwareEngine implements Engine {
     if (state.sky) this.hi.clearGradient(state.sky.top, state.sky.bottom);
     else this.hi.clear(state.background);
     const viewProj = mat4.multiply(state.camera.projMatrix, state.camera.viewMatrix);
+    // Visible sun: painted into the sky straight after the clear — geometry simply draws over
+    // it, so no depth interaction is needed. Position = the first directional light's source
+    // direction projected at infinity (clip = VP · [-dir, 0]).
+    if (state.sky?.sun) {
+      const sunLight = state.lights.find((l) => l.type === "directional");
+      if (sunLight) {
+        const d = v3.normalize(sunLight.direction);
+        const M = viewProj;
+        const sxc = -(M[0]! * d[0] + M[4]! * d[1] + M[8]! * d[2]);
+        const syc = -(M[1]! * d[0] + M[5]! * d[1] + M[9]! * d[2]);
+        const swc = -(M[3]! * d[0] + M[7]! * d[1] + M[11]! * d[2]);
+        if (swc > 1e-6) {
+          const cxp = ((sxc / swc) * 0.5 + 0.5) * this.hi.width;
+          const cyp = (0.5 - (syc / swc) * 0.5) * this.hi.height;
+          const col = state.sky.sun.color ?? sunLight.color;
+          this.hi.paintSun(cxp, cyp, state.sky.sun.size * this.hi.height, state.sky.sun.glow * this.hi.height, col);
+        }
+      }
+    }
     const hiW = this.hi.width;
     const hiH = this.hi.height;
     const toon = state.style === "manga";
