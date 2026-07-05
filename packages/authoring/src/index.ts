@@ -369,25 +369,37 @@ export class SceneBuilder {
   }
 
   /**
-   * Queue another clip on a character (see `character()`), crossfading over whatever is already
-   * playing: the new clip ramps in over `blendIn` frames (smoothstep) on top of the previous
-   * pose. Chain calls to sequence idle → walk → run on one skeleton.
+   * Queue another clip on a character (see `character()`), crossfading over whatever is playing
+   * at `startFrame`: the new clip ramps in over `blendIn` frames (smoothstep, default 10) on top
+   * of the previous pose. Chain calls to sequence idle → walk → run on one skeleton. Playbacks
+   * composite in startFrame order at runtime, so call order doesn't matter. Throws if the
+   * character or the clip name doesn't exist (the runtime would otherwise silently skip it).
    */
   playClip(
     characterId: string,
     clip: string,
-    opts: { startFrame?: number; blendIn?: number; speed?: number; loop?: boolean } = {},
+    opts: { startFrame: number; blendIn?: number; speed?: number; loop?: boolean },
   ): this {
-    const mesh = this.doc.nodes!.find((n) => (n as { id?: string }).id === `${characterId}__mesh`) as
-      | { clip?: unknown; clips?: unknown[] }
-      | undefined;
+    // Locate the clip-hosting node structurally (skin binding), falling back to the naming
+    // convention — robust to future character builders that name their mesh nodes differently.
+    const mesh = this.doc.nodes!.find(
+      (n) => n.id === `${characterId}__mesh` || (n.mesh?.skinId === `${characterId}__skin` && (n.clip || n.clips)),
+    );
     if (!mesh) throw new Error(`playClip: no character '${characterId}' (expected node '${characterId}__mesh')`);
-    if (!mesh.clips) mesh.clips = mesh.clip ? [mesh.clip] : [];
-    delete mesh.clip; // migrated into the ordered list
+    const clipId = `${characterId}/${clip}`;
+    if (!this.doc.clips?.some((c) => c.id === clipId)) {
+      const available = (this.doc.clips ?? [])
+        .filter((c) => c.id.startsWith(`${characterId}/`))
+        .map((c) => c.id.slice(characterId.length + 1));
+      throw new Error(`playClip: character '${characterId}' has no clip '${clip}' (available: ${available.join(", ") || "none"})`);
+    }
+    // Migrate the legacy single field into the ordered list without dropping either source.
+    mesh.clips = [...(mesh.clip ? [mesh.clip] : []), ...(mesh.clips ?? [])];
+    delete mesh.clip;
     mesh.clips.push({
-      clipId: `${characterId}/${clip}`,
+      clipId,
       startFrame: opts.startFrame,
-      blendInFrames: opts.blendIn,
+      blendInFrames: opts.blendIn ?? 10,
       speed: opts.speed,
       loop: opts.loop,
     });

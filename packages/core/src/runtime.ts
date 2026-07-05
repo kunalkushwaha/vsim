@@ -1,8 +1,8 @@
 import { Clock } from "./clock.js";
 import { Rng } from "./rng.js";
 import { evaluateTrack } from "./animation.js";
-import { evaluateClip } from "./clip.js";
-import { mat4, quat, quatFromEuler, v3, DEG2RAD } from "./math.js";
+import { evaluateClip, type JointPose } from "./clip.js";
+import { clamp, mat4, quat, quatFromEuler, v3, DEG2RAD } from "./math.js";
 import type { Mat4, Quat, Vec3 } from "./math.js";
 import type { Camera, Clip, Material, Node, SceneDocument, Skin, TextOverlay } from "./document.js";
 import type {
@@ -35,6 +35,22 @@ function applyToTransform(lt: LocalTransform, path: string, value: number | numb
     }
   } else if (comp in AXIS && typeof value === "number") {
     target[AXIS[comp]!] = value;
+  }
+}
+
+/** Blend a sampled joint pose onto a local transform with weight `w` (1 = overwrite). */
+function applyPose(lt: LocalTransform, pose: JointPose, w: number): void {
+  if (w >= 1) {
+    if (pose.translation) lt.position = pose.translation;
+    if (pose.scale) lt.scale = pose.scale;
+    if (pose.rotation) lt.quat = pose.rotation;
+    return;
+  }
+  if (pose.translation) lt.position = v3.lerp(lt.position, pose.translation, w);
+  if (pose.scale) lt.scale = v3.lerp(lt.scale, pose.scale, w);
+  if (pose.rotation) {
+    const from = lt.quat ?? quatFromEuler(lt.rotation[0], lt.rotation[1], lt.rotation[2]);
+    lt.quat = quat.slerp(from, pose.rotation, w);
   }
 }
 
@@ -83,6 +99,7 @@ export class SceneRuntime {
   private skinMap = new Map<string, Skin>();
   private clipMap = new Map<string, Clip>();
   private cameraById = new Map<string, Camera>();
+  private channelKeysCache = new Map<string, Set<string>>();
 
   constructor(doc: SceneDocument, opts: { physics?: PhysicsAdapter } = {}) {
     this.doc = doc;
@@ -107,6 +124,16 @@ export class SceneRuntime {
 
   get durationFrames(): number {
     return this.doc.meta.durationFrames;
+  }
+
+  /** The set of "joint|path" channel keys a clip animates (cached — used to skip masked clips). */
+  private clipChannelKeys(clip: Clip): Set<string> {
+    let keys = this.channelKeysCache.get(clip.id);
+    if (!keys) {
+      keys = new Set(clip.channels.map((ch) => `${ch.jointNodeId}|${ch.path}`));
+      this.channelKeysCache.set(clip.id, keys);
+    }
+    return keys;
   }
 
   /** Advance simulation to `frame` and resolve a FrameState. */
@@ -149,37 +176,51 @@ export class SceneRuntime {
     }
 
     // Skeletal clips: sample each playing clip and blend it onto the joints' local transforms.
-    // Playbacks apply in order, each ramping in over its blendInFrames (smoothstep) ON TOP of
-    // the result so far: the first blends from the static bind pose the locals still hold, and
-    // every later one crossfades over the previous (idle → walk → run). Lerp for translation/
-    // scale, slerp for rotation. Weights are pure functions of the frame index → deterministic.
+    // Playbacks composite in startFrame order (stable for ties), each ramping in over its
+    // blendInFrames (smoothstep) ON TOP of the result so far: the first blends from the static
+    // bind pose the locals still hold, every later one crossfades over the previous (idle →
+    // walk → run). Lerp for translation/scale, slerp for rotation; weights are pure functions
+    // of the frame index → deterministic. NOTE the layering semantics: a later clip only takes
+    // over the channels it animates — channels unique to an earlier clip keep following it.
     for (const node of this.doc.nodes) {
-      const playbacks = node.clips ?? (node.clip ? [node.clip] : []);
-      for (const pb of playbacks) {
+      // A non-empty clips[] supersedes the legacy single clip; empty/omitted falls back.
+      const playbacks = node.clips?.length ? node.clips : node.clip ? [node.clip] : [];
+      if (playbacks.length === 0) continue;
+      const ordered = playbacks.length > 1 ? [...playbacks].sort((a, b) => a.startFrame - b.startFrame) : playbacks;
+
+      // Resolve each playback's clip, local frame, and blend weight for this frame.
+      const active: { clip: Clip; local: number; w: number }[] = [];
+      for (const pb of ordered) {
         const clip = this.clipMap.get(pb.clipId);
         if (!clip) continue;
         const local = clipLocalFrame(pb, frame, clip.durationFrames);
         if (local === null) continue; // not yet started
         let w = 1;
         if (pb.blendInFrames > 0) {
-          const raw = Math.min(1, Math.max(0, (frame - pb.startFrame) / pb.blendInFrames));
+          const raw = clamp((frame - pb.startFrame) / pb.blendInFrames, 0, 1);
           w = raw * raw * (3 - 2 * raw); // smoothstep ease
         }
+        if (w === 0) continue; // contributes nothing yet (and keeps the bind pose bit-exact)
+        active.push({ clip, local, w });
+      }
+
+      // Dead-work elimination: once a later playback is at full weight, any earlier playback
+      // whose channels it entirely covers can no longer affect the result — skip sampling it.
+      for (let k = active.length - 1; k >= 1; k--) {
+        if (active[k]!.w < 1) continue;
+        const cover = this.clipChannelKeys(active[k]!.clip);
+        const kept = active.slice(0, k).filter((e) => {
+          for (const key of this.clipChannelKeys(e.clip)) if (!cover.has(key)) return true;
+          return false;
+        });
+        active.splice(0, k, ...kept);
+        break;
+      }
+
+      for (const { clip, local, w } of active) {
         for (const [jointId, pose] of evaluateClip(clip, local)) {
           const lt = locals.get(jointId);
-          if (!lt) continue;
-          if (w >= 1) {
-            if (pose.translation) lt.position = pose.translation;
-            if (pose.scale) lt.scale = pose.scale;
-            if (pose.rotation) lt.quat = pose.rotation;
-          } else {
-            if (pose.translation) lt.position = v3.lerp(lt.position, pose.translation, w);
-            if (pose.scale) lt.scale = v3.lerp(lt.scale, pose.scale, w);
-            if (pose.rotation) {
-              const from = lt.quat ?? quatFromEuler(lt.rotation[0], lt.rotation[1], lt.rotation[2]);
-              lt.quat = quat.slerp(from, pose.rotation, w);
-            }
-          }
+          if (lt) applyPose(lt, pose, w);
         }
       }
     }
