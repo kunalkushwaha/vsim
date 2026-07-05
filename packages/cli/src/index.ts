@@ -148,7 +148,7 @@ async function main(): Promise<void> {
   if (args.cmd === "render" && args.file) return runRender(args);
   console.log(
     "Usage:\n" +
-      "  vsim render <scene.ts|scene.json> [-o out.mp4] [--still frame.png --frame N] [--audio file]\n" +
+      "  vsim render <scene.ts|scene.json> [-o out.mp4] [--workers N] [--still frame.png --frame N] [--audio file]\n" +
       '  vsim edit <scene.ts|scene.json> --prompt "..." [-o out.scene.json] [--render out.mp4]   (uses ANTHROPIC_API_KEY, or the claude CLI)',
   );
   process.exit(args.cmd ? 1 : 1);
