@@ -87,6 +87,8 @@ interface CharacterInput extends TransformInput {
   /** Ease from the static bind pose into the clip over this many frames (default 0 = snap). */
   blendIn?: number;
   material?: string;
+  /** Ground-contact IK: joint NAMES (un-namespaced) of the feet + ground height (default 0). */
+  ik?: { feet: string[]; ground?: number };
 }
 
 interface MetaInput {
@@ -373,7 +375,7 @@ export class SceneBuilder {
   character(id: string, rig: CharacterRig, opts: CharacterInput = {}): this {
     const jid = (j: string) => `${id}/${j}`;
     // Group node: the character handle. Animate its position to walk the whole skeleton.
-    this.node(id, opts, {});
+    this.node(id, opts, opts.ik ? { ik: { feet: opts.ik.feet.map(jid), ground: opts.ik.ground } } : {});
 
     for (const j of rig.jointNodes) {
       this.doc.nodes!.push({

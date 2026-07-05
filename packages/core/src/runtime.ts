@@ -303,6 +303,9 @@ export class SceneRuntime {
 
     const worldMatrices = new Map<string, Mat4>();
     const computeWorld = (id: string): Mat4 => {
+      return computeWorldInner(id);
+    };
+    const computeWorldInner = (id: string): Mat4 => {
       const cached = worldMatrices.get(id);
       if (cached) return cached;
       const node = this.nodeMap.get(id)!;
@@ -313,6 +316,24 @@ export class SceneRuntime {
       worldMatrices.set(id, world);
       return world;
     };
+
+    // Ground-contact IK (v1): with the posed skeleton, lift each ik-tagged node so its deepest
+    // foot joint touches (never penetrates) the ground plane. World caches are invalidated so
+    // the final resolve sees the corrected pose.
+    for (const n of this.doc.nodes) {
+      if (!n.ik?.feet.length) continue;
+      let deepest = Infinity;
+      for (const foot of n.ik.feet) {
+        if (!this.nodeMap.has(foot)) continue;
+        deepest = Math.min(deepest, mat4.getTranslation(computeWorld(foot))[1]);
+      }
+      if (deepest === Infinity) continue;
+      const penetration = n.ik.ground - deepest;
+      if (penetration > 0) {
+        locals.get(n.id)!.position[1] += penetration;
+        worldMatrices.clear();
+      }
+    }
 
     const nodes: ResolvedNode[] = [];
     const lights: ResolvedLight[] = [];
