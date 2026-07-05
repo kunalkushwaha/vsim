@@ -72,14 +72,14 @@ all of it from source.
 | ![manga cel-shaded scene](docs/media/manga.gif) | ![hand-animated soccer kick](docs/media/soccer.gif) | ![vector text titles over 3D](docs/media/titles.png) |
 | **Manga mode** — cel-shading + ink outlines with one flag: `style: "manga"` ([`09-manga`](examples/09-manga)) | **Keyframe animation** — a hand-animated kick and a launched ball ([`08-soccer`](examples/08-soccer)) | **Text & titles** — true vector type composited over the 3D ([`20-titles`](examples/20-titles)) |
 
-There are **24 examples** in [`examples/`](./examples) — rigged glTF characters,
+There are **25 examples** in [`examples/`](./examples) — rigged glTF characters,
 MakeHuman humans with real skin textures, a VRM avatar, beat-synced audio, morph-target
 lip-sync, procedural parks, a trotting quadruped, and more:
 
 ```bash
 pnpm install
 pnpm example:fox      # → out/fox.mp4 (any example works: cube, physics, crossfade, …)
-pnpm showreel         # renders all 23 reel scenes in parallel → out/showreel.mp4
+pnpm showreel         # renders all 24 reel scenes in parallel → out/showreel.mp4
 ```
 
 ## Why vsim?
