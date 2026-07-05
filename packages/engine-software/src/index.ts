@@ -25,16 +25,16 @@ const SHADOW_MAP_SIZE = 1024;
  * Each vertex is [x, y, z, w, ...attrs]; crossing edges get a linearly interpolated vertex.
  * Returns the kept polygon (0 or ≥3 vertices), to be fan-triangulated by the caller.
  */
-function clipNear(poly: number[][]): number[][] {
+function clipNear(poly: number[][], wMin = W_NEAR): number[][] {
   const out: number[][] = [];
   for (let i = 0; i < poly.length; i++) {
     const cur = poly[i]!;
     const nxt = poly[(i + 1) % poly.length]!;
-    const curIn = cur[3]! >= W_NEAR;
-    const nxtIn = nxt[3]! >= W_NEAR;
+    const curIn = cur[3]! >= wMin;
+    const nxtIn = nxt[3]! >= wMin;
     if (curIn) out.push(cur);
     if (curIn !== nxtIn) {
-      const tParam = (W_NEAR - cur[3]!) / (nxt[3]! - cur[3]!);
+      const tParam = (wMin - cur[3]!) / (nxt[3]! - cur[3]!);
       const n = cur.length; // [x,y,z,w, ...attrs]
       const v = new Array<number>(n);
       for (let k = 0; k < n; k++) v[k] = cur[k]! + (nxt[k]! - cur[k]!) * tParam;
@@ -190,6 +190,103 @@ function buildShadow(sun: ResolvedLight, batches: MeshBatch[], map: DepthMap): S
   };
 }
 
+/** Cube-face axis conventions shared by the rasterize and sample sides (they must match). */
+const CUBE_FACES: { axis: number; sign: number }[] = [
+  { axis: 0, sign: 1 }, { axis: 0, sign: -1 },
+  { axis: 1, sign: 1 }, { axis: 1, sign: -1 },
+  { axis: 2, sign: 1 }, { axis: 2, sign: -1 },
+];
+
+/** Face-space coords for point P relative to a cube face: w = depth along the face axis. */
+function faceCoords(dx: number, dy: number, dz: number, face: { axis: number; sign: number }): [number, number, number] {
+  const a = face.axis, s = face.sign;
+  if (a === 0) return [-dz * s, -dy, dx * s];
+  if (a === 1) return [dx, dz * s, dy * s];
+  return [dx * s, -dy, dz * s];
+}
+
+const POINT_NEAR = 0.05;
+
+/**
+ * Omnidirectional shadow for the first point light: six 90° depth faces around the light.
+ * Depth is stored as 1 − near/w (hyperbolic, hence screen-affine — the DepthMap's affine
+ * interpolation is exact for it). Sampling picks the face by dominant axis and applies the
+ * same tent-weighted PCF as the sun map, with out-of-map taps lit.
+ */
+function buildPointShadow(light: ResolvedLight, batches: MeshBatch[], maps: DepthMap[]): ShadowContext | undefined {
+  const casters = batches.filter((b) => b.node.mesh?.geometry.kind !== "plane" && b.material.opacity >= 1);
+  if (casters.length === 0) return undefined;
+  const [lx, ly, lz] = light.position;
+  const size = maps[0]!.size;
+  const half = size / 2;
+
+  for (let f = 0; f < 6; f++) {
+    const face = CUBE_FACES[f]!;
+    const map = maps[f]!;
+    map.clear();
+    for (const b of casters) {
+      const idx = b.md.indices;
+      for (let t = 0; t < idx.length; t += 3) {
+        // Gather face-space verts; clip against the face near plane (w = POINT_NEAR).
+        const poly: number[][] = [];
+        for (const vi of [idx[t]!, idx[t + 1]!, idx[t + 2]!]) {
+          const [x, y, w] = faceCoords(b.wx[vi]! - lx, b.wy[vi]! - ly, b.wz[vi]! - lz, face);
+          poly.push([x, y, 0, w]);
+        }
+        const inFront = poly.filter((v) => v[3]! >= POINT_NEAR).length;
+        if (inFront === 0) continue;
+        const clipped = inFront === 3 ? poly : clipNear(poly, POINT_NEAR);
+        for (let k = 1; k + 1 < clipped.length; k++) {
+          const tri = [clipped[0]!, clipped[k]!, clipped[k + 1]!];
+          const pts = tri.map((v) => {
+            const w = v[3]!;
+            return [(v[0]! / w) * half + half, (v[1]! / w) * half + half, 1 - POINT_NEAR / w];
+          });
+          map.triangle(
+            pts[0]![0]!, pts[0]![1]!, pts[0]![2]!,
+            pts[1]![0]!, pts[1]![1]!, pts[1]![2]!,
+            pts[2]![0]!, pts[2]![1]!, pts[2]![2]!,
+          );
+        }
+      }
+    }
+  }
+
+  return {
+    factor(wpx, wpy, wpz, lambert) {
+      const dx = wpx - lx, dy = wpy - ly, dz = wpz - lz;
+      const ax = Math.abs(dx), ay = Math.abs(dy), az = Math.abs(dz);
+      let f: number;
+      if (ax >= ay && ax >= az) f = dx >= 0 ? 0 : 1;
+      else if (ay >= ax && ay >= az) f = dy >= 0 ? 2 : 3;
+      else f = dz >= 0 ? 4 : 5;
+      const face = CUBE_FACES[f]!;
+      const [x, y, w] = faceCoords(dx, dy, dz, face);
+      if (w < POINT_NEAR) return 1;
+      const size2 = maps[f]!.size, half2 = size2 / 2;
+      const sx = (x / w) * half2 + half2;
+      const sy = (y / w) * half2 + half2;
+      const sz = 1 - POINT_NEAR / w;
+      const data = maps[f]!.data;
+      const ix = Math.floor(sx), iy = Math.floor(sy);
+      const bias = 0.002 + 0.01 * (1 - lambert);
+      let lit = 0, total = 0;
+      for (let oy = -1; oy <= 1; oy++) {
+        const yy = iy + oy;
+        const wy = Math.max(0, 1.5 - Math.abs(yy + 0.5 - sy));
+        for (let ox = -1; ox <= 1; ox++) {
+          const xx = ix + ox;
+          const wgt = wy * Math.max(0, 1.5 - Math.abs(xx + 0.5 - sx));
+          total += wgt;
+          const outside = xx < 0 || xx >= size2 || yy < 0 || yy >= size2;
+          if (outside || sz - bias <= data[yy * size2 + xx]!) lit += wgt;
+        }
+      }
+      return total === 0 ? 1 : lit / total;
+    },
+  };
+}
+
 export interface SoftwareEngineOptions {
   /**
    * Supersampling factor: the frame is shaded at N× resolution in linear space and box-filtered
@@ -217,6 +314,7 @@ export class SoftwareEngine implements Engine {
   private hi: LinearBuffer; // hi-res linear-space target: all 3D shading lands here
   private fb: Framebuffer; // output-res gamma-space target: resolve + overlays
   private shadowMap: DepthMap;
+  private pointMaps?: DepthMap[];
   private meshes = new Map<string, MeshData>();
   private tangentCache = new WeakMap<MeshData, Float32Array>();
   private mipCache = new WeakMap<object, ReturnType<typeof buildMips>>();
@@ -332,9 +430,15 @@ export class SoftwareEngine implements Engine {
       batches.push({ node, md, material, useUV, wx, wy, wz, nx, ny, nz, cx, cy, cz, cw, cu, cv, tx, ty, tz, tw });
     }
 
-    // ---- pass 2: shadow map for the first directional light (all meshes cast + receive) ----
+    // ---- pass 2: shadow maps — first directional light + first point light ----
     const sun = this.shadows ? state.lights.find((l) => l.type === "directional") : undefined;
     const shadow = sun ? buildShadow(sun, batches, this.shadowMap) : undefined;
+    const lamp = this.shadows ? state.lights.find((l) => l.type === "point") : undefined;
+    let lampShadow: ShadowContext | undefined;
+    if (lamp) {
+      if (!this.pointMaps) this.pointMaps = Array.from({ length: 6 }, () => new DepthMap(256));
+      lampShadow = buildPointShadow(lamp, batches, this.pointMaps);
+    }
 
     // ---- pass 3: shade + rasterize. Opaque first; then transparent triangles (opacity < 1)
     // sorted back-to-front across ALL transparent meshes, alpha-blended without depth writes. ----
@@ -408,7 +512,7 @@ export class SoftwareEngine implements Engine {
           emiR = em[0]; emiG = em[1]; emiB = em[2];
         }
 
-        shadePixel(a[0]!, a[1]!, a[2]!, nX, nY, nZ, albR, albG, albB, emiR, emiG, emiB, roughness, metalness, ao, state.lights, cam, toon, sun, shadow, out);
+        shadePixel(a[0]!, a[1]!, a[2]!, nX, nY, nZ, albR, albG, albB, emiR, emiG, emiB, roughness, metalness, ao, state.lights, cam, toon, sun, shadow, lamp, lampShadow, out);
         if (fog) {
           const dx = a[0]! - cam[0], dy = a[1]! - cam[1], dz = a[2]! - cam[2];
           const t = (Math.sqrt(dx * dx + dy * dy + dz * dz) - fog.near) / (fog.far - fog.near);
@@ -527,7 +631,8 @@ function shadePixel(
   emiR: number, emiG: number, emiB: number,
   roughness: number, metal: number, ao: number,
   lights: ResolvedLight[], cam: Vec3, toon: boolean,
-  sun: ResolvedLight | undefined, shadow: ShadowContext | undefined, out: Vec3,
+  sun: ResolvedLight | undefined, shadow: ShadowContext | undefined,
+  lamp: ResolvedLight | undefined, lampShadow: ShadowContext | undefined, out: Vec3,
 ): void {
   let r = emiR, g = emiG, b = emiB;
 
@@ -577,10 +682,11 @@ function shadePixel(
     let lambert = nX * lX + nY * lY + nZ * lZ;
     if (lambert <= 0) continue;
 
-    // Shadow: only the mapped sun light is attenuated. Toon thresholds to a hard cel shadow.
+    // Shadows: the mapped sun and lamp lights are attenuated. Toon thresholds to hard cel shadow.
     let vis = 1;
-    if (shadow && light === sun) {
-      vis = shadow.factor(px, py, pz, lambert);
+    if (shadow && light === sun) vis = shadow.factor(px, py, pz, lambert);
+    else if (lampShadow && light === lamp) vis = lampShadow.factor(px, py, pz, lambert);
+    if (vis !== 1) {
       if (toon) vis = vis < 0.5 ? 0 : 1;
       if (vis === 0) continue;
     }
