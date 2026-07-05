@@ -164,6 +164,35 @@ describe("shadow mapping", () => {
   });
 });
 
+describe("sky-derived ambient (environment.sky.ambient)", () => {
+  // A white sphere with NO light nodes at all: only the sky's injected irradiance lights it.
+  const doc = (ambient?: number) =>
+    parseDocument({
+      meta: { durationFrames: 1, width: 48, height: 48, background: [0, 0, 0] },
+      environment: { sky: { type: "gradient", top: [0.1, 0.2, 0.9], bottom: [0.8, 0.3, 0.1], ...(ambient ? { ambient } : {}) } },
+      materials: [{ id: "m", color: [1, 1, 1] }],
+      nodes: [
+        { id: "ball", mesh: { geometry: { kind: "sphere", radius: 1, segments: 24 }, materialId: "m" } },
+        { id: "__camera", position: [0, 0, 4] },
+      ],
+      camera: { nodeId: "__camera", lookAt: [0, 0, 0], fov: 45 },
+    });
+
+  it("lights geometry from the sky: top of the ball takes the sky tint, bottom the horizon tint", () => {
+    const px = render(doc(0.8));
+    const top = (24 * 48 + 24 - 48 * 8) * 4; // a pixel on the upper half of the ball
+    const bot = (24 * 48 + 24 + 48 * 8) * 4; // lower half
+    expect(px[top + 2]!).toBeGreaterThan(px[top]!); // blue-ish from the sky top color
+    expect(px[bot]!).toBeGreaterThan(px[bot + 2]!); // red-ish from the horizon color
+  });
+
+  it("without the flag the unlit ball renders black", () => {
+    const px = render(doc());
+    const center = (24 * 48 + 24) * 4;
+    expect(px[center]! + px[center + 1]! + px[center + 2]!).toBe(0);
+  });
+});
+
 describe("sun disc (environment.sky.sun)", () => {
   // Camera at +z looking toward -z: a sun travelling (0,-0.35,+1) — downward and toward the
   // camera — has its SOURCE up-front in view; travel (0,-0.35,-1) puts the source behind.

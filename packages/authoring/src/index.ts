@@ -428,9 +428,13 @@ export class SceneBuilder {
    * Set a gradient sky background (top color → horizon color). Pass `sun` to draw a visible
    * sun disc + glow, placed to match the first directional light's direction.
    */
-  sky(top: Vec3, bottom: Vec3, opts: { sun?: { size?: number; glow?: number; color?: Vec3 } | true } = {}): this {
+  sky(
+    top: Vec3,
+    bottom: Vec3,
+    opts: { sun?: { size?: number; glow?: number; color?: Vec3 } | true; ambient?: number } = {},
+  ): this {
     const sun = opts.sun === true ? {} : opts.sun;
-    this.doc.environment = { ...(this.doc.environment ?? {}), sky: { type: "gradient", top, bottom, sun } };
+    this.doc.environment = { ...(this.doc.environment ?? {}), sky: { type: "gradient", top, bottom, sun, ambient: opts.ambient } };
     return this;
   }
 

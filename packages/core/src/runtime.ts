@@ -279,6 +279,20 @@ export class SceneRuntime {
 
     const nodes: ResolvedNode[] = [];
     const lights: ResolvedLight[] = [];
+    // Sky-derived ambient (R2.2): a synthetic hemisphere light tinted by the sky itself, so
+    // the environment "bounces" onto geometry. Engines treat it like any hemisphere light.
+    const sky = this.doc.environment?.sky;
+    if (sky?.type === "gradient" && sky.ambient && sky.ambient > 0) {
+      lights.push({
+        type: "hemisphere",
+        color: [1, 1, 1],
+        intensity: sky.ambient,
+        position: [0, 0, 0],
+        direction: [0, -1, 0],
+        skyColor: sky.top,
+        groundColor: sky.bottom,
+      });
+    }
     for (const n of this.doc.nodes) {
       const world = computeWorld(n.id);
       const material = n.mesh?.materialId ? materials.get(n.mesh.materialId) : undefined;
