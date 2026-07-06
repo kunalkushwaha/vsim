@@ -51,6 +51,9 @@ export async function recordFrames(pagePath, opts, handlers) {
     await page.addInitScript(() => { /** @type {any} */ (window).__recording = true; });
     await page.goto(pathToFileURL(resolve(pagePath)).href);
     await page.waitForFunction(() => /** @type {any} */ (window).__film !== undefined, undefined, { timeout: 10000 });
+    // @font-face loads are async: without this, the first frames could rasterize in a
+    // fallback font and break byte-reproducibility between runs.
+    await page.evaluate(() => (document.fonts ? document.fonts.ready.then(() => true) : true));
     const film = await page.evaluate(() => {
       const f = /** @type {any} */ (window).__film;
       return { fps: f.fps, frames: f.frames };

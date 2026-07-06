@@ -40,7 +40,7 @@
 </div>
 
 <script type="module">
-  import { Timeline, attr, translate, cameraCue } from "../src/index.mjs";
+  import { Timeline, attr, translate, cameraCue, createPlayer } from "../src/index.mjs";
 
   const $ = (id) => document.getElementById(id);
   const tl = new Timeline(30);
@@ -64,18 +64,11 @@
   // THE contract the recorder drives (M2): pure frame-indexed seeking, no wall clock.
   window.__film = { fps: FPS, frames: FRAMES, seek: show };
 
-  $("scrub").addEventListener("input", (e) => show(Number(e.target.value)));
-  let raf = null;
+  const player = createPlayer(window.__film, { loop: false, autoplay: false, onFrame: () => {} });
+  $("scrub").addEventListener("input", (e) => { player.pause(); $("play").textContent = "Play"; show(Number(e.target.value)); player.seekTo(Number(e.target.value)); });
   $("play").addEventListener("click", () => {
-    if (raf) { cancelAnimationFrame(raf); raf = null; $("play").textContent = "Play"; return; }
-    $("play").textContent = "Stop";
-    let f = Number($("scrub").value) >= FRAMES ? 0 : Number($("scrub").value);
-    const tick = () => {
-      show(f);
-      if (f++ < FRAMES) raf = requestAnimationFrame(tick);
-      else { raf = null; $("play").textContent = "Play"; }
-    };
-    tick();
+    player.toggle();
+    $("play").textContent = player.playing ? "Stop" : "Play";
   });
   // `?f=45` opens parked on a frame — handy for stills, debugging, and the recorder.
   show(Math.max(0, Math.min(FRAMES, Number(new URLSearchParams(location.search).get("f")) || 0)));

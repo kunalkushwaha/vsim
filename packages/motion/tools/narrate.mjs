@@ -27,7 +27,11 @@ const run = (cmd, args) => execFileSync(cmd, args, { stdio: ["ignore", "pipe", "
 /** Decode any audio file to raw mono s16le PCM at RATE via ffmpeg. @param {string} file */
 function decodePcm(file) {
   const buf = execFileSync("ffmpeg", ["-v", "error", "-i", file, "-f", "s16le", "-ac", "1", "-ar", String(RATE), "-"], { maxBuffer: 1 << 28 });
-  return new Int16Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 2));
+  // Copy into a fresh, even-length ArrayBuffer: Node's pooled Buffers can sit at odd byte
+  // offsets, and an Int16Array view over an odd offset throws.
+  const ab = new ArrayBuffer(buf.byteLength - (buf.byteLength % 2));
+  new Uint8Array(ab).set(buf.subarray(0, ab.byteLength));
+  return new Int16Array(ab);
 }
 
 /** @param {{text: string}} line @param {any} cfg @param {string} tmp @returns {string} wav path */
