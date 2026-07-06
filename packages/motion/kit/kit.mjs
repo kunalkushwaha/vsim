@@ -156,14 +156,12 @@ export function packetFlow(conn, { count = 3, r = 3.5, color = "accent" } = {}) 
   const flow = (/** @type {number} */ v) => {
     dots.forEach((dot, i) => {
       const t = v - i * (0.65 / count);
-      if (t <= 0 || t > 1) {
-        dot.setAttribute("opacity", "0");
-        return;
-      }
-      const [px, py] = conn.posAt(t);
+      // ALWAYS write position (clamped) so hidden dots leave no stale attributes —
+      // seek purity is a DOM contract, not just a visual one.
+      const [px, py] = conn.posAt(Math.min(Math.max(t, 0), 1));
       dot.setAttribute("cx", fmt(px));
       dot.setAttribute("cy", fmt(py));
-      dot.setAttribute("opacity", fmt(Math.min(1, 6 * Math.min(t, 1 - t))));
+      dot.setAttribute("opacity", t <= 0 || t > 1 ? "0" : fmt(Math.min(1, 6 * Math.min(t, 1 - t))));
     });
   };
   return { el, flow };

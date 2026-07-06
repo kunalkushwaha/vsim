@@ -19,6 +19,7 @@
     "@vsim/authoring": "workspace:*",
     "@vsim/core": "workspace:*",
     "@vsim/engine-software": "workspace:*",
+    "@vsim/motion": "workspace:*",
     "@vsim/physics-rapier": "workspace:*",
     "@vsim/render": "workspace:*",
     "@vsim/text": "workspace:*",

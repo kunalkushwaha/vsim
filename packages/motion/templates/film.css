@@ -1,0 +1,9 @@
+/* Shared page shell for generated films (imported after tokens.css). */
+@font-face { font-family: "Bebas Neue"; src: url("../fonts/BebasNeue-Regular.ttf") format("truetype"); }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--color-paper); width: 1280px; height: 720px; overflow: hidden;
+       font-family: var(--font); color: var(--color-ink); display: flex; flex-direction: column; }
+svg#stage { display: block; width: 1280px; height: 630px; }
+#caption { height: 90px; padding: 18px 48px 0; font-size: 26px; letter-spacing: 0.02em; }
+#caption span { opacity: 0.25; }
+#caption span.lit { opacity: 1; }

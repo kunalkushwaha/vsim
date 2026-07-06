@@ -209,6 +209,15 @@ pnpm film:pip      # → out/pip-hello.mp4     — Pip the mouse, with TTS narra
 pnpm film:kit      # → out/kit-sheet.mp4     — the animated primitive contact sheet
 ```
 
+**Or let the AI write the film**: `vsim film -p "<topic>"` asks Claude for a **FilmDoc** — the
+screenplay as a zod-validated document (stage entities, beats, actions, camera). The model can
+propose a bad film but cannot emit an invalid one, and it never touches the render loop: the
+committed `filmdoc.json` re-renders byte-identically forever, no AI required.
+
+```bash
+pnpm film:gen "how a CDN makes websites fast"   # → screenplay + out/<slug>.mp4
+```
+
 Narration is built by `tools/narrate.mjs`: timed lines → TTS → one WAV + a per-frame mouth
 envelope the puppet lip-syncs to. The in-repo engine is espeak-ng (offline, deterministic);
 an **ElevenLabs** backend is included — set `ELEVENLABS_API_KEY` and switch

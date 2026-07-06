@@ -395,6 +395,9 @@ importers:
       '@vsim/engine-software':
         specifier: workspace:*
         version: link:../engine-software
+      '@vsim/motion':
+        specifier: workspace:*
+        version: link:../motion
       '@vsim/physics-rapier':
         specifier: workspace:*
         version: link:../physics-rapier
@@ -440,6 +443,10 @@ importers:
         version: 0.171.0
 
   packages/motion:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       happy-dom:
         specifier: ^20.10.6

@@ -76,3 +76,51 @@ export const translate = (el, map) => (/** @type {number} */ v) => {
   const [x, y] = map(v);
   el.setAttribute("transform", `translate(${fmt(x)} ${fmt(y)})`);
 };
+
+/**
+ * ONE owner per animated property — the cure for the "last cue clobbers" bug class.
+ * Registers a single cue that walks `segments` (sorted by f0): inside a segment the value
+ * interpolates from→to with the segment's ease; between/after segments it HOLDS the last
+ * segment's `to`; before the first it holds that segment's `from`. Because exactly one cue
+ * ever writes through `fn`, sequential moves can never fight over the attribute.
+ * @param {Timeline} tl
+ * @param {(v: number, frame: number) => void} fn
+ * @param {Array<{f0: number, f1: number, from?: number, to: number, ease?: string}>} segments
+ */
+export function piecewiseCue(tl, fn, segments) {
+  const segs = [...segments].sort((a, b) => a.f0 - b.f0).map((s) => ({ ...s, from: s.from ?? 0, fn: ease(s.ease ?? "floaty") }));
+  const first = segs[0];
+  if (!first) throw new Error("piecewiseCue needs at least one segment");
+  const end = Math.max(...segs.map((s) => s.f1));
+  tl.cue({ start: 0, end: Math.max(end, 1), ease: "hold", apply: (_, f) => {
+    let val = first.from;
+    for (const g of segs) {
+      if (f >= g.f1) { val = g.to; continue; }
+      if (f >= g.f0) val = g.from + (g.to - g.from) * g.fn((f - g.f0) / (g.f1 - g.f0));
+      break;
+    }
+    fn(val, f);
+  } });
+}
+
+/**
+ * ONE owner for a stateful setter (LED colors, highlights): applies the value of the last
+ * marker at or before `frame`, every seek — no guards to forget, scrub-safe by construction.
+ * @param {Timeline} tl
+ * @param {(value: any) => void} setter
+ * @param {Array<{f: number, value: any}>} markers  (first marker's value is the initial state)
+ */
+export function stateCue(tl, setter, markers) {
+  const ms = [...markers].sort((a, b) => a.f - b.f);
+  const first = ms[0], last = ms[ms.length - 1];
+  if (!first || !last) throw new Error("stateCue needs at least one marker");
+  const end = Math.max(last.f, 1);
+  tl.cue({ start: 0, end, ease: "hold", apply: (_, f) => {
+    let val = first.value;
+    for (const m of ms) {
+      if (f >= m.f) val = m.value;
+      else break;
+    }
+    setter(val);
+  } });
+}

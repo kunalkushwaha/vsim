@@ -47,6 +47,7 @@
     "film:queue": "node packages/motion/record.mjs packages/motion/films/message-queue/index.html out/message-queue.mp4",
     "film:pip": "node packages/motion/tools/narrate.mjs packages/motion/films/pip-hello/narration.json packages/motion/films/pip-hello && node packages/motion/record.mjs packages/motion/films/pip-hello/index.html out/pip-hello.mp4 --audio packages/motion/films/pip-hello/narration.wav",
     "film:kit": "node packages/motion/record.mjs packages/motion/kit/preview.html out/kit-sheet.mp4 --width 1300 --height 780",
+    "film:gen": "tsx packages/cli/src/index.ts film -p",
     "studio": "pnpm --filter @vsim/studio dev",
     "studio:build": "pnpm --filter @vsim/studio build",
     "studio:server": "tsx apps/studio/server.ts"
