@@ -1,5 +1,13 @@
 # Plan — motion/ v1: explainer kit + deterministic recorder (proving ground #1)
 
+> **STATUS: SHIPPED** (PRs #36–#40). M1 scaffold + M2 recorder + M3 kit + M4 film + M5
+> integration all merged; `pnpm film:webreq` renders the 60-second explainer to MP4
+> (1801 frames in ~90 s). One refinement vs. this plan: the package lives at
+> `packages/motion` so vitest/workspace tooling covers it for free. Hard-won lesson now
+> documented in the film source: cue discipline (reset-cue-first, guarded state flips,
+> window-silent fade-outs, one owner per attribute) and `window.__recording` to suppress
+> ambient autoplay under the recorder.
+
 > Concrete implementation plan for the first proving ground of
 > `plan-svg-animation-studio.md`: a token-governed SVG explainer kit, a deterministic
 > HTML→MP4 recorder, and a complete agent-produced film — "How a web request works".
