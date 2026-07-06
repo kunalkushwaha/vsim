@@ -1,0 +1,53 @@
+{
+  "version": "film3d-1",
+  "title": "A Fox at Golden Hour",
+  "fps": 30,
+  "set": "meadow",
+  "props": [
+    { "kind": "tree", "id": "t1", "x": -5.5, "z": -6, "height": 3.2 },
+    { "kind": "tree", "id": "t2", "x": -2.5, "z": -8, "height": 2.6, "variant": "broadleaf" },
+    { "kind": "tree", "id": "t3", "x": 3.5, "z": -7, "height": 3.6 },
+    { "kind": "tree", "id": "t4", "x": 6.5, "z": -5, "height": 3, "variant": "broadleaf" },
+    { "kind": "tree", "id": "t5", "x": -8, "z": -3, "height": 3.4 },
+    { "kind": "rock", "id": "r1", "x": 1.6, "z": -1.6, "radius": 0.4 },
+    { "kind": "rock", "id": "r2", "x": -3.4, "z": -3, "radius": 0.6 }
+  ],
+  "actors": [
+    { "id": "fox", "character": "fox", "x": 6, "z": -2, "facing": [-3, 0] }
+  ],
+  "beats": [
+    {
+      "id": "enter",
+      "start": 0,
+      "end": 7,
+      "caption": "At golden hour, a fox crosses the clearing.",
+      "actions": [
+        { "do": "move", "actor": "fox", "to": [-1, 0.2], "at": 0.6, "dur": 5.6 }
+      ]
+    },
+    {
+      "id": "pause",
+      "start": 7,
+      "end": 12,
+      "caption": "Something in the grass makes it stop and listen.",
+      "actions": [
+        { "do": "face", "actor": "fox", "to": [-3.4, -3], "at": 0.4 },
+        { "do": "play", "actor": "fox", "clip": "Survey", "at": 0.8, "dur": 3.8 }
+      ]
+    },
+    {
+      "id": "dash",
+      "start": 12,
+      "end": 17,
+      "caption": "Then it is gone — a streak of orange into the trees.",
+      "actions": [
+        { "do": "move", "actor": "fox", "to": [-7.5, -5], "at": 0.5, "dur": 3.4, "gait": "run" }
+      ]
+    }
+  ],
+  "camera": [
+    { "at": 0, "dur": 7, "shot": "follow", "target": "fox", "distance": 5, "height": 1.5, "angle": 30 },
+    { "at": 7, "dur": 5, "shot": "close", "target": "fox", "angle": -140 },
+    { "at": 12, "dur": 5, "shot": "wide", "target": "fox", "distance": 10, "height": 3.2, "angle": 20 }
+  ]
+}

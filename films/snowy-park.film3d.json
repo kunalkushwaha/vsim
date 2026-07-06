@@ -1,0 +1,271 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "Reunion in the Snow",
+  "set": "snow",
+  "props": [
+    {
+      "kind": "tree",
+      "id": "t1",
+      "x": -6,
+      "z": -9,
+      "height": 4.5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t2",
+      "x": -2,
+      "z": -10,
+      "height": 5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t3",
+      "x": 3,
+      "z": -9.5,
+      "height": 3.8,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t4",
+      "x": 8,
+      "z": -8,
+      "height": 4.2,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "t5",
+      "x": -9,
+      "z": -6,
+      "height": 3.5,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "rock",
+      "id": "r1",
+      "x": -1,
+      "z": 1.5,
+      "radius": 0.6
+    },
+    {
+      "kind": "rock",
+      "id": "r2",
+      "x": 4,
+      "z": -1,
+      "radius": 0.4
+    },
+    {
+      "kind": "rock",
+      "id": "r3",
+      "x": -4,
+      "z": 2.5,
+      "radius": 0.9
+    }
+  ],
+  "actors": [
+    {
+      "id": "dog1",
+      "character": "dog",
+      "x": -3,
+      "z": 1,
+      "facing": [
+        7,
+        -3
+      ]
+    },
+    {
+      "id": "owner",
+      "character": "suited",
+      "x": 8,
+      "z": -3,
+      "facing": [
+        -3,
+        1
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "b1",
+      "start": 0,
+      "end": 8,
+      "caption": "The owner crosses the fresh snow while the dog waits by the pines.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "owner",
+          "to": [
+            3,
+            -1
+          ],
+          "at": 0,
+          "dur": 7,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "dog1",
+          "to": [
+            8,
+            -3
+          ],
+          "at": 0,
+          "dur": 1
+        }
+      ]
+    },
+    {
+      "id": "b2",
+      "start": 8,
+      "end": 14,
+      "caption": "The dog can't wait any longer and bolts across the snow to meet her.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            2,
+            -1
+          ],
+          "at": 0,
+          "dur": 4,
+          "gait": "run"
+        },
+        {
+          "do": "play",
+          "actor": "owner",
+          "clip": "wave",
+          "at": 4,
+          "dur": 2
+        }
+      ]
+    },
+    {
+      "id": "b3",
+      "start": 14,
+      "end": 21,
+      "caption": "Reunited, the dog circles her heels while she laughs and reaches down.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            3.5,
+            -1.5
+          ],
+          "at": 0,
+          "dur": 2,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "dog1",
+          "clip": "trot",
+          "at": 2,
+          "dur": 2
+        },
+        {
+          "do": "face",
+          "actor": "owner",
+          "to": [
+            2,
+            -1
+          ],
+          "at": 0,
+          "dur": 1
+        },
+        {
+          "do": "play",
+          "actor": "owner",
+          "clip": "idle",
+          "at": 4,
+          "dur": 3
+        }
+      ]
+    },
+    {
+      "id": "b4",
+      "start": 21,
+      "end": 30,
+      "caption": "Side by side, they head off into the quiet white afternoon.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "owner",
+          "to": [
+            -4,
+            3
+          ],
+          "at": 0,
+          "dur": 8,
+          "gait": "walk"
+        },
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            -5,
+            3.5
+          ],
+          "at": 0,
+          "dur": 7,
+          "gait": "walk"
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 8,
+      "shot": "wide",
+      "target": [
+        2,
+        0,
+        -1
+      ],
+      "distance": 12,
+      "height": 4,
+      "angle": 10,
+      "sweep": 90
+    },
+    {
+      "at": 8,
+      "dur": 6,
+      "shot": "follow",
+      "target": "dog1",
+      "distance": 6,
+      "height": 2.5,
+      "angle": -20,
+      "sweep": 90
+    },
+    {
+      "at": 14,
+      "dur": 7,
+      "shot": "close",
+      "target": "owner",
+      "distance": 3.5,
+      "height": 1.6,
+      "angle": 15,
+      "sweep": 90
+    },
+    {
+      "at": 21,
+      "dur": 9,
+      "shot": "orbit",
+      "target": [
+        -4,
+        0,
+        3
+      ],
+      "distance": 9,
+      "height": 3.5,
+      "angle": 0,
+      "sweep": 70
+    }
+  ]
+}
