@@ -65,6 +65,14 @@ all of it from source.
   <sub><code>examples/24-campfire</code> — one flickering point light with inverse-square falloff (<code>decay: 2</code>) IS the scene: breathing cube shadows, spark & smoke particles, ACES rolling the flames off filmically.</sub>
 </p>
 
+And this one wasn't written by a person at all:
+
+<p align="center">
+  <img src="docs/media/cdn.gif" width="640" alt="An AI-written 48-second explainer film: a browser, an origin server and three edge servers animate 'How a CDN makes websites fast' with packet flows and karaoke captions" />
+  <br/>
+  <sub><strong>The AI wrote this entire film from one prompt</strong> — <code>vsim film -p "how a CDN makes websites fast"</code>. Claude authors a schema-validated screenplay (<a href="packages/motion/films/cdn/filmdoc.json"><code>filmdoc.json</code></a>, committed right here); vsim renders it deterministically. The screenplay re-renders byte-identically forever — no AI needed after the first take. See <a href="#motion--films-from-svg--css-new">motion/</a>.</sub>
+</p>
+
 | | | |
 |:---:|:---:|:---:|
 | ![cartoon mouse waving](docs/media/mouse.gif) | ![normal-mapped brick walls under a raking light](docs/media/normalmap.gif) | ![deterministic physics tower collapse](docs/media/physics.gif) |
@@ -212,7 +220,10 @@ pnpm film:kit      # → out/kit-sheet.mp4     — the animated primitive contac
 **Or let the AI write the film**: `vsim film -p "<topic>"` asks Claude for a **FilmDoc** — the
 screenplay as a zod-validated document (stage entities, beats, actions, camera). The model can
 propose a bad film but cannot emit an invalid one, and it never touches the render loop: the
-committed `filmdoc.json` re-renders byte-identically forever, no AI required.
+committed `filmdoc.json` re-renders byte-identically forever, no AI required. The CDN film
+[featured near the top of this README](#show-me) was made exactly this way, as was
+[`films/load-balancer`](packages/motion/films/load-balancer) — both screenplays landed valid
+on Claude's first attempt.
 
 ```bash
 pnpm film:gen "how a CDN makes websites fast"   # → screenplay + out/<slug>.mp4
