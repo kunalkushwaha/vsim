@@ -185,6 +185,25 @@ the AI uses `ANTHROPIC_API_KEY` or the `claude` CLI). See
 | `@vsim/assets` | glTF/GLB asset pipeline (load + export) + character library |
 | `@vsim/ai` | AI copilot: natural-language prompt → schema-constrained scene-document edits (Claude tool-use) |
 | `@vsim/cli` | `vsim render scene.ts -o out.mp4` · `vsim edit scene.ts --prompt "…"` |
+| `@vsim/motion` | The 2D animation studio: design tokens, frame-pure timeline, explainer kit, deterministic HTML→MP4 recorder |
+
+## motion/ — films from SVG + CSS (new)
+
+A second way to make video, built on the same determinism contract: author a film as an
+HTML/SVG page on a **frame-pure seekable timeline** (no wall clock — `seek(f)` is a pure
+function of the frame index), and the recorder frame-steps it in headless Chromium into a
+byte-reproducible MP4. Design tokens keep every asset on one palette; a 12-primitive
+**explainer kit** (servers, packets-along-a-path, draw-on arrows, typing code blocks,
+kinetic titles…) covers technical storytelling; the film is driven by an editable
+`screenplay.json`.
+
+```bash
+pnpm film:webreq   # → out/web-request.mp4 — a 60s "How a web request works" explainer
+pnpm film:kit      # → out/kit-sheet.mp4  — the animated primitive contact sheet
+```
+
+See [`docs/plan-svg-animation-studio.md`](./docs/plan-svg-animation-studio.md) (the
+brainstorm) and [`docs/plan-motion-v1.md`](./docs/plan-motion-v1.md) (what shipped).
 
 ## Docs
 
