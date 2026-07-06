@@ -46,6 +46,9 @@ export async function recordFrames(pagePath, opts, handlers) {
   });
   try {
     const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale });
+    // Announce ourselves before any page script runs: films must not start their ambient
+    // rAF autoplay while being frame-stepped (the playhead would race our seeks).
+    await page.addInitScript(() => { /** @type {any} */ (window).__recording = true; });
     await page.goto(pathToFileURL(resolve(pagePath)).href);
     await page.waitForFunction(() => /** @type {any} */ (window).__film !== undefined, undefined, { timeout: 10000 });
     const film = await page.evaluate(() => {

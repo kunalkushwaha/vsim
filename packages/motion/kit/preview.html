@@ -135,7 +135,7 @@
   // ambient preview: play the master loop (recorder never uses this path)
   let f = 0;
   const tick = () => { show(f = (f + 1) % (FRAMES + 1)); requestAnimationFrame(tick); };
-  if (!new URLSearchParams(location.search).has("f")) requestAnimationFrame(tick);
+  if (!window.__recording && !new URLSearchParams(location.search).has("f")) requestAnimationFrame(tick);
 </script>
 </body>
 </html>
