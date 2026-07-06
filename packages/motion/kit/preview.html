@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>explainer kit — contact sheet</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+  body { margin: 0; background: var(--color-paper); color: var(--color-ink);
+         font-family: var(--font); padding: 24px; }
+  h1 { font-size: var(--type-caption); font-weight: 500; margin: 0 0 4px; }
+  p.sub { color: var(--color-muted); margin: 0 0 20px; font-size: var(--type-label); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .cell { background: var(--color-panel); border: 1px solid var(--color-line);
+          border-radius: var(--radius-l); overflow: hidden; }
+  .cell svg { display: block; width: 100%; background: var(--color-paper); }
+  .cell footer { padding: 8px 12px; font-size: 13px; color: var(--color-muted); }
+</style>
+</head>
+<body>
+<h1>Explainer kit — contact sheet</h1>
+<p class="sub">Every primitive looping on the shared frame clock. This page is itself a film:
+  <code>window.__film</code> is live, so the recorder can capture it.</p>
+<div class="grid" id="grid"></div>
+
+<script type="module">
+  import { Timeline } from "../src/index.mjs";
+  import * as K from "./kit.mjs";
+
+  const FPS = 30, FRAMES = 120; // one 4s master loop
+  const tl = new Timeline(FPS);
+  const grid = document.getElementById("grid");
+
+  /** Add a contact-sheet cell: a viewBox'd svg + caption; returns the svg element. */
+  function cell(name, vb = "0 0 280 160") {
+    const wrap = document.createElement("div");
+    wrap.className = "cell";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", vb);
+    const cap = document.createElement("footer");
+    cap.textContent = name;
+    wrap.append(svg, cap);
+    grid.append(wrap);
+    return svg;
+  }
+  // loop helper: run apply on a repeating sub-window of the master loop
+  const loop = (apply, { period = 120, offset = 0, ease = "floaty" } = {}) =>
+    tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: (_, f) => {
+      const p = ((f + offset) % period) / period;
+      apply(p);
+    } });
+
+  // 1 · browser window (URL typing)
+  { const s = cell("browserWindow — typeUrl()");
+    const b = K.browserWindow({ x: 30, y: 8, url: "shop.example/checkout" });
+    s.append(b.el); loop((p) => b.typeUrl(Math.min(p * 2, 1))); }
+
+  // 2 · server states + busy pulse + error shake
+  { const s = cell("server — setState / pulse / shake");
+    const ok = K.server({ x: 8, y: 40, label: "api-1" });
+    const busy = K.server({ x: 98, y: 40, label: "api-2" });
+    const err = K.server({ x: 188, y: 40, label: "api-3" });
+    ok.setState("ok"); busy.setState("busy"); err.setState("err");
+    s.append(ok.el, busy.el, err.el);
+    loop((p) => busy.pulse(p), { period: 30 });
+    loop((p) => err.shake(p), { period: 60, offset: 20 }); }
+
+  // 3 · database query flash
+  { const s = cell("database — flash()");
+    const db = K.database({ x: 110, y: 30, label: "orders" });
+    s.append(db.el); loop((p) => db.flash(p), { period: 60 }); }
+
+  // 4 · queue filling
+  { const s = cell("queue — fill()");
+    const q = K.queue({ x: 85, y: 55, slots: 6, label: "jobs" });
+    s.append(q.el); loop((p) => q.fill(p < 0.8 ? p / 0.8 : 1 - (p - 0.8) / 0.2)); }
+
+  // 5 · cloud boundary
+  { const s = cell("cloudBox — grouping");
+    const c = K.cloudBox({ x: 40, y: 30, w: 200, h: 100, label: "aws" });
+    const sv = K.server({ x: 100, y: 50, label: "web" });
+    sv.setState("ok");
+    s.append(c.el, sv.el); }
+
+  // 6 · packets along a curved connector
+  { const s = cell("connector + packetFlow — flow()");
+    const conn = K.connector({ from: [30, 120], to: [250, 40], via: [140, 140] });
+    const flow = K.packetFlow(conn, { count: 4 });
+    s.append(conn.el, flow.el); loop((p) => flow.flow(p), { period: 90 }); }
+
+  // 7 · draw-on arrow
+  { const s = cell("drawArrow — draw()");
+    const a = K.drawArrow({ from: [40, 120], to: [240, 50], via: [140, 20] });
+    s.append(a.el); loop((p) => a.draw(Math.min(p * 1.6, 1)), { period: 90 }); }
+
+  // 8 · code block typing + highlight
+  { const s = cell("codeBlock — type() / highlight()");
+    const cb = K.codeBlock({ x: 25, y: 20, w: 230, lines: [
+      "GET /checkout HTTP/1.1", "Host: shop.example", "Cookie: session=…", "",
+      "HTTP/1.1 200 OK",
+    ] });
+    s.append(cb.el);
+    loop((p) => { cb.type(Math.min(p * 1.4, 1)); cb.highlight(p > 0.85 ? 4 : -1); }); }
+
+  // 9 · callout pop
+  { const s = cell("callout — pop() (overshoot)");
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("cx", "80"); dot.setAttribute("cy", "110"); dot.setAttribute("r", "5");
+    dot.setAttribute("fill", "var(--color-accent2)");
+    const c = K.callout({ x: 170, y: 50, text: "TLS handshake", anchor: [80, 110] });
+    s.append(dot, c.el);
+    // overshoot needs a real ease — nested mini-timeline per loop pass
+    loop((p) => c.pop(p < 0.5 ? p * 2 : 1), { period: 80 }); }
+
+  // 10 · step chips
+  { const s = cell("stepChip — activate()");
+    const steps = ["resolve", "connect", "request", "render"].map((t, i) =>
+      K.stepChip({ x: 40, y: 20 + i * 32, n: i + 1, text: t }));
+    steps.forEach((c) => s.append(c.el));
+    loop((p) => steps.forEach((c, i) => c.activate(p * 4 - i >= 0.5 ? 1 : 0))); }
+
+  // 11 · bar chart
+  { const s = cell("barChart — grow()");
+    const ch = K.barChart({ x: 50, y: 25, w: 180, h: 110, values: [0.35, 0.6, 0.45, 0.8, 1] });
+    s.append(ch.el); loop((p) => ch.grow(Math.min(p * 1.5, 1))); }
+
+  // 12 · kinetic title
+  { const s = cell("title — reveal()");
+    const t = K.title({ x: 20, y: 90, text: "HOW IT WORKS", size: 24, color: "ink" });
+    s.append(t.el); loop((p) => t.reveal(Math.min(p * 1.6, 1))); }
+
+  const show = (f) => tl.seek(f);
+  window.__film = { fps: FPS, frames: FRAMES, seek: show };
+  show(Math.max(0, Math.min(FRAMES, Number(new URLSearchParams(location.search).get("f")) || 0)));
+
+  // ambient preview: play the master loop (recorder never uses this path)
+  let f = 0;
+  const tick = () => { show(f = (f + 1) % (FRAMES + 1)); requestAnimationFrame(tick); };
+  if (!new URLSearchParams(location.search).has("f")) requestAnimationFrame(tick);
+</script>
+</body>
+</html>
