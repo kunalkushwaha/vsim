@@ -3,10 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "SVG/HTML animation studio: design tokens, ease presets, a frame-pure seekable timeline, and a deterministic HTML→MP4 recorder.",
+  "description": "SVG/HTML animation studio: design tokens, ease presets, a frame-pure seekable timeline, and a deterministic HTML\u2192MP4 recorder.",
   "exports": {
     ".": "./src/index.mjs",
-    "./tokens.css": "./tokens.css"
+    "./tokens.css": "./tokens.css",
+    "./tools/film-gen.mjs": "./tools/film-gen.mjs"
   },
   "scripts": {
     "gen:tokens": "node gen-tokens.mjs",
@@ -17,5 +18,8 @@
   "devDependencies": {
     "happy-dom": "^20.10.6",
     "playwright-core": "^1.61.1"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
   }
 }

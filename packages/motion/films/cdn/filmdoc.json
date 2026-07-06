@@ -1,0 +1,508 @@
+{
+  "version": "film-1",
+  "fps": 30,
+  "title": "How a CDN Makes Websites Fast",
+  "stage": [
+    {
+      "kind": "title",
+      "id": "t1",
+      "text": "How a CDN Makes Websites Fast",
+      "x": 180,
+      "y": 140,
+      "size": 44,
+      "color": "accent"
+    },
+    {
+      "kind": "browser",
+      "id": "browser1",
+      "x": 90,
+      "y": 380,
+      "w": 180,
+      "h": 130,
+      "url": "shop.example.com"
+    },
+    {
+      "kind": "server",
+      "id": "origin",
+      "x": 1080,
+      "y": 110,
+      "label": "Origin Server"
+    },
+    {
+      "kind": "database",
+      "id": "origindb",
+      "x": 1080,
+      "y": 230,
+      "label": "Origin DB"
+    },
+    {
+      "kind": "cloud",
+      "id": "cdncloud",
+      "x": 300,
+      "y": 90,
+      "w": 680,
+      "h": 250,
+      "label": "CDN Edge Network"
+    },
+    {
+      "kind": "server",
+      "id": "edge1",
+      "x": 350,
+      "y": 170,
+      "label": "Edge - NA"
+    },
+    {
+      "kind": "server",
+      "id": "edge2",
+      "x": 560,
+      "y": 170,
+      "label": "Edge - EU"
+    },
+    {
+      "kind": "server",
+      "id": "edge3",
+      "x": 770,
+      "y": 170,
+      "label": "Edge - APAC"
+    },
+    {
+      "kind": "connector",
+      "id": "conn_direct",
+      "from": [
+        270,
+        420
+      ],
+      "to": [
+        1080,
+        142
+      ],
+      "via": [
+        650,
+        50
+      ],
+      "dashed": true
+    },
+    {
+      "kind": "connector",
+      "id": "conn_o_e2",
+      "from": [
+        1080,
+        142
+      ],
+      "to": [
+        602,
+        170
+      ],
+      "via": [
+        850,
+        70
+      ],
+      "dashed": true
+    },
+    {
+      "kind": "connector",
+      "id": "conn_b_e1",
+      "from": [
+        270,
+        445
+      ],
+      "to": [
+        350,
+        202
+      ],
+      "via": [
+        300,
+        320
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "connector",
+      "id": "conn_o_db",
+      "from": [
+        1122,
+        174
+      ],
+      "to": [
+        1110,
+        230
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "packets",
+      "id": "pkt_direct_req",
+      "along": "conn_direct",
+      "reverse": false,
+      "count": 3,
+      "color": "accent"
+    },
+    {
+      "kind": "packets",
+      "id": "pkt_direct_res",
+      "along": "conn_direct",
+      "reverse": true,
+      "count": 3,
+      "color": "ok"
+    },
+    {
+      "kind": "packets",
+      "id": "pkt_pop2",
+      "along": "conn_o_e2",
+      "reverse": false,
+      "count": 3,
+      "color": "accent2"
+    },
+    {
+      "kind": "packets",
+      "id": "pkt_hit_req",
+      "along": "conn_b_e1",
+      "reverse": false,
+      "count": 3,
+      "color": "accent"
+    },
+    {
+      "kind": "packets",
+      "id": "pkt_hit_res",
+      "along": "conn_b_e1",
+      "reverse": true,
+      "count": 3,
+      "color": "ok"
+    },
+    {
+      "kind": "callout",
+      "id": "cal_cache",
+      "x": 560,
+      "y": 130,
+      "text": "Cached at every edge",
+      "anchor": [
+        602,
+        202
+      ]
+    },
+    {
+      "kind": "callout",
+      "id": "cal_fast",
+      "x": 250,
+      "y": 140,
+      "text": "~15ms - instant feel",
+      "anchor": [
+        392,
+        202
+      ]
+    },
+    {
+      "kind": "callout",
+      "id": "cal_summary",
+      "x": 860,
+      "y": 340,
+      "text": "Origin trip -> edge trip",
+      "anchor": [
+        1010,
+        460
+      ]
+    },
+    {
+      "kind": "chart",
+      "id": "lat_chart",
+      "x": 860,
+      "y": 380,
+      "w": 300,
+      "h": 160,
+      "values": [
+        0.9,
+        0.15
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "b1",
+      "start": 0,
+      "end": 6,
+      "caption": "Every website starts as a request that has to travel somewhere - the question is how far.",
+      "actions": [
+        {
+          "target": "t1",
+          "do": "reveal",
+          "at": 0,
+          "dur": 1.5
+        },
+        {
+          "target": "browser1",
+          "do": "fadeIn",
+          "at": 2,
+          "dur": 1
+        },
+        {
+          "target": "t1",
+          "do": "fadeOut",
+          "at": 4.5,
+          "dur": 1
+        }
+      ]
+    },
+    {
+      "id": "b2",
+      "start": 6,
+      "end": 15,
+      "caption": "Without a CDN, every request makes a long round trip to one distant origin server.",
+      "actions": [
+        {
+          "target": "origin",
+          "do": "fadeIn",
+          "at": 0,
+          "dur": 0.5
+        },
+        {
+          "target": "conn_direct",
+          "do": "fadeIn",
+          "at": 0.3,
+          "dur": 0.5
+        },
+        {
+          "target": "pkt_direct_req",
+          "do": "flow",
+          "at": 1,
+          "dur": 3.5,
+          "value": 1
+        },
+        {
+          "target": "origin",
+          "do": "state",
+          "at": 4.5,
+          "dur": 0.5,
+          "value": "busy"
+        },
+        {
+          "target": "pkt_direct_res",
+          "do": "flow",
+          "at": 5,
+          "dur": 3.5,
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "b3",
+      "start": 15,
+      "end": 24,
+      "caption": "A CDN places edge servers around the globe, ready to hold cached copies close to every visitor.",
+      "actions": [
+        {
+          "target": "cdncloud",
+          "do": "fadeIn",
+          "at": 0,
+          "dur": 1
+        },
+        {
+          "target": "edge1",
+          "do": "fadeIn",
+          "at": 0.5,
+          "dur": 0.5
+        },
+        {
+          "target": "edge2",
+          "do": "fadeIn",
+          "at": 0.7,
+          "dur": 0.5
+        },
+        {
+          "target": "edge3",
+          "do": "fadeIn",
+          "at": 0.9,
+          "dur": 0.5
+        },
+        {
+          "target": "conn_o_e2",
+          "do": "fadeIn",
+          "at": 1.5,
+          "dur": 0.5
+        }
+      ]
+    },
+    {
+      "id": "b4",
+      "start": 24,
+      "end": 32,
+      "caption": "The origin pushes fresh copies of the site out to every edge location before anyone even asks.",
+      "actions": [
+        {
+          "target": "origindb",
+          "do": "fadeIn",
+          "at": 0,
+          "dur": 0.5
+        },
+        {
+          "target": "pkt_pop2",
+          "do": "flow",
+          "at": 0.5,
+          "dur": 2.5,
+          "value": 1
+        },
+        {
+          "target": "origindb",
+          "do": "flash",
+          "at": 1.5,
+          "dur": 1,
+          "value": 1
+        },
+        {
+          "target": "conn_o_db",
+          "do": "fadeIn",
+          "at": 0.3,
+          "dur": 0.3
+        },
+        {
+          "target": "cal_cache",
+          "do": "pop",
+          "at": 4,
+          "dur": 0.5
+        }
+      ]
+    },
+    {
+      "id": "b5",
+      "start": 32,
+      "end": 41,
+      "caption": "When the nearest edge already holds the page, it answers directly - no long trip to the origin needed.",
+      "actions": [
+        {
+          "target": "conn_b_e1",
+          "do": "fadeIn",
+          "at": 0,
+          "dur": 0.5
+        },
+        {
+          "target": "pkt_hit_req",
+          "do": "flow",
+          "at": 1,
+          "dur": 1.2,
+          "value": 1
+        },
+        {
+          "target": "edge1",
+          "do": "state",
+          "at": 2.2,
+          "dur": 0.5,
+          "value": "ok"
+        },
+        {
+          "target": "pkt_hit_res",
+          "do": "flow",
+          "at": 2.5,
+          "dur": 1.2,
+          "value": 1
+        },
+        {
+          "target": "cal_fast",
+          "do": "pop",
+          "at": 4,
+          "dur": 0.5
+        }
+      ]
+    },
+    {
+      "id": "b6",
+      "start": 41,
+      "end": 48,
+      "caption": "The result: a CDN turns one long journey into many short ones, so the web feels instant everywhere.",
+      "actions": [
+        {
+          "target": "lat_chart",
+          "do": "fadeIn",
+          "at": 0,
+          "dur": 1
+        },
+        {
+          "target": "lat_chart",
+          "do": "grow",
+          "at": 0.5,
+          "dur": 2
+        },
+        {
+          "target": "cal_summary",
+          "do": "pop",
+          "at": 1.5,
+          "dur": 0.5
+        },
+        {
+          "target": "pkt_hit_req",
+          "do": "flow",
+          "at": 3,
+          "dur": 2,
+          "value": 2
+        },
+        {
+          "target": "pkt_pop2",
+          "do": "flow",
+          "at": 3,
+          "dur": 2,
+          "value": 2
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 1,
+      "view": [
+        0,
+        0,
+        1280,
+        600
+      ]
+    },
+    {
+      "at": 6,
+      "dur": 1.5,
+      "view": [
+        0,
+        0,
+        1280,
+        600
+      ]
+    },
+    {
+      "at": 15,
+      "dur": 1.5,
+      "view": [
+        260,
+        60,
+        960,
+        450
+      ]
+    },
+    {
+      "at": 24,
+      "dur": 1.5,
+      "view": [
+        260,
+        60,
+        960,
+        450
+      ]
+    },
+    {
+      "at": 32,
+      "dur": 1.5,
+      "view": [
+        40,
+        100,
+        880,
+        412
+      ]
+    },
+    {
+      "at": 41,
+      "dur": 1.5,
+      "view": [
+        0,
+        0,
+        1280,
+        600
+      ]
+    }
+  ]
+}

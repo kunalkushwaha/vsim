@@ -1,0 +1,590 @@
+{
+  "version": "film-1",
+  "fps": 30,
+  "title": "What Does a Load Balancer Do?",
+  "stage": [
+    {
+      "kind": "title",
+      "id": "t1",
+      "text": "What Does a Load Balancer Do?",
+      "x": 640,
+      "y": 140,
+      "size": 42,
+      "color": "accent"
+    },
+    {
+      "kind": "browser",
+      "id": "b1",
+      "x": 80,
+      "y": 180,
+      "w": 160,
+      "h": 110,
+      "url": "client-1.app"
+    },
+    {
+      "kind": "browser",
+      "id": "b2",
+      "x": 80,
+      "y": 340,
+      "w": 160,
+      "h": 110,
+      "url": "client-2.app"
+    },
+    {
+      "kind": "server",
+      "id": "lb",
+      "x": 420,
+      "y": 270,
+      "label": "Load Balancer"
+    },
+    {
+      "kind": "server",
+      "id": "srv1",
+      "x": 760,
+      "y": 140,
+      "label": "Server A"
+    },
+    {
+      "kind": "server",
+      "id": "srv2",
+      "x": 760,
+      "y": 280,
+      "label": "Server B"
+    },
+    {
+      "kind": "server",
+      "id": "srv3",
+      "x": 760,
+      "y": 420,
+      "label": "Server C"
+    },
+    {
+      "kind": "database",
+      "id": "db",
+      "x": 1000,
+      "y": 280,
+      "label": "Database"
+    },
+    {
+      "kind": "connector",
+      "id": "cB1",
+      "from": [
+        240,
+        230
+      ],
+      "to": [
+        420,
+        285
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "connector",
+      "id": "cB2",
+      "from": [
+        240,
+        395
+      ],
+      "to": [
+        420,
+        320
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "connector",
+      "id": "cL1",
+      "from": [
+        504,
+        285
+      ],
+      "to": [
+        760,
+        172
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "connector",
+      "id": "cL2",
+      "from": [
+        504,
+        302
+      ],
+      "to": [
+        760,
+        312
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "connector",
+      "id": "cL3",
+      "from": [
+        504,
+        320
+      ],
+      "to": [
+        760,
+        452
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "connector",
+      "id": "cD1",
+      "from": [
+        844,
+        172
+      ],
+      "to": [
+        1000,
+        300
+      ],
+      "via": [
+        920,
+        200
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "connector",
+      "id": "cD2",
+      "from": [
+        844,
+        312
+      ],
+      "to": [
+        1000,
+        310
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "connector",
+      "id": "cD3",
+      "from": [
+        844,
+        452
+      ],
+      "to": [
+        1000,
+        325
+      ],
+      "via": [
+        920,
+        420
+      ],
+      "dashed": false
+    },
+    {
+      "kind": "packets",
+      "id": "pB1",
+      "along": "cB1",
+      "reverse": false,
+      "count": 3,
+      "color": "accent"
+    },
+    {
+      "kind": "packets",
+      "id": "pB2",
+      "along": "cB2",
+      "reverse": false,
+      "count": 3,
+      "color": "accent"
+    },
+    {
+      "kind": "packets",
+      "id": "pL1",
+      "along": "cL1",
+      "reverse": false,
+      "count": 3,
+      "color": "accent"
+    },
+    {
+      "kind": "packets",
+      "id": "pL2",
+      "along": "cL2",
+      "reverse": false,
+      "count": 3,
+      "color": "accent"
+    },
+    {
+      "kind": "packets",
+      "id": "pL3",
+      "along": "cL3",
+      "reverse": false,
+      "count": 3,
+      "color": "accent"
+    },
+    {
+      "kind": "packets",
+      "id": "pD1",
+      "along": "cD1",
+      "reverse": false,
+      "count": 2,
+      "color": "accent2"
+    },
+    {
+      "kind": "packets",
+      "id": "pD3",
+      "along": "cD3",
+      "reverse": false,
+      "count": 2,
+      "color": "accent2"
+    },
+    {
+      "kind": "packets",
+      "id": "rL1",
+      "along": "cL1",
+      "reverse": true,
+      "count": 2,
+      "color": "ok"
+    },
+    {
+      "kind": "callout",
+      "id": "coHealth",
+      "x": 900,
+      "y": 200,
+      "text": "Health check fails",
+      "anchor": [
+        802,
+        312
+      ]
+    },
+    {
+      "kind": "callout",
+      "id": "coReroute",
+      "x": 900,
+      "y": 380,
+      "text": "Rerouted to healthy servers",
+      "anchor": [
+        462,
+        302
+      ]
+    },
+    {
+      "kind": "code",
+      "id": "codeAlgo",
+      "x": 150,
+      "y": 460,
+      "w": 300,
+      "lines": [
+        "def pick_server():",
+        "    idx = (idx + 1) % N",
+        "    return pool[idx]",
+        "lb.forward(request, pick_server())"
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "beat1",
+      "start": 0,
+      "end": 6,
+      "caption": "A load balancer sits in front of a server pool to distribute incoming traffic evenly.",
+      "actions": [
+        {
+          "target": "t1",
+          "do": "reveal",
+          "at": 0,
+          "dur": 1.5
+        },
+        {
+          "target": "t1",
+          "do": "fadeOut",
+          "at": 4,
+          "dur": 1.5
+        }
+      ]
+    },
+    {
+      "id": "beat2",
+      "start": 6,
+      "end": 13,
+      "caption": "Client requests travel across the internet toward a single address, the load balancer's front door.",
+      "actions": [
+        {
+          "target": "b1",
+          "do": "fadeIn",
+          "at": 0,
+          "dur": 0.5
+        },
+        {
+          "target": "b2",
+          "do": "fadeIn",
+          "at": 0.3,
+          "dur": 0.5
+        },
+        {
+          "target": "lb",
+          "do": "fadeIn",
+          "at": 0.6,
+          "dur": 0.5
+        },
+        {
+          "target": "pB1",
+          "do": "flow",
+          "at": 2,
+          "dur": 3,
+          "value": 2
+        },
+        {
+          "target": "pB2",
+          "do": "flow",
+          "at": 2.3,
+          "dur": 3,
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "beat3",
+      "start": 13,
+      "end": 20,
+      "caption": "Behind that front door waits a pool of backend servers ready to share the work.",
+      "actions": [
+        {
+          "target": "srv1",
+          "do": "fadeIn",
+          "at": 0,
+          "dur": 0.4
+        },
+        {
+          "target": "srv2",
+          "do": "fadeIn",
+          "at": 0.2,
+          "dur": 0.4
+        },
+        {
+          "target": "srv3",
+          "do": "fadeIn",
+          "at": 0.4,
+          "dur": 0.4
+        },
+        {
+          "target": "lb",
+          "do": "state",
+          "at": 1,
+          "dur": 0.4,
+          "value": "busy"
+        },
+        {
+          "target": "pL2",
+          "do": "flow",
+          "at": 1.5,
+          "dur": 4,
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "beat4",
+      "start": 20,
+      "end": 27,
+      "caption": "The load balancer picks a server for each request using a scheduling rule like round robin.",
+      "actions": [
+        {
+          "target": "codeAlgo",
+          "do": "fadeIn",
+          "at": 0,
+          "dur": 0.5
+        },
+        {
+          "target": "codeAlgo",
+          "do": "highlight",
+          "at": 1,
+          "dur": 0.3,
+          "value": 0
+        },
+        {
+          "target": "pL1",
+          "do": "flow",
+          "at": 1.5,
+          "dur": 4,
+          "value": 2
+        },
+        {
+          "target": "pL3",
+          "do": "flow",
+          "at": 1.7,
+          "dur": 4,
+          "value": 2
+        },
+        {
+          "target": "codeAlgo",
+          "do": "highlight",
+          "at": 4,
+          "dur": 0.3,
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "beat5",
+      "start": 27,
+      "end": 34,
+      "caption": "When a server fails a health check, the load balancer stops sending it traffic and reroutes around it.",
+      "actions": [
+        {
+          "target": "srv2",
+          "do": "shake",
+          "at": 0.5,
+          "dur": 0.6,
+          "value": 2
+        },
+        {
+          "target": "srv2",
+          "do": "state",
+          "at": 1.2,
+          "dur": 0.3,
+          "value": "err"
+        },
+        {
+          "target": "coHealth",
+          "do": "pop",
+          "at": 1.6,
+          "dur": 0.4
+        },
+        {
+          "target": "cL2",
+          "do": "fadeOut",
+          "at": 2.3,
+          "dur": 0.5
+        },
+        {
+          "target": "coReroute",
+          "do": "pop",
+          "at": 3,
+          "dur": 0.4
+        }
+      ]
+    },
+    {
+      "id": "beat6",
+      "start": 34,
+      "end": 41,
+      "caption": "Backend servers read and write a shared database, then send results back up through the load balancer.",
+      "actions": [
+        {
+          "target": "db",
+          "do": "fadeIn",
+          "at": 0,
+          "dur": 0.5
+        },
+        {
+          "target": "pD1",
+          "do": "flow",
+          "at": 1,
+          "dur": 3,
+          "value": 2
+        },
+        {
+          "target": "pD3",
+          "do": "flow",
+          "at": 1.2,
+          "dur": 3,
+          "value": 2
+        },
+        {
+          "target": "db",
+          "do": "flash",
+          "at": 2,
+          "dur": 0.4,
+          "value": 2
+        },
+        {
+          "target": "rL1",
+          "do": "flow",
+          "at": 4,
+          "dur": 2.5,
+          "value": 2
+        }
+      ]
+    },
+    {
+      "id": "beat7",
+      "start": 41,
+      "end": 48,
+      "caption": "Once the server recovers, it rejoins the pool and traffic keeps flowing smoothly across every healthy server.",
+      "actions": [
+        {
+          "target": "srv2",
+          "do": "state",
+          "at": 0,
+          "dur": 0.4,
+          "value": "ok"
+        },
+        {
+          "target": "cL2",
+          "do": "fadeIn",
+          "at": 0.3,
+          "dur": 0.4
+        },
+        {
+          "target": "pL1",
+          "do": "flow",
+          "at": 1,
+          "dur": 5.5,
+          "value": 4
+        },
+        {
+          "target": "pL2",
+          "do": "flow",
+          "at": 1,
+          "dur": 5.5,
+          "value": 4
+        },
+        {
+          "target": "pL3",
+          "do": "flow",
+          "at": 1,
+          "dur": 5.5,
+          "value": 4
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 1.5,
+      "view": [
+        0,
+        0,
+        1280,
+        600
+      ]
+    },
+    {
+      "at": 13,
+      "dur": 2,
+      "view": [
+        200,
+        113,
+        800,
+        375
+      ]
+    },
+    {
+      "at": 27,
+      "dur": 2,
+      "view": [
+        402,
+        125,
+        800,
+        375
+      ]
+    },
+    {
+      "at": 41,
+      "dur": 2,
+      "view": [
+        0,
+        0,
+        1280,
+        600
+      ]
+    }
+  ]
+}

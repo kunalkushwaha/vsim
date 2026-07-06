@@ -29,6 +29,7 @@ interface Args {
   workers?: number;
   audio?: string;
   font?: string;
+  name?: string;
   prompt?: string;
   render?: string;
 }
@@ -43,6 +44,7 @@ function parseArgs(argv: string[]): Args {
     else if (t === "--frame") a.frame = Number(argv[++i]);
     else if (t === "--audio") a.audio = argv[++i]!;
     else if (t === "--font") a.font = argv[++i]!;
+    else if (t === "--name") a.name = argv[++i]!;
     else if (t === "--prompt" || t === "-p") a.prompt = argv[++i]!;
     else if (t === "--render") a.render = argv[++i]!;
     else if (!t!.startsWith("-")) a.file = t;
@@ -159,13 +161,37 @@ async function runEdit(args: Args): Promise<void> {
   if (args.render) await renderDoc(doc, args);
 }
 
+/**
+ * AI film director (the 2D web-rendering path): prompt → FilmDoc, a schema-validated
+ * screenplay the AI cannot make invalid → deterministic explainer MP4 via @vsim/motion.
+ */
+async function runFilm(args: Args): Promise<void> {
+  if (!args.prompt) {
+    console.log('Usage: vsim film --prompt "<topic>" [-o out.mp4] [--name slug]');
+    process.exit(1);
+  }
+  // Plain .mjs, no build step — loosely typed like a dynamic plugin.
+  // @ts-expect-error — untyped .mjs tool module
+  const gen: any = await import("@vsim/motion/tools/film-gen.mjs");
+  console.log(`✎ writing the screenplay for "${args.prompt}" …`);
+  const { doc, attempts } = await gen.generateFilmDoc(args.prompt, {});
+  const name = (args.name ?? args.prompt).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40);
+  const dir = gen.writeFilm(doc, name);
+  const secs = doc.beats[doc.beats.length - 1].end;
+  console.log(`✓ FilmDoc "${doc.title}" — ${doc.beats.length} beats, ${secs}s (attempt ${attempts}) → ${dir}`);
+  const output = args.output === "out/out.mp4" ? `out/${name}.mp4` : args.output;
+  await gen.recordFilm(dir, output);
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.cmd === "edit") return runEdit(args);
+  if (args.cmd === "film") return runFilm(args);
   if (args.cmd === "render" && args.file) return runRender(args);
   console.log(
     "Usage:\n" +
       "  vsim render <scene.ts|scene.json> [-o out.mp4] [--workers N] [--still frame.png --frame N] [--audio file]\n" +
+      '  vsim film --prompt "<topic>" [-o out.mp4]        AI writes a FilmDoc screenplay → deterministic 2D explainer video\n' +
       '  vsim edit <scene.ts|scene.json> --prompt "..." [-o out.scene.json] [--render out.mp4]   (uses ANTHROPIC_API_KEY, or the claude CLI)',
   );
   process.exit(args.cmd ? 1 : 1);
