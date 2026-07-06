@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>What is a message queue? — a motion/ film</title>
+<link rel="stylesheet" href="../../tokens.css">
+<style>
+  @font-face { font-family: "Bebas Neue"; src: url("../../fonts/BebasNeue-Regular.ttf") format("truetype"); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--color-paper); width: 1280px; height: 720px; overflow: hidden;
+         font-family: var(--font); color: var(--color-ink); display: flex; flex-direction: column; }
+  svg#stage { display: block; width: 1280px; height: 630px; }
+  #caption { height: 90px; padding: 18px 48px 0; font-size: 26px; letter-spacing: 0.02em; }
+  #caption span { opacity: 0.25; }
+  #caption span.lit { opacity: 1; }
+</style>
+</head>
+<body>
+<svg id="stage" viewBox="0 0 1280 630"></svg>
+<div id="caption"></div>
+
+<script type="module">
+  import { Timeline } from "../../src/index.mjs";
+  import { fmt } from "../../src/timeline.mjs";
+  import * as K from "../../kit/kit.mjs";
+  import sp from "./screenplay.json" with { type: "json" };
+
+  const FPS = sp.fps;
+  const tl = new Timeline(FPS);
+  const S = (s) => Math.round(s * FPS);
+  const FRAMES = S(sp.beats[sp.beats.length - 1].end);
+  const stage = document.getElementById("stage");
+
+  // --- the world -------------------------------------------------------------------------------
+  const app = K.server({ x: 120, y: 260, label: "your app" });
+  const q = K.queue({ x: 500, y: 280, slots: 8, label: "queue" });
+  const w1 = K.server({ x: 900, y: 180, label: "worker 1" });
+  const w2 = K.server({ x: 900, y: 340, label: "worker 2" });
+  app.setState("ok");
+
+  // direct path (pre-queue era) + queued paths
+  const cDirect = K.connector({ from: [206, 292], to: [895, 212], via: [550, 120] });
+  const cIn = K.connector({ from: [206, 292], to: [495, 296], via: [350, 330] });
+  const cOut1 = K.connector({ from: [655, 296], to: [895, 212], via: [780, 230] });
+  const cOut2 = K.connector({ from: [655, 296], to: [895, 372], via: [780, 360] });
+  const pDirect = K.packetFlow(cDirect, { count: 6, color: "hot" });
+  const pIn = K.packetFlow(cIn, { count: 5, color: "accent" });
+  const pOut1 = K.packetFlow(cOut1, { count: 2, color: "accent2" });
+  const pOut2 = K.packetFlow(cOut2, { count: 2, color: "accent2" });
+
+  const bigTitle = K.title({ x: 240, y: 90, text: sp.title, size: 54, color: "ink" });
+  const spike = K.callout({ x: 470, y: 70, text: "traffic spike!", anchor: [550, 122] });
+  const safe = K.callout({ x: 500, y: 420, text: "nothing lost", anchor: [570, 316] });
+
+  const w2wrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  w2wrap.append(w2.el); w2wrap.setAttribute("opacity", "0");
+  const qwrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  qwrap.append(cIn.el, cOut1.el, cOut2.el, q.el, pIn.el, pOut1.el, pOut2.el);
+  qwrap.setAttribute("opacity", "0");
+  stage.append(cDirect.el, pDirect.el, qwrap, app.el, w1.el, w2wrap, bigTitle.el, spike.el, safe.el);
+
+  // --- captions (karaoke) ----------------------------------------------------------------------
+  const capEl = document.getElementById("caption");
+  const beats = sp.beats.map((b) => ({ ...b, s: S(b.start), e: S(b.end) }));
+  let capBeat = -1;
+  tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: (_, f) => {
+    const i = beats.findIndex((b) => f >= b.s && f < b.e);
+    const bi = i === -1 ? beats.length - 1 : i;
+    if (bi !== capBeat) {
+      capBeat = bi;
+      capEl.innerHTML = beats[bi].caption.split(" ").map((w) => `<span>${w}</span>`).join(" ");
+    }
+    const b = beats[bi];
+    const p = Math.min((f - b.s) / ((b.e - b.s) * 0.55), 1);
+    [...capEl.children].forEach((w, wi, all) => w.classList.toggle("lit", wi < p * all.length));
+  } });
+
+  // --- reset first, guarded flips after (cue discipline) ---------------------------------------
+  tl.cue({ start: 0, end: FRAMES, ease: "hold", apply: () => {
+    w1.setState("ok"); app.setState("ok");
+    bigTitle.el.setAttribute("opacity", 1);
+  } });
+
+  const B = Object.fromEntries(beats.map((b) => [b.id, b]));
+  const win = (b, a0, a1) => ({ start: b.s + S(a0), end: b.s + S(a1) });
+
+  // camera: one owner — a slow drift-in across the whole film
+  tl.cue({ start: 0, end: FRAMES, ease: "floaty", apply: (v) => {
+    const z = 1 - v * 0.06;
+    stage.setAttribute("viewBox", `${fmt(640 - 640 * z)} ${fmt(315 - 315 * z)} ${fmt(1280 * z)} ${fmt(630 * z)}`);
+  } });
+
+  // beat 1 — title; calm direct trickle
+  tl.cue({ ...win(B.title, 0.3, 2), ease: "snappy", apply: bigTitle.reveal });
+  tl.cue({ ...win(B.title, 5.5, 6.8), ease: "snappy", apply: (v) => { if (v > 0) bigTitle.el.setAttribute("opacity", fmt(1 - v)); } });
+  tl.cue({ ...win(B.title, 1.5, 7), ease: "mechanical", apply: (v) => pDirect.flow(v * 0.6) });
+
+  // beat 2 — the burst: fast packets, worker melts down
+  tl.cue({ ...win(B.burst, 0, 3), ease: "mechanical", apply: pDirect.flow });
+  tl.cue({ ...win(B.burst, 2.5, 5.5), ease: "mechanical", apply: pDirect.flow });
+  tl.cue({ ...win(B.burst, 1.2, 2.8), ease: "overshoot", apply: spike.pop });
+  tl.cue({ ...win(B.burst, 2.6, 3), ease: "hold", apply: (v) => { if (v >= 1) w1.setState("err"); } });
+  tl.cue({ ...win(B.burst, 3, 8.6), ease: "mechanical", apply: (v) => w1.shake((v * 3) % 1) });
+  tl.cue({ ...win(B.burst, 7.6, 8.9), ease: "snappy", apply: (v) => { if (v > 0) spike.pop(1 - v); } });
+
+  // beat 3 — the queue arrives; burst piles up; worker recovers and drains steadily
+  tl.cue({ ...win(B.queue, 0, 0.8), ease: "snappy", apply: (v) => {
+    if (v <= 0) return; // silent before the window — the burst beat still owns the packets
+    qwrap.setAttribute("opacity", fmt(v));
+    cDirect.el.setAttribute("opacity", fmt(1 - v));
+    pDirect.flow(0); // park the old packets
+  } });
+  tl.cue({ ...win(B.queue, 0.6, 3.2), ease: "mechanical", apply: pIn.flow });
+  tl.cue({ ...win(B.queue, 1, 4), ease: "mechanical", apply: (v) => q.fill(v * 0.9) });
+  tl.cue({ ...win(B.queue, 3.4, 3.8), ease: "hold", apply: (v) => { if (v >= 1) w1.setState("ok"); } });
+  tl.cue({ ...win(B.queue, 3.8, 9.5), ease: "mechanical", apply: (v) => { pOut1.flow((v * 3) % 1); } });
+  tl.cue({ ...win(B.queue, 4, 10), ease: "mechanical", apply: (v) => q.fill(0.9 - v * 0.45) });
+
+  // beat 4 — scale out: worker 2 pops in, both drain, "nothing lost"
+  tl.cue({ ...win(B.scale, 0.8, 1.2), ease: "hold", apply: (v) => { if (v >= 1) w2.setState("ok"); } });
+  tl.cue({ ...win(B.scale, 0.2, 1), ease: "overshoot", apply: (v) => {
+    w2wrap.setAttribute("opacity", fmt(Math.min(v, 1)));
+    w2wrap.setAttribute("transform", `translate(0 ${fmt((1 - Math.min(v, 1)) * 24)})`);
+  } });
+  tl.cue({ ...win(B.scale, 0.9, 9), ease: "mechanical", apply: (v) => { pOut1.flow((v * 4) % 1); pOut2.flow((v * 4 + 0.5) % 1); } });
+  tl.cue({ ...win(B.scale, 1, 8), ease: "mechanical", apply: (v) => q.fill(Math.max(0.45 - v * 0.45, 0)) });
+  tl.cue({ ...win(B.scale, 2.5, 4), ease: "overshoot", apply: safe.pop });
+  tl.cue({ ...win(B.scale, 7.6, 8.9), ease: "snappy", apply: (v) => { if (v > 0) safe.pop(1 - v); } });
+
+  // beat 5 — recap: steady state hums
+  tl.cue({ ...win(B.recap, 0, 7), ease: "mechanical", apply: (v) => {
+    pIn.flow((v * 3) % 1); pOut1.flow((v * 3 + 0.33) % 1); pOut2.flow((v * 3 + 0.66) % 1);
+  } });
+  tl.cue({ ...win(B.recap, 0, 4), ease: "mechanical", apply: (v) => q.fill(0.25 + Math.sin(v * Math.PI * 2) * 0.12) });
+
+  // --- film contract + ambient preview ---------------------------------------------------------
+  const show = (f) => tl.seek(f);
+  window.__film = { fps: FPS, frames: FRAMES, seek: show };
+  show(Math.max(0, Math.min(FRAMES, Number(new URLSearchParams(location.search).get("f")) || 0)));
+  if (!window.__recording && !new URLSearchParams(location.search).has("f")) {
+    let f = 0;
+    const tick = () => { show(f = (f + 1) % (FRAMES + 1)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }
+</script>
+</body>
+</html>

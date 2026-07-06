@@ -1,0 +1,13 @@
+{
+  "$comment": "Timed narration lines. engine 'espeak' runs offline in CI; switch to 'elevenlabs' (+ ELEVENLABS_API_KEY) for a production voice — same envelope contract, no film changes.",
+  "fps": 30,
+  "engine": "espeak",
+  "espeak": { "voice": "en+f4", "pitch": 75, "speed": 150 },
+  "elevenlabs": { "voiceId": "pFZP5JQG7iQjIQuC4Bku", "modelId": "eleven_multilingual_v2" },
+  "lines": [
+    { "at": 0.9, "text": "Hi! I'm Pip!" },
+    { "at": 2.8, "text": "I live in this computer, and I love explaining things." },
+    { "at": 7.2, "text": "Servers! Packets! Databases! I make them simple." },
+    { "at": 12.4, "text": "Stick around. It's going to be fun!" }
+  ]
+}

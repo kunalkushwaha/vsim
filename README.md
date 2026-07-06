@@ -197,10 +197,22 @@ byte-reproducible MP4. Design tokens keep every asset on one palette; a 12-primi
 kinetic titles…) covers technical storytelling; the film is driven by an editable
 `screenplay.json`.
 
+| | | |
+|:---:|:---:|:---:|
+| ![how a web request works](docs/media/web-request.gif) | ![Pip the mouse, talking](docs/media/pip-hello.gif) | ![what is a message queue](docs/media/message-queue.gif) |
+| **Technical explainer** — DNS→TLS→request→render with karaoke captions ([`web-request`](packages/motion/films/web-request)) | **Voiced character short** — Pip's mouth is driven by the narration's audio envelope ([`pip-hello`](packages/motion/films/pip-hello)) | **The template proof** — a second explainer from the same kit, one screenplay later ([`message-queue`](packages/motion/films/message-queue)) |
+
 ```bash
-pnpm film:webreq   # → out/web-request.mp4 — a 60s "How a web request works" explainer
-pnpm film:kit      # → out/kit-sheet.mp4  — the animated primitive contact sheet
+pnpm film:webreq   # → out/web-request.mp4   — 60s "How a web request works"
+pnpm film:queue    # → out/message-queue.mp4 — 42s "What is a message queue?"
+pnpm film:pip      # → out/pip-hello.mp4     — Pip the mouse, with TTS narration + lip-sync
+pnpm film:kit      # → out/kit-sheet.mp4     — the animated primitive contact sheet
 ```
+
+Narration is built by `tools/narrate.mjs`: timed lines → TTS → one WAV + a per-frame mouth
+envelope the puppet lip-syncs to. The in-repo engine is espeak-ng (offline, deterministic);
+an **ElevenLabs** backend is included — set `ELEVENLABS_API_KEY` and switch
+`"engine": "elevenlabs"` for a production voice, no film changes.
 
 See [`docs/plan-svg-animation-studio.md`](./docs/plan-svg-animation-studio.md) (the
 brainstorm) and [`docs/plan-motion-v1.md`](./docs/plan-motion-v1.md) (what shipped).

@@ -228,11 +228,12 @@ export function callout({ x = 0, y = 0, text = "", anchor = /** @type {[number,n
     h("rect", { x: -wEst / 2, y: -12, width: wEst, height: 24, rx: 12, fill: T("accent"), opacity: 0.95 }),
     h("text", { x: 0, y: 4, "text-anchor": "middle", "font-size": 11, fill: T("paper"), "font-family": "var(--font)" }, [text]),
   ]);
-  const el = h("g", {}, [
-    h("line", { x1: anchor[0], y1: anchor[1], x2: x, y2: y, stroke: T("accent"), "stroke-width": 1, opacity: 0.6 }),
-    pill,
-  ]);
-  const pop = (/** @type {number} */ v) => pill.setAttribute("transform", `translate(${x} ${y}) scale(${fmt(Math.max(v, 0))})`);
+  const leader = h("line", { x1: anchor[0], y1: anchor[1], x2: x, y2: y, stroke: T("accent"), "stroke-width": 1, opacity: 0 });
+  const el = h("g", {}, [leader, pill]);
+  const pop = (/** @type {number} */ v) => {
+    pill.setAttribute("transform", `translate(${x} ${y}) scale(${fmt(Math.max(v, 0))})`);
+    leader.setAttribute("opacity", fmt(Math.min(Math.max(v, 0), 1) * 0.6));
+  };
   return { el, pop };
 }
 

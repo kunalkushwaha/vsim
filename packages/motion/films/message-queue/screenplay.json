@@ -1,0 +1,12 @@
+{
+  "$comment": "Film #2 — written as data, produced by the same kit. Proving the claim: a new explainer costs a screenplay and a scene layout, not an engine.",
+  "fps": 30,
+  "title": "WHAT IS A MESSAGE QUEUE?",
+  "beats": [
+    { "id": "title",  "start": 0,  "end": 7,  "caption": "Your app sends work to a server. Usually that's fine…" },
+    { "id": "burst",  "start": 7,  "end": 16, "caption": "…until traffic spikes. Requests slam the server faster than it can handle them." },
+    { "id": "queue",  "start": 16, "end": 26, "caption": "A message queue sits in between: bursts pile up safely, and the server takes work at its own pace." },
+    { "id": "scale",  "start": 26, "end": 35, "caption": "Need more speed? Add another worker. The queue feeds them both — nothing is lost." },
+    { "id": "recap",  "start": 35, "end": 42, "caption": "Queues turn panic into a waiting line. That's the whole trick." }
+  ]
+}
