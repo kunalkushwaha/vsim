@@ -9,12 +9,13 @@ import { recordFrames } from "../record.mjs";
 // identically — the web-animation equivalent of the 3D renderer's golden-frame suite.
 
 const HARNESS = fileURLToPath(new URL("../harness/index.html", import.meta.url));
+const FILM = fileURLToPath(new URL("../films/web-request/index.html", import.meta.url));
 const CHROMIUM_ROOT = process.env.PLAYWRIGHT_BROWSERS_PATH ?? "/opt/pw-browsers";
 const hasChromium = existsSync(CHROMIUM_ROOT);
 
-async function hashes(from: number, to: number): Promise<string[]> {
+async function hashes(page: string, from: number, to: number): Promise<string[]> {
   const out: string[] = [];
-  await recordFrames(HARNESS, { width: 640, height: 360, from, to }, {
+  await recordFrames(page, { width: 640, height: 360, from, to }, {
     onFrame: (png) => {
       out.push(createHash("sha256").update(png).digest("hex"));
     },
@@ -24,12 +25,20 @@ async function hashes(from: number, to: number): Promise<string[]> {
 
 describe.skipIf(!hasChromium)("deterministic recorder", () => {
   it("two independent recordings are byte-identical, frame for frame", async () => {
-    const a = await hashes(0, 24);
-    const b = await hashes(0, 24);
+    const a = await hashes(HARNESS, 0, 24);
+    const b = await hashes(HARNESS, 0, 24);
     expect(a.length).toBe(25);
     expect(b).toEqual(a);
     // and the animation actually animates — frames are not all the same image
     expect(new Set(a).size).toBeGreaterThan(10);
+  }, 120_000);
+
+  it("a real film page with custom @font-face fonts is also byte-identical", async () => {
+    // text-heavy frames (title mid-reveal + karaoke caption) — the worst case for a
+    // font-load race; the recorder must wait for document.fonts.ready.
+    const a = await hashes(FILM, 28, 32);
+    const b = await hashes(FILM, 28, 32);
+    expect(b).toEqual(a);
   }, 120_000);
 
   it("respects frame ranges and reports meta", async () => {

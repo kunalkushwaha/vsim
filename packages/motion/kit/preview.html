@@ -23,7 +23,7 @@
 <div class="grid" id="grid"></div>
 
 <script type="module">
-  import { Timeline } from "../src/index.mjs";
+  import { Timeline, createPlayer } from "../src/index.mjs";
   import * as K from "./kit.mjs";
 
   const FPS = 30, FRAMES = 120; // one 4s master loop
@@ -132,10 +132,10 @@
   window.__film = { fps: FPS, frames: FRAMES, seek: show };
   show(Math.max(0, Math.min(FRAMES, Number(new URLSearchParams(location.search).get("f")) || 0)));
 
-  // ambient preview: play the master loop (recorder never uses this path)
-  let f = 0;
-  const tick = () => { show(f = (f + 1) % (FRAMES + 1)); requestAnimationFrame(tick); };
-  if (!window.__recording && !new URLSearchParams(location.search).has("f")) requestAnimationFrame(tick);
+  // ambient preview: wall-clock playback of the master loop (recorder never uses this path)
+  if (!window.__recording && !new URLSearchParams(location.search).has("f")) {
+    createPlayer(window.__film, { loop: true });
+  }
 </script>
 </body>
 </html>

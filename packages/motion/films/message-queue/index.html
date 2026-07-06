@@ -20,7 +20,7 @@
 <div id="caption"></div>
 
 <script type="module">
-  import { Timeline } from "../../src/index.mjs";
+  import { Timeline, createPlayer } from "../../src/index.mjs";
   import { fmt } from "../../src/timeline.mjs";
   import * as K from "../../kit/kit.mjs";
   import sp from "./screenplay.json" with { type: "json" };
@@ -137,10 +137,10 @@
   const show = (f) => tl.seek(f);
   window.__film = { fps: FPS, frames: FRAMES, seek: show };
   show(Math.max(0, Math.min(FRAMES, Number(new URLSearchParams(location.search).get("f")) || 0)));
+  // Live playback is wall-clock time mapped to frames (never f++ per rAF — that plays at
+  // the display's refresh rate). Recording stays frame-stepped via window.__film.
   if (!window.__recording && !new URLSearchParams(location.search).has("f")) {
-    let f = 0;
-    const tick = () => { show(f = (f + 1) % (FRAMES + 1)); requestAnimationFrame(tick); };
-    requestAnimationFrame(tick);
+    createPlayer(window.__film, { loop: true });
   }
 </script>
 </body>
