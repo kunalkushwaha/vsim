@@ -70,7 +70,7 @@ And this one wasn't written by a person at all:
 <p align="center">
   <img src="docs/media/cdn.gif" width="640" alt="An AI-written 48-second explainer film: a browser, an origin server and three edge servers animate 'How a CDN makes websites fast' with packet flows and karaoke captions" />
   <br/>
-  <sub><strong>The AI wrote this entire film from one prompt</strong> — <code>vsim film -p "how a CDN makes websites fast"</code>. Claude authors a schema-validated screenplay (<a href="packages/motion/films/cdn/filmdoc.json"><code>filmdoc.json</code></a>, committed right here); vsim renders it deterministically. The screenplay re-renders byte-identically forever — no AI needed after the first take. See <a href="#motion--films-from-svg--css-new">motion/</a>.</sub>
+  <sub><strong>The AI wrote this entire film from one prompt</strong> — <code>vsim film -p "how a CDN makes websites fast"</code>. Claude authors a schema-validated screenplay (<a href="packages/motion/films/cdn/filmdoc.json"><code>filmdoc.json</code></a>, committed right here); vsim renders it deterministically. The screenplay re-renders byte-identically forever — no AI needed after the first take. See <a href="#the-ai-authors-vsim-renders">how</a>.</sub>
 </p>
 
 | | | |
@@ -105,7 +105,7 @@ pnpm showreel         # renders all 24 reel scenes in parallel → out/showreel.
   JSON document — authored fluently from TypeScript, diffable in git, and safely
   editable by the AI copilot.
 
-## What's in the box (v0.1)
+## What's in the box
 
 - **Code → video**: declarative scene builder → MP4 via `vsim render` (`--workers N`
   splits frames across cores, byte-identical to single-threaded).
@@ -129,24 +129,21 @@ pnpm showreel         # renders all 24 reel scenes in parallel → out/showreel.
   master (`apps/studio/cycles-render.mjs`; works with just `pip install bpy`) — see the
   [Blender guide](./docs/guides/blender-characters.md).
 
-## AI copilot (preview)
+## The AI authors, vsim renders
 
-Edit a scene in natural language. The copilot turns your prompt into **schema-constrained
-edit operations** (Claude tool-use), grounded in the scene's existing objects — it can't
-emit invalid geometry — then applies them deterministically into a new scene document you
-can render like any other.
+Every AI feature follows one rule: the model writes a **validated document** at authoring
+time, and the deterministic pipeline renders it. The AI can propose a bad scene or film —
+it cannot emit an invalid one, and it never touches the render loop. It runs through the
+Anthropic SDK (`ANTHROPIC_API_KEY`) **or**, if no key is set, the `claude` CLI (a Claude
+Code login) — whichever you have.
 
-It runs the LLM through the Anthropic SDK (`ANTHROPIC_API_KEY`) **or**, if no key is set,
-through the `claude` CLI (a Claude Code login) — so it works with whichever you have.
+**Edit scenes in natural language** — prompts become schema-constrained edit operations,
+grounded in the scene's existing objects:
 
 ```bash
-export ANTHROPIC_API_KEY=…            # optional — falls back to the `claude` CLI
 vsim edit scene.ts --prompt "make the cube blue and add a point light" -o edited.scene.json
 vsim edit scene.ts --prompt "spin it twice as fast" --render out.mp4
 ```
-
-The AI runs only at authoring time and produces a document — it never touches the render
-loop, so determinism is unaffected. Programmatically:
 
 ```ts
 import { editScene, CopilotSession } from "@vsim/ai";
@@ -159,7 +156,31 @@ await session.refine("now spin it twice as fast"); // "it" = the cube
 session.document; // the edited scene so far
 ```
 
-## vsim Studio (preview — the visual editor)
+**Write whole 2D explainer films from a topic** — `vsim film -p "<topic>"` asks Claude for
+a **FilmDoc**: the screenplay as a zod-validated document (stage entities, beats, actions,
+camera), interpreted by the [motion/](#motion--films-from-svg--css) studio. The committed
+`filmdoc.json` re-renders byte-identically forever, no AI required. The CDN film
+[featured above](#show-me) was made exactly this way, as was
+[`films/load-balancer`](packages/motion/films/load-balancer) — both screenplays landed
+valid on Claude's first attempt.
+
+```bash
+pnpm film:gen "how a CDN makes websites fast"   # → screenplay + out/<slug>.mp4
+```
+
+**Direct 3D films from a story** — `vsim film -p "<story>" --template 3d` asks for a
+**Film3DDoc** instead: set preset, props, actors from the character library, beats of
+`move`/`play`/`face` actions, and a shot list (wide/close/follow/orbit cuts). The
+`@vsim/film3d` compiler lowers it to a plain scene document — gait clips crossfade by
+travel speed, actors turn into their headings, cameras track head-height aim nodes — and
+the 3D engine renders it. The schema validates per-character clips, contiguous beats, and
+full camera coverage, so the model can't hand back a film that doesn't run.
+[`films/snowy-park.film3d.json`](films/snowy-park.film3d.json) came out of exactly this
+command; the hand-written [`films/fox-day.film3d.json`](films/fox-day.film3d.json) shows
+the whole vocabulary in 50 lines (`pnpm film3d:fox` renders it — `vsim render` accepts
+`*.film3d.json` directly).
+
+## vsim Studio — the visual editor
 
 The first slice of the **visual editor** (surface 2). A browser app on top of the same engine:
 load a scene, **play/scrub** the timeline, **select** an object, **edit** its transform/colour
@@ -174,9 +195,8 @@ pnpm studio          # editor (Vite dev server)         → http://localhost:517
 ```
 
 Built with Vite + vanilla TS (no UI framework), reusing `@vsim/player` + `@vsim/engine-three` in the
-browser and `@vsim/ai` + `@vsim/render` in a tiny Node backend (the seed of the eventual cloud layer;
-the AI uses `ANTHROPIC_API_KEY` or the `claude` CLI). See
-[`docs/plan-platform-studio.md`](./docs/plan-platform-studio.md) for the roadmap to a full platform.
+browser and `@vsim/ai` + `@vsim/render` in a tiny Node backend (the AI uses
+`ANTHROPIC_API_KEY` or the `claude` CLI).
 
 ## Packages
 
@@ -196,7 +216,7 @@ the AI uses `ANTHROPIC_API_KEY` or the `claude` CLI). See
 | `@vsim/motion` | The 2D animation studio: design tokens, frame-pure timeline, explainer kit, deterministic HTML→MP4 recorder |
 | `@vsim/film3d` | AI-directed 3D films: Film3DDoc (a validated high-level screenplay — sets, actors, beats, shots) compiled to a scene document |
 
-## motion/ — films from SVG + CSS (new)
+## motion/ — films from SVG + CSS
 
 A second way to make video, built on the same determinism contract: author a film as an
 HTML/SVG page on a **frame-pure seekable timeline** (no wall clock — `seek(f)` is a pure
@@ -218,36 +238,13 @@ pnpm film:pip      # → out/pip-hello.mp4     — Pip the mouse, with TTS narra
 pnpm film:kit      # → out/kit-sheet.mp4     — the animated primitive contact sheet
 ```
 
-**Or let the AI write the film**: `vsim film -p "<topic>"` asks Claude for a **FilmDoc** — the
-screenplay as a zod-validated document (stage entities, beats, actions, camera). The model can
-propose a bad film but cannot emit an invalid one, and it never touches the render loop: the
-committed `filmdoc.json` re-renders byte-identically forever, no AI required. The CDN film
-[featured near the top of this README](#show-me) was made exactly this way, as was
-[`films/load-balancer`](packages/motion/films/load-balancer) — both screenplays landed valid
-on Claude's first attempt.
-
-```bash
-pnpm film:gen "how a CDN makes websites fast"   # → screenplay + out/<slug>.mp4
-```
-
-**And the 3D engine takes direction too**: `vsim film -p "<story>" --template 3d` asks the AI
-for a **Film3DDoc** instead — set preset, props, actors from the character library, beats of
-`move`/`play`/`face` actions, and a shot list (wide/close/follow/orbit cuts). A compiler
-(`@vsim/film3d`) lowers it to a plain scene document: gait clips crossfade by travel speed,
-actors turn into their headings, cameras track head-height aim nodes. The schema validates
-per-character clips, contiguous beats, and full camera coverage, so the model can't hand back
-a film that doesn't run. [`films/snowy-park.film3d.json`](films/snowy-park.film3d.json) came
-out of exactly this command; the hand-written
-[`films/fox-day.film3d.json`](films/fox-day.film3d.json) shows the whole vocabulary in 50 lines
-(`pnpm film3d:fox` renders it). See [`docs/plan-film3d.md`](./docs/plan-film3d.md).
-
 Narration is built by `tools/narrate.mjs`: timed lines → TTS → one WAV + a per-frame mouth
 envelope the puppet lip-syncs to. The in-repo engine is espeak-ng (offline, deterministic);
 an **ElevenLabs** backend is included — set `ELEVENLABS_API_KEY` and switch
 `"engine": "elevenlabs"` for a production voice, no film changes.
 
-See [`docs/plan-svg-animation-studio.md`](./docs/plan-svg-animation-studio.md) (the
-brainstorm) and [`docs/plan-motion-v1.md`](./docs/plan-motion-v1.md) (what shipped).
+Prefer the AI to write the screenplay? See
+[The AI authors, vsim renders](#the-ai-authors-vsim-renders).
 
 ## Docs
 
@@ -256,9 +253,6 @@ brainstorm) and [`docs/plan-motion-v1.md`](./docs/plan-motion-v1.md) (what shipp
 - [Determinism guide](./docs/determinism.md)
 - [ADR 0001 — render backend & determinism](./docs/decisions/0001-render-backend-and-determinism.md)
 - [Guide: creating characters with Blender / MakeHuman](./docs/guides/blender-characters.md) — generate rigged, animated, **textured** glTF headlessly (incl. a realistic MakeHuman human with real skin) → `loadGltfRig`
-- [Text & titles](./docs/plan-text-titles.md) — screen-space titles/captions/lower-thirds as deterministic vector type, in draft + photoreal + live preview
-- [film3d — AI-directed 3D films](./docs/plan-film3d.md) — prompt → Film3DDoc screenplay → scene document → MP4
-- [Vision & roadmap](./CONCEPT.md) · [`PLAN.md`](./PLAN.md)
 
 `pnpm docs:site` builds a static documentation site (landing page + the docs above) into
 `site/` — generated by the project's own tooling, no framework.
@@ -276,13 +270,6 @@ pnpm build         # compile all packages to dist/
 ```
 
 Releasing is documented in [`RELEASING.md`](./RELEASING.md).
-
-## Status
-
-**v0.1 — the open-source `code → video` SDK.** The runtime, renderer, physics, assets,
-audio, and player are built, tested, and deterministic in CI. **Phase 1 in progress:** the
-AI copilot (`@vsim/ai`, `vsim edit`) — prompt → schema-constrained scene-document edits.
-Next: a visual timeline editor and cloud rendering — see [`PLAN.md`](./PLAN.md).
 
 ## License
 
