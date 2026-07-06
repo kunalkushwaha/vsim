@@ -80,7 +80,7 @@ async function main() {
   const [pageArg, outArg] = pos;
   const dump = flag("dump-frames", undefined);
   if (!pageArg || (!outArg && !dump)) {
-    console.log("Usage: node packages/motion/record.mjs <page.html> <out.mp4> [--width 1280] [--height 720] [--frames a..b] [--scale 1] [--dump-frames dir]");
+    console.log("Usage: node packages/motion/record.mjs <page.html> <out.mp4> [--width 1280] [--height 720] [--frames a..b] [--scale 1] [--audio file.wav] [--dump-frames dir]");
     process.exit(1);
   }
   const width = Number(flag("width", "1280"));
@@ -100,9 +100,14 @@ async function main() {
   const meta = await recordFrames(pageArg, { width, height, scale, from, to }, {
     onStart: (m) => {
       if (!outArg) return;
+      const audio = flag("audio", undefined);
       ffmpeg = spawn("ffmpeg", [
         "-y", "-f", "image2pipe", "-framerate", String(m.fps), "-i", "-",
+        ...(audio ? ["-i", resolve(audio)] : []),
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        // apad + -shortest: pad audio with silence to the (piped) video's full length —
+        // plain -shortest would stop at the audio end and close our pipe mid-write.
+        ...(audio ? ["-c:a", "aac", "-af", "apad", "-map", "0:v", "-map", "1:a", "-shortest"] : []),
         resolve(outArg),
       ], { stdio: ["pipe", "ignore", "inherit"] });
     },

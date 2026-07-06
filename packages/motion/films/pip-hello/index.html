@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pip says hi — a voiced motion/ short</title>
+<link rel="stylesheet" href="../../tokens.css">
+<style>
+  @font-face { font-family: "Bebas Neue"; src: url("../../fonts/BebasNeue-Regular.ttf") format("truetype"); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--color-paper); width: 1280px; height: 720px; overflow: hidden;
+         font-family: var(--font); color: var(--color-ink); }
+  svg#stage { display: block; width: 1280px; height: 660px; }
+  #caption { height: 60px; padding: 0 48px; font-size: 26px; letter-spacing: 0.02em;
+             color: var(--color-ink); opacity: 0.9; }
+</style>
+</head>
+<body>
+<svg id="stage" viewBox="0 0 1280 660"></svg>
+<div id="caption"></div>
+
+<script type="module">
+  import { Timeline } from "../../src/index.mjs";
+  import { fmt } from "../../src/timeline.mjs";
+  import * as K from "../../kit/kit.mjs";
+  import { pip, autoBlink } from "../../kit/puppet.mjs";
+  import track from "./track.json" with { type: "json" };
+
+  const FPS = track.fps;
+  const OUTRO = 90; // 3s after the last word
+  const FRAMES = track.frames + OUTRO;
+  const S = (s) => Math.round(s * FPS);
+  const tl = new Timeline(FPS);
+  const stage = document.getElementById("stage");
+
+  // --- set: soft ground + Pip center-left ---------------------------------------------------
+  stage.append(h("rect", { x: 0, y: 560, width: 1280, height: 100, fill: "var(--color-panel)" }));
+  stage.append(h("line", { x1: 0, y1: 560, x2: 1280, y2: 560, stroke: "var(--color-line)", "stroke-width": 1.5 }));
+  function h(tag, attrs) {
+    const e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+    return e;
+  }
+
+  const mouse = pip({ x: 430, y: 560, size: 300 });
+  stage.append(mouse.el);
+
+  // props that pop in when Pip names them ("Servers! Packets! Databases!")
+  const srv = K.server({ x: 700, y: 210, label: "server" });
+  const dbx = K.database({ x: 1000, y: 215, label: "db" });
+  const conn = K.connector({ from: [790, 250], to: [995, 250], via: [890, 200] });
+  const pkts = K.packetFlow(conn, { count: 3, color: "accent" });
+  const propWrap = h("g", { opacity: 0 });
+  propWrap.append(srv.el, conn.el, pkts.el, dbx.el);
+  stage.append(propWrap);
+  srv.setState("ok");
+
+  const endTitle = K.title({ x: 690, y: 460, text: "PIP EXPLAINS", size: 64, color: "accent2" });
+  stage.append(endTitle.el);
+
+  // --- captions from the narration track ------------------------------------------------------
+  const capEl = document.getElementById("caption");
+  tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: (_, f) => {
+    const t = f / FPS;
+    const line = track.lines.find((l) => t >= l.at && t <= l.at + l.dur + 0.6);
+    capEl.textContent = line ? line.text : "";
+  } });
+
+  // --- Pip's life ------------------------------------------------------------------------------
+  // mouth straight from the narration envelope — deterministic lip-sync
+  tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: (_, f) => {
+    mouse.mouth(track.envelope[Math.min(f, track.envelope.length - 1)] ?? 0);
+  } });
+  tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: autoBlink(mouse.blink, { every: 82, offset: 20 }) });
+  tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: (_, f) => mouse.bob((f % 60) / 60) });
+  tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: (_, f) => mouse.tail((f % 90) / 90) });
+
+  const L = track.lines;
+  // ONE owner per body part (the camera lesson, again): a piecewise cue walks its segments,
+  // holds each segment's end value until the next, and never fights itself.
+  const piecewise = (fn, segs) => tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: (_, f) => {
+    let val = segs[0].from ?? 0;
+    for (const g of segs) {
+      if (f >= g.f1) { val = g.to; continue; }
+      if (f >= g.f0) val = (g.from ?? 0) + (g.to - (g.from ?? 0)) * ((f - g.f0) / (g.f1 - g.f0));
+      break;
+    }
+    fn(val);
+  } });
+  // waves: full 0→1 cycles (rest at both ends) on lines 1 and 4
+  piecewise((v) => mouse.wave(v % 1), [
+    { f0: S(L[0].at - 0.3), f1: S(L[0].at + L[0].dur + 0.8), from: 0, to: 1 },
+    { f0: S(L[3].at), f1: S(L[3].at + L[3].dur + 0.6), from: 1, to: 2 },
+  ]);
+  // glance + head tilt toward the props while he names them, back afterwards
+  const gaze = [
+    { f0: S(L[2].at - 0.4), f1: S(L[2].at), from: 0, to: 1 },
+    { f0: S(L[2].at + L[2].dur + 0.6), f1: S(L[2].at + L[2].dur + 1.2), from: 1, to: 0 },
+  ];
+  piecewise(mouse.look, gaze);
+  piecewise((v) => mouse.headTilt(v * 0.8), gaze);
+
+  // props pop in with overshoot on the third line; packets run while they're up
+  tl.cue({ start: S(L[2].at), end: S(L[2].at + 0.7), ease: "overshoot", apply: (v) => {
+    propWrap.setAttribute("opacity", fmt(Math.min(v, 1)));
+    propWrap.setAttribute("transform", `translate(0 ${fmt((1 - v) * 26)})`);
+  } });
+  tl.cue({ start: S(L[2].at + 0.6), end: S(L[2].at + 3.4), ease: "mechanical", apply: pkts.flow });
+  tl.cue({ start: S(L[2].at + 1.2), end: S(L[2].at + 2.4), ease: "mechanical", apply: dbx.flash });
+  // props bow out before the final line
+  tl.cue({ start: S(L[3].at - 0.5), end: S(L[3].at), ease: "snappy", apply: (v) => {
+    if (v > 0) propWrap.setAttribute("opacity", fmt(1 - v));
+  } });
+
+  // end title over the outro
+  tl.cue({ start: track.frames + 12, end: track.frames + 45, ease: "snappy", apply: endTitle.reveal });
+
+  // --- film contract + ambient preview --------------------------------------------------------
+  const show = (f) => tl.seek(f);
+  window.__film = { fps: FPS, frames: FRAMES, seek: show };
+  show(Math.max(0, Math.min(FRAMES, Number(new URLSearchParams(location.search).get("f")) || 0)));
+  if (!window.__recording && !new URLSearchParams(location.search).has("f")) {
+    let f = 0;
+    const tick = () => { show(f = (f + 1) % (FRAMES + 1)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }
+</script>
+</body>
+</html>
