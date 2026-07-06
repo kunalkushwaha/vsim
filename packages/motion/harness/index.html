@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>motion harness — seek-purity proof</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+  body { margin: 0; background: var(--color-paper); color: var(--color-ink);
+         font-family: var(--font); display: grid; place-items: center; min-height: 100vh; }
+  .stage { width: min(92vw, 960px); }
+  svg { width: 100%; background: var(--color-panel); border-radius: var(--radius-l);
+        border: var(--stroke-hair) solid var(--color-line); }
+  .bar { display: flex; gap: 12px; align-items: center; padding: 12px 4px; }
+  input[type=range] { flex: 1; }
+  button { background: var(--color-accent); border: 0; color: var(--color-paper);
+           font: inherit; font-size: var(--type-label); padding: 6px 16px;
+           border-radius: var(--radius-s); cursor: pointer; }
+  #frame { min-width: 5ch; text-align: right; color: var(--color-muted); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <!-- The film: a ball arcs with `snappy`, a bar fills with `floaty`, a crate lands with
+       `heavy`+`overshoot`, and the camera pushes in — every motion a Timeline cue. -->
+  <svg id="film" viewBox="0 0 320 180">
+    <circle id="ball" cx="40" cy="140" r="12" fill="var(--color-accent)"/>
+    <rect x="30" y="160" width="260" height="6" rx="3" fill="var(--color-panel2)"/>
+    <rect id="fill" x="30" y="160" width="0" height="6" rx="3" fill="var(--color-accent2)"/>
+    <g id="crate">
+      <rect x="240" y="-40" width="36" height="36" rx="4" fill="var(--color-warn)"/>
+    </g>
+    <text id="pct" x="290" y="150" text-anchor="end" font-size="18"
+          fill="var(--color-ink)" font-family="var(--font)">0%</text>
+  </svg>
+  <div class="bar">
+    <button id="play">Play</button>
+    <input id="scrub" type="range" min="0" max="90" value="0" step="1">
+    <span id="frame">f 0</span>
+  </div>
+</div>
+
+<script type="module">
+  import { Timeline, attr, translate, cameraCue } from "../src/index.mjs";
+
+  const $ = (id) => document.getElementById(id);
+  const tl = new Timeline(30);
+
+  // Ball: one cue drives a parabolic arc (mapper turns progress into x/y).
+  tl.cue({ start: 0, end: 45, ease: "snappy",
+           apply: translate($("ball"), (v) => [v * 200, -110 * Math.sin(Math.PI * Math.min(v, 1))]) });
+  // Progress bar + readout: same cue span, two applies.
+  tl.cue({ start: 10, end: 80, from: 0, to: 260, ease: "floaty", apply: attr($("fill"), "width") });
+  tl.cue({ start: 10, end: 80, from: 0, to: 100, ease: "floaty",
+           apply: (v) => { $("pct").textContent = `${Math.round(v)}%`; } });
+  // Crate: heavy drop, overshoot squash on landing.
+  tl.cue({ start: 20, end: 50, from: -40, to: 158, ease: "heavy",
+           apply: (v) => $("crate").setAttribute("transform", `translate(0 ${v})`) });
+  // Camera: slow push-in on the last third.
+  cameraCue(tl, $("film"), { start: 55, end: 90, from: [0, 0, 320, 180], to: [60, 40, 200, 112.5] });
+
+  const FRAMES = 90, FPS = 30;
+  const show = (f) => { tl.seek(f); $("scrub").value = f; $("frame").textContent = `f ${f}`; };
+
+  // THE contract the recorder drives (M2): pure frame-indexed seeking, no wall clock.
+  window.__film = { fps: FPS, frames: FRAMES, seek: show };
+
+  $("scrub").addEventListener("input", (e) => show(Number(e.target.value)));
+  let raf = null;
+  $("play").addEventListener("click", () => {
+    if (raf) { cancelAnimationFrame(raf); raf = null; $("play").textContent = "Play"; return; }
+    $("play").textContent = "Stop";
+    let f = Number($("scrub").value) >= FRAMES ? 0 : Number($("scrub").value);
+    const tick = () => {
+      show(f);
+      if (f++ < FRAMES) raf = requestAnimationFrame(tick);
+      else { raf = null; $("play").textContent = "Play"; }
+    };
+    tick();
+  });
+  // `?f=45` opens parked on a frame — handy for stills, debugging, and the recorder.
+  show(Math.max(0, Math.min(FRAMES, Number(new URLSearchParams(location.search).get("f")) || 0)));
+</script>
+</body>
+</html>

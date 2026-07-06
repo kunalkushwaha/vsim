@@ -1,0 +1,24 @@
+/* GENERATED from tokens.json — do not edit by hand. */
+:root {
+  --color-paper: #0E1116;
+  --color-panel: #161B24;
+  --color-panel2: #1D2432;
+  --color-line: #2A3346;
+  --color-ink: #E9EDF5;
+  --color-muted: #8A94AC;
+  --color-accent: #5B8CFF;
+  --color-accent2: #2FD3C6;
+  --color-ok: #58C97B;
+  --color-warn: #F5B94E;
+  --color-hot: #F06292;
+  --stroke-hair: 1px;
+  --stroke-thin: 2px;
+  --stroke-bold: 3.5px;
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 14px;
+  --type-label: 16px;
+  --type-caption: 24px;
+  --type-title: 40px;
+  --font: 'Bebas Neue', 'DejaVu Sans', system-ui, sans-serif;
+}

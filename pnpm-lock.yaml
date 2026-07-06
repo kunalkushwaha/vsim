@@ -439,6 +439,8 @@ importers:
         specifier: ^0.171.0
         version: 0.171.0
 
+  packages/motion: {}
+
   packages/physics-rapier:
     dependencies:
       '@dimforge/rapier3d-compat':

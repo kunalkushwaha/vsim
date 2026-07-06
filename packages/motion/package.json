@@ -1,0 +1,17 @@
+{
+  "name": "@vsim/motion",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SVG/HTML animation studio: design tokens, ease presets, a frame-pure seekable timeline, and a deterministic HTML→MP4 recorder.",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./tokens.css": "./tokens.css"
+  },
+  "scripts": {
+    "gen:tokens": "node gen-tokens.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "license": "MIT",
+  "author": "Kunal Kushwaha"
+}
