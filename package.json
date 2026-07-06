@@ -50,7 +50,8 @@
     "film:gen": "tsx packages/cli/src/index.ts film -p",
     "studio": "pnpm --filter @vsim/studio dev",
     "studio:build": "pnpm --filter @vsim/studio build",
-    "studio:server": "tsx apps/studio/server.ts"
+    "studio:server": "tsx apps/studio/server.ts",
+    "film3d:fox": "tsx packages/cli/src/index.ts render films/fox-day.film3d.json -o out/fox-day.mp4 --workers 4"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

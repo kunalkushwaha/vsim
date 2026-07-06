@@ -192,8 +192,9 @@ the AI uses `ANTHROPIC_API_KEY` or the `claude` CLI). See
 | `@vsim/player` | Browser real-time preview component |
 | `@vsim/assets` | glTF/GLB asset pipeline (load + export) + character library |
 | `@vsim/ai` | AI copilot: natural-language prompt → schema-constrained scene-document edits (Claude tool-use) |
-| `@vsim/cli` | `vsim render scene.ts -o out.mp4` · `vsim edit scene.ts --prompt "…"` |
+| `@vsim/cli` | `vsim render scene.ts -o out.mp4` · `vsim film -p "…"` · `vsim edit scene.ts --prompt "…"` |
 | `@vsim/motion` | The 2D animation studio: design tokens, frame-pure timeline, explainer kit, deterministic HTML→MP4 recorder |
+| `@vsim/film3d` | AI-directed 3D films: Film3DDoc (a validated high-level screenplay — sets, actors, beats, shots) compiled to a scene document |
 
 ## motion/ — films from SVG + CSS (new)
 
@@ -229,6 +230,17 @@ on Claude's first attempt.
 pnpm film:gen "how a CDN makes websites fast"   # → screenplay + out/<slug>.mp4
 ```
 
+**And the 3D engine takes direction too**: `vsim film -p "<story>" --template 3d` asks the AI
+for a **Film3DDoc** instead — set preset, props, actors from the character library, beats of
+`move`/`play`/`face` actions, and a shot list (wide/close/follow/orbit cuts). A compiler
+(`@vsim/film3d`) lowers it to a plain scene document: gait clips crossfade by travel speed,
+actors turn into their headings, cameras track head-height aim nodes. The schema validates
+per-character clips, contiguous beats, and full camera coverage, so the model can't hand back
+a film that doesn't run. [`films/snowy-park.film3d.json`](films/snowy-park.film3d.json) came
+out of exactly this command; the hand-written
+[`films/fox-day.film3d.json`](films/fox-day.film3d.json) shows the whole vocabulary in 50 lines
+(`pnpm film3d:fox` renders it). See [`docs/plan-film3d.md`](./docs/plan-film3d.md).
+
 Narration is built by `tools/narrate.mjs`: timed lines → TTS → one WAV + a per-frame mouth
 envelope the puppet lip-syncs to. The in-repo engine is espeak-ng (offline, deterministic);
 an **ElevenLabs** backend is included — set `ELEVENLABS_API_KEY` and switch
@@ -245,6 +257,7 @@ brainstorm) and [`docs/plan-motion-v1.md`](./docs/plan-motion-v1.md) (what shipp
 - [ADR 0001 — render backend & determinism](./docs/decisions/0001-render-backend-and-determinism.md)
 - [Guide: creating characters with Blender / MakeHuman](./docs/guides/blender-characters.md) — generate rigged, animated, **textured** glTF headlessly (incl. a realistic MakeHuman human with real skin) → `loadGltfRig`
 - [Text & titles](./docs/plan-text-titles.md) — screen-space titles/captions/lower-thirds as deterministic vector type, in draft + photoreal + live preview
+- [film3d — AI-directed 3D films](./docs/plan-film3d.md) — prompt → Film3DDoc screenplay → scene document → MP4
 - [Vision & roadmap](./CONCEPT.md) · [`PLAN.md`](./PLAN.md)
 
 `pnpm docs:site` builds a static documentation site (landing page + the docs above) into

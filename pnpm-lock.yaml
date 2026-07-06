@@ -395,6 +395,9 @@ importers:
       '@vsim/engine-software':
         specifier: workspace:*
         version: link:../engine-software
+      '@vsim/film3d':
+        specifier: workspace:*
+        version: link:../film3d
       '@vsim/motion':
         specifier: workspace:*
         version: link:../motion
@@ -441,6 +444,21 @@ importers:
       '@types/three':
         specifier: ^0.171.0
         version: 0.171.0
+
+  packages/film3d:
+    dependencies:
+      '@vsim/assets':
+        specifier: workspace:*
+        version: link:../assets
+      '@vsim/authoring':
+        specifier: workspace:*
+        version: link:../authoring
+      '@vsim/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
 
   packages/motion:
     dependencies:
