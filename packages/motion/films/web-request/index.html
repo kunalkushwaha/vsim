@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How a web request works — a motion/ film</title>
+<link rel="stylesheet" href="../../tokens.css">
+<style>
+  @font-face {
+    font-family: "Bebas Neue";
+    src: url("../../fonts/BebasNeue-Regular.ttf") format("truetype");
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--color-paper); color: var(--color-ink);
+         font-family: var(--font); width: 1280px; height: 720px; overflow: hidden;
+         display: flex; flex-direction: column; }
+  svg#stage { display: block; width: 1280px; height: 600px; }
+  /* screen-fixed HUD: caption + step chips live OUTSIDE the camera (viewBox) space */
+  #hud { height: 120px; padding: 14px 48px 0; display: flex; flex-direction: column; gap: 10px; }
+  #steps { display: flex; gap: 18px; }
+  .step { display: flex; align-items: center; gap: 7px; font-size: 15px; color: var(--color-muted);
+          letter-spacing: 0.04em; }
+  .step b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+            background: var(--color-panel2); color: var(--color-muted); font-weight: 400; font-size: 13px; }
+  .step.on { color: var(--color-ink); }
+  .step.on b { background: var(--color-accent); color: var(--color-paper); }
+  #caption { font-size: 26px; letter-spacing: 0.02em; min-height: 36px; }
+  #caption span { opacity: 0.25; transition: none; }
+  #caption span.lit { opacity: 1; }
+</style>
+</head>
+<body>
+<svg id="stage" viewBox="0 0 1280 600"></svg>
+<div id="hud">
+  <div id="steps"></div>
+  <div id="caption"></div>
+</div>
+
+<script type="module">
+  import { Timeline, EASES } from "../../src/index.mjs";
+  import { fmt } from "../../src/timeline.mjs";
+  import * as K from "../../kit/kit.mjs";
+  import sp from "./screenplay.json" with { type: "json" };
+
+  const FPS = sp.fps;
+  const tl = new Timeline(FPS);
+  const S = (s) => Math.round(s * FPS);
+  const FRAMES = S(sp.beats[sp.beats.length - 1].end);
+  const stage = document.getElementById("stage");
+
+  // ------------------------------------------------------------------ the world (two rooms wide)
+  // Room A (x 0..1280): the browser. Room B (x 1280..2560): the infrastructure.
+  const bw = K.browserWindow({ x: 340, y: 130, w: 560, h: 360, url: "shop.example/checkout" });
+  const dns = K.server({ x: 1500, y: 90, label: "dns" });
+  const web = K.server({ x: 1760, y: 250, label: "web server" });
+  const db = K.database({ x: 2080, y: 255, label: "orders db" });
+  const cloud = K.cloudBox({ x: 1420, y: 40, w: 820, h: 480, label: "the internet" });
+
+  const cDns = K.connector({ from: [910, 250], to: [1495, 130], via: [1220, 60] });
+  const cWeb = K.connector({ from: [910, 330], to: [1755, 285], via: [1330, 430] });
+  const cDb = K.connector({ from: [1846, 285], to: [2075, 290], via: [1960, 250] });
+  cDns.el.setAttribute("stroke-dasharray", "3 4");
+
+  const pDns = K.packetFlow(cDns, { count: 1, color: "warn" });
+  const pDnsBack = K.packetFlow(K.connector({ from: [1495, 130], to: [910, 250], via: [1220, 60] }), { count: 1, color: "warn" });
+  const pTls = K.packetFlow(cWeb, { count: 3, color: "accent2" });
+  const pTlsBack = K.packetFlow(K.connector({ from: [1755, 285], to: [910, 330], via: [1330, 430] }), { count: 3, color: "accent2" });
+  const pReq = K.packetFlow(cWeb, { count: 4, color: "accent" });
+  const pDb = K.packetFlow(cDb, { count: 2, color: "accent" });
+  const pResp = K.packetFlow(K.connector({ from: [1755, 285], to: [910, 330], via: [1330, 430] }), { count: 5, color: "ok" });
+
+  const bigTitle = K.title({ x: 240, y: 116, text: sp.title, size: 52, color: "ink" });
+  const ipCallout = K.callout({ x: 1370, y: 230, text: "shop.example → 93.184.216.34", anchor: [1500, 140] });
+  const tlsCallout = K.callout({ x: 1240, y: 480, text: "encrypted from here on", anchor: [1330, 415] });
+  const reqCode = K.codeBlock({ x: 620, y: 46, w: 290, lines: [
+    "GET /checkout HTTP/1.1", "Host: shop.example", "Cookie: session=k3…", "Accept: text/html",
+  ] });
+  const respCode = K.codeBlock({ x: 1900, y: 84, w: 300, lines: [
+    "HTTP/1.1 200 OK", "Content-Type: text/html", "", "<!doctype html>…",
+  ] });
+  const doneTitle = K.title({ x: 395, y: 90, text: "FASTER THAN A BLINK", size: 44, color: "accent2" });
+
+  // page skeleton that "renders" in the browser at the end
+  const skel = [
+    { x: 10, y: 14, w: 250, h: 22 }, { x: 10, y: 52, w: 530, h: 90 },
+    { x: 10, y: 156, w: 255, h: 120 }, { x: 285, y: 156, w: 255, h: 120 },
+  ].map((r) => {
+    const e = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    e.setAttribute("x", r.x); e.setAttribute("y", r.y);
+    e.setAttribute("width", r.w); e.setAttribute("height", r.h);
+    e.setAttribute("rx", 6); e.setAttribute("fill", "var(--color-panel2)"); e.setAttribute("opacity", 0);
+    bw.content.append(e);
+    return e;
+  });
+
+  stage.append(cloud.el, cDns.el, cWeb.el, cDb.el, bw.el, dns.el, web.el, db.el,
+    pDns.el, pDnsBack.el, pTls.el, pTlsBack.el, pReq.el, pDb.el, pResp.el,
+    bigTitle.el, ipCallout.el, tlsCallout.el, reqCode.el, respCode.el, doneTitle.el);
+
+  // ------------------------------------------------------------------ HUD (screen space)
+  const stepsEl = document.getElementById("steps");
+  const stepEls = sp.steps.map((t, i) => {
+    const d = document.createElement("div");
+    d.className = "step";
+    d.innerHTML = `<b>${i + 1}</b>${t}`;
+    stepsEl.append(d);
+    return d;
+  });
+  const capEl = document.getElementById("caption");
+  const beats = sp.beats.map((b) => ({ ...b, s: S(b.start), e: S(b.end) }));
+  let capBeat = -1;
+  const setCaption = (f) => {
+    const i = beats.findIndex((b) => f >= b.s && f < b.e);
+    const bi = i === -1 ? beats.length - 1 : i;
+    if (bi !== capBeat) {
+      capBeat = bi;
+      capEl.innerHTML = beats[bi].caption.split(" ").map((w) => `<span>${w}</span>`).join(" ");
+    }
+    const b = beats[bi];
+    const words = capEl.children;
+    const p = Math.min((f - b.s) / ((b.e - b.s) * 0.55), 1); // karaoke: fully lit ~55% into the beat
+    for (let w = 0; w < words.length; w++) words[w].classList.toggle("lit", w < p * words.length);
+    stepEls.forEach((el, si) => el.classList.toggle("on", si <= bi));
+  };
+  tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: (_, f) => setCaption(f) });
+
+  // ------------------------------------------------------------------ cue discipline
+  // seek(f) re-applies EVERY cue, in registration order (that is what makes scrubbing pure).
+  // Two consequences:
+  //  · the RESET cue goes first: it restores every stateful default, later cues override it;
+  //  · state flips are GUARDED (`if (v >= 1)`) so a cue only speaks once its moment has come.
+  tl.cue({ start: 0, end: FRAMES, ease: "hold", apply: () => {
+    dns.setState("idle"); web.setState("idle");
+    reqCode.highlight(-1); respCode.highlight(-1);
+    reqCode.el.setAttribute("opacity", 0); respCode.el.setAttribute("opacity", 0);
+    bigTitle.el.setAttribute("opacity", 1);
+    ipCallout.el.setAttribute("opacity", 1); tlsCallout.el.setAttribute("opacity", 1);
+  } });
+
+  const B = Object.fromEntries(beats.map((b) => [b.id, b]));
+  const win = (b, a0, a1) => ({ start: b.s + S(a0), end: b.s + S(a1) });
+
+  // ------------------------------------------------------------------ camera: one piecewise path
+  // A single cue owns the viewBox: segments interpolate with their own ease; gaps hold the
+  // previous framing. No two cues ever fight over the attribute.
+  const CAM = {
+    browser: [180, 40, 900, 421.9],
+    both: [320, -40, 1480, 693.8],
+    dnsClose: [1180, 0, 800, 375],
+    serverClose: [1600, 60, 760, 356.3],
+  };
+  const camPath = [
+    { f0: S(6.5), f1: S(9.5), from: CAM.browser, to: CAM.both },
+    { f0: B.dns.s + S(2), f1: B.dns.s + S(4), from: CAM.both, to: CAM.dnsClose },
+    { f0: B.tls.s, f1: B.tls.s + S(2), from: CAM.dnsClose, to: CAM.both },
+    { f0: B.request.s, f1: B.request.s + S(2), from: CAM.both, to: CAM.browser },
+    { f0: B.request.s + S(6), f1: B.request.s + S(9), from: CAM.browser, to: CAM.both },
+    { f0: B.server.s, f1: B.server.s + S(2), from: CAM.both, to: CAM.serverClose },
+    { f0: B.render.s, f1: B.render.s + S(2.5), from: CAM.serverClose, to: CAM.browser },
+  ];
+  const camEase = EASES.heavy;
+  tl.cue({ start: 0, end: FRAMES, ease: "mechanical", apply: (_, f) => {
+    let box = camPath[0].from;
+    for (const seg of camPath) {
+      if (f >= seg.f1) { box = seg.to; continue; }
+      if (f >= seg.f0) {
+        const p = camEase((f - seg.f0) / (seg.f1 - seg.f0));
+        box = seg.from.map((a, i) => a + (seg.to[i] - a) * p);
+      }
+      break;
+    }
+    stage.setAttribute("viewBox", box.map(fmt).join(" "));
+  } });
+
+  // ------------------------------------------------------------------ beats
+  // 1 · title + URL typing
+  tl.cue({ ...win(B.title, 0.3, 2.3), ease: "snappy", apply: bigTitle.reveal });
+  tl.cue({ ...win(B.title, 6.2, 7.6), ease: "snappy", apply: (v) => { if (v > 0) bigTitle.el.setAttribute("opacity", fmt(1 - v)); } });
+  tl.cue({ ...win(B.title, 3, 5.5), ease: "mechanical", apply: bw.typeUrl });
+
+  // 2 · DNS lookup
+  tl.cue({ ...win(B.dns, 0.5, 3), ease: "mechanical", apply: pDns.flow });
+  tl.cue({ ...win(B.dns, 2.8, 3.2), ease: "hold", apply: (v) => { if (v >= 1) dns.setState("busy"); } });
+  tl.cue({ ...win(B.dns, 3.2, 5), ease: "overshoot", apply: ipCallout.pop });
+  tl.cue({ ...win(B.dns, 5, 7.5), ease: "mechanical", apply: pDnsBack.flow });
+  tl.cue({ ...win(B.dns, 7.4, 7.8), ease: "hold", apply: (v) => { if (v >= 1) dns.setState("ok"); } });
+  tl.cue({ ...win(B.dns, 8.5, 9.9), ease: "snappy", apply: (v) => { if (v > 0) ipCallout.el.setAttribute("opacity", fmt(1 - v)); } });
+
+  // 3 · TCP + TLS handshake
+  tl.cue({ ...win(B.tls, 1, 4), ease: "mechanical", apply: pTls.flow });
+  tl.cue({ ...win(B.tls, 3.5, 6.5), ease: "mechanical", apply: pTlsBack.flow });
+  tl.cue({ ...win(B.tls, 6, 7.5), ease: "overshoot", apply: tlsCallout.pop });
+  tl.cue({ ...win(B.tls, 9, 10), ease: "snappy", apply: (v) => { if (v > 0) tlsCallout.el.setAttribute("opacity", fmt(1 - v)); } });
+
+  // 4 · the request
+  tl.cue({ ...win(B.request, 0.2, 0.8), ease: "snappy", apply: (v) => reqCode.el.setAttribute("opacity", fmt(v)) });
+  tl.cue({ ...win(B.request, 0.8, 5), ease: "mechanical", apply: reqCode.type });
+  tl.cue({ ...win(B.request, 5, 5.4), ease: "hold", apply: (v) => { if (v >= 1) reqCode.highlight(0); } });
+  tl.cue({ ...win(B.request, 6.5, 10.5), ease: "mechanical", apply: pReq.flow });
+  tl.cue({ ...win(B.request, 10.5, 12), ease: "snappy", apply: (v) => { if (v > 0) reqCode.el.setAttribute("opacity", fmt(1 - v)); } });
+
+  // 5 · server + database
+  tl.cue({ ...win(B.server, 0, 0.5), ease: "hold", apply: (v) => { if (v >= 1) web.setState("busy"); } });
+  tl.cue({ ...win(B.server, 0.5, 4.5), ease: "mechanical", apply: (v) => web.pulse((v * 4) % 1) });
+  tl.cue({ ...win(B.server, 1, 3.5), ease: "mechanical", apply: pDb.flow });
+  tl.cue({ ...win(B.server, 2.8, 4.8), ease: "mechanical", apply: db.flash });
+  tl.cue({ ...win(B.server, 4.2, 4.8), ease: "snappy", apply: (v) => respCode.el.setAttribute("opacity", fmt(v)) });
+  tl.cue({ ...win(B.server, 4.8, 8), ease: "mechanical", apply: respCode.type });
+  tl.cue({ ...win(B.server, 8, 8.4), ease: "hold", apply: (v) => { if (v >= 1) { respCode.highlight(0); web.setState("ok"); } } });
+
+  // 6 · response + render
+  tl.cue({ ...win(B.render, 0, 1), ease: "snappy", apply: (v) => { if (v > 0) respCode.el.setAttribute("opacity", fmt(1 - v)); } });
+  tl.cue({ ...win(B.render, 0.2, 3.5), ease: "mechanical", apply: pResp.flow });
+  skel.forEach((e, i) =>
+    tl.cue({ ...win(B.render, 3 + i * 0.7, 4.2 + i * 0.7), ease: "snappy", apply: (v) => e.setAttribute("opacity", fmt(v)) }));
+  tl.cue({ ...win(B.render, 6.5, 8.5), ease: "snappy", apply: doneTitle.reveal });
+
+  // ------------------------------------------------------------------ film contract + preview
+  const show = (f) => tl.seek(f);
+  window.__film = { fps: FPS, frames: FRAMES, seek: show };
+  show(Math.max(0, Math.min(FRAMES, Number(new URLSearchParams(location.search).get("f")) || 0)));
+  if (!window.__recording && !new URLSearchParams(location.search).has("f")) {
+    let f = 0;
+    const tick = () => { show(f = (f + 1) % (FRAMES + 1)); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }
+</script>
+</body>
+</html>

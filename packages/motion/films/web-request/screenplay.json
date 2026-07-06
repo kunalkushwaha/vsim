@@ -1,0 +1,14 @@
+{
+  "$comment": "The film as data: beats with start/end seconds, captions, and step labels. An agent edits THIS to re-cut the film; index.html turns it into timeline cues.",
+  "fps": 30,
+  "title": "HOW A WEB REQUEST WORKS",
+  "steps": ["type a URL", "resolve DNS", "connect + TLS", "send the request", "server + database", "render the page"],
+  "beats": [
+    { "id": "title",   "start": 0,  "end": 8,  "caption": "You type an address. A lot happens in the next 200 milliseconds." },
+    { "id": "dns",     "start": 8,  "end": 18, "caption": "First: DNS. The name shop.example is looked up and becomes an IP address." },
+    { "id": "tls",     "start": 18, "end": 28, "caption": "Your browser opens a connection and performs the TLS handshake — everything from here is encrypted." },
+    { "id": "request", "start": 28, "end": 40, "caption": "Now the actual request: a few lines of text asking for /checkout." },
+    { "id": "server",  "start": 40, "end": 50, "caption": "The server does its work — queries the database, builds the response." },
+    { "id": "render",  "start": 50, "end": 60, "caption": "The response streams back, and the browser paints your page. All of it — faster than a blink." }
+  ]
+}
