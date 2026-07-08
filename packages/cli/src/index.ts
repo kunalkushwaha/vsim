@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { resolve, extname, dirname } from "node:path";
+import { resolve, extname, dirname, join, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseDocument, type PhysicsAdapter, type SceneDocument } from "@vsim/core";
 import { renderToVideo, renderStill } from "@vsim/render";
+import type { Film3DDoc } from "@vsim/film3d";
 
 /**
  * Import a scene module. TypeScript scenes are compiled on the fly via tsx's
@@ -33,6 +34,7 @@ interface Args {
   prompt?: string;
   render?: string;
   template?: string;
+  review?: number;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -49,9 +51,35 @@ function parseArgs(argv: string[]): Args {
     else if (t === "--prompt" || t === "-p") a.prompt = argv[++i]!;
     else if (t === "--template") a.template = argv[++i]!;
     else if (t === "--render") a.render = argv[++i]!;
+    else if (t === "--review") a.review = Number(argv[++i]);
     else if (!t!.startsWith("-")) a.file = t;
   }
   return a;
+}
+
+/**
+ * Build a film's voice-over via the shared narration pipeline (timed lines → espeak-ng TTS →
+ * one WAV): the muxable audio for any Film3DDoc whose beats carry `narration`. Derived output
+ * (goes to out/, keyed by film name); returns undefined for silent films or when TTS is
+ * unavailable — a missing narrator should soften the film, not fail the render.
+ */
+async function buildFilm3DNarration(doc: Film3DDoc, name: string): Promise<string | undefined> {
+  const { narrationScript } = await import("@vsim/film3d");
+  const script = narrationScript(doc);
+  if (!script) return undefined;
+  const dir = resolve("out", "narration", name);
+  await mkdir(dir, { recursive: true });
+  const spec = join(dir, "narration.json");
+  await writeFile(spec, JSON.stringify(script, null, 2));
+  try {
+    // @ts-expect-error — untyped .mjs tool module (the same engine that voices the 2D films)
+    const { narrate } = await import("@vsim/motion/tools/narrate.mjs");
+    await narrate(spec, dir);
+  } catch (e) {
+    console.warn(`⚠ narration skipped: ${(e as Error).message.split("\n")[0]}`);
+    return undefined;
+  }
+  return join(dir, "narration.wav");
 }
 
 /** Load a scene document from a .ts/.js module (default/`scene`/`document` export) or .json. */
@@ -64,7 +92,8 @@ async function loadScene(file: string): Promise<{ doc: SceneDocument; audio?: st
       const { parseFilm3D, compileFilm3D } = await import("@vsim/film3d");
       const res = parseFilm3D(raw);
       if (res.errors) throw new Error(`invalid Film3DDoc:\n  ${res.errors.join("\n  ")}`);
-      return { doc: await compileFilm3D(res.doc) };
+      const audio = await buildFilm3DNarration(res.doc, basename(abs).replace(/\.film3d\.json$/, ""));
+      return { doc: await compileFilm3D(res.doc), audio };
     }
     return { doc: parseDocument(raw) };
   }
@@ -177,23 +206,48 @@ async function runEdit(args: Args): Promise<void> {
  */
 async function runFilm(args: Args): Promise<void> {
   if (!args.prompt) {
-    console.log('Usage: vsim film --prompt "<topic>" [--template explainer|3d] [-o out.mp4] [--name slug]');
+    console.log('Usage: vsim film --prompt "<topic>" [--template explainer|3d] [-o out.mp4] [--name slug] [--review N]');
     process.exit(1);
   }
   const name = (args.name ?? args.prompt).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 40);
   const output = args.output === "out/out.mp4" ? `out/${name}.mp4` : args.output;
 
   if (args.template === "3d") {
-    // 3D path: prompt → Film3DDoc screenplay → SceneDocument → the normal render pipeline.
-    const { generateFilm3D, compileFilm3D } = await import("@vsim/film3d");
+    // 3D path: prompt → Film3DDoc screenplay → dailies review → SceneDocument → the normal pipeline.
+    const { generateFilm3D, reviewFilm3D, compileFilm3D, pickReviewStills } = await import("@vsim/film3d");
     console.log(`✎ directing the 3D film for "${args.prompt}" …`);
-    const { doc, attempts } = await generateFilm3D(args.prompt, {});
-    const secs = doc.beats[doc.beats.length - 1]!.end;
+    let { doc, attempts } = await generateFilm3D(args.prompt, {});
+    console.log(`✓ Film3DDoc "${doc.title}" — ${doc.beats.length} beats, ${doc.beats[doc.beats.length - 1]!.end}s (attempt ${attempts})`);
+
+    // The render–look–revise loop: render one still per shot, let the director watch the
+    // dailies and revise the screenplay. KEEP (or an invalid revision) ends the loop.
+    const rounds = args.review ?? 1;
+    for (let round = 1; round <= rounds; round++) {
+      const dir = resolve("out", "review", name, `round-${round}`);
+      await mkdir(dir, { recursive: true });
+      const compiled = await compileFilm3D(doc);
+      const stills = [];
+      for (const s of pickReviewStills(doc)) {
+        const path = join(dir, `t${s.sec.toFixed(1).replace(".", "_")}.png`);
+        await renderStill(compiled, Math.round(s.sec * doc.fps), path, {});
+        stills.push({ ...s, path });
+      }
+      console.log(`✎ reviewing the dailies (round ${round}: ${stills.length} stills) …`);
+      const review = await reviewFilm3D(doc, stills, {});
+      if (!review.revised) {
+        console.log("✓ the director kept the cut");
+        break;
+      }
+      doc = review.doc;
+      console.log(`✓ revised after review → "${doc.title}", ${doc.beats.length} beats`);
+    }
+
     await mkdir(resolve("films"), { recursive: true });
     const file = resolve("films", `${name}.film3d.json`);
     await writeFile(file, JSON.stringify(doc, null, 2));
-    console.log(`✓ Film3DDoc "${doc.title}" — ${doc.beats.length} beats, ${secs}s (attempt ${attempts}) → ${file}`);
-    await renderDoc(await compileFilm3D(doc), { ...args, output });
+    console.log(`✓ screenplay → ${file}`);
+    const audio = await buildFilm3DNarration(doc, name);
+    await renderDoc(await compileFilm3D(doc), { ...args, output }, audio);
     return;
   }
 

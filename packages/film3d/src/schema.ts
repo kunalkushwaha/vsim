@@ -109,6 +109,8 @@ export const Film3DBeatSchema = z.object({
   start: z.number().min(0),
   end: z.number().positive(),
   caption: z.string().max(110).optional(),
+  /** Spoken voice-over line, read by the narrator at the beat's start (captions stay on screen). */
+  narration: z.string().max(200).optional(),
   actions: z.array(Film3DActionSchema).default([]),
 });
 

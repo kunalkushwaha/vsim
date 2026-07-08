@@ -5,6 +5,16 @@
 `films/fox-day.film3d.json` (hand-written vocabulary proof) and
 `films/snowy-park.film3d.json` (AI-directed, valid on the first attempt).
 
+**v2 SHIPPED — narration + the director's review loop.** Beats carry an optional
+`narration` line; `narrationScript(doc)` plans the timed lines and the CLI voices them
+through the shared 2D pipeline (`packages/motion/tools/narrate.mjs`, espeak-ng) and muxes
+the WAV into the MP4 (`-shortest` clips any tail). Both v1 non-goals that pointed here are
+now done: narration is shared, and the generator closes the render–look–revise loop —
+`vsim film --template 3d` renders one still per camera shot (`pickReviewStills`), the
+model reads its own frames and replies KEEP or a revised document (`reviewFilm3D`), every
+revision re-validated so a bad revision can never replace a working film (`--review N`,
+default 1). Lip-sync remains out (no viseme assets on the creature rigs).
+
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).
 This plan applies the same shape to the real 3D engine.

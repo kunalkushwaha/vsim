@@ -3,6 +3,8 @@ import { listCharacters } from "@vsim/assets";
 import { SceneRuntime } from "@vsim/core";
 import { parseFilm3D, CHARACTERS, CHARACTER_IDS } from "./schema.js";
 import { compileFilm3D } from "./compile.js";
+import { narrationScript } from "./narration.js";
+import { pickReviewStills, parseReviewReply } from "./review.js";
 
 /** A minimal valid film: a fox walks across a meadow, then surveys. */
 const FILM = {
@@ -166,5 +168,58 @@ describe("compileFilm3D", () => {
     expect((sceneDoc as any).particles.map((p: any) => p.id)).toEqual(
       expect.arrayContaining(["fire__sparks", "fire__smoke"]),
     );
+  });
+});
+
+describe("narrationScript", () => {
+  it("returns null for a film with no narration", () => {
+    const { doc } = parseFilm3D(FILM);
+    expect(narrationScript(doc!)).toBeNull();
+  });
+
+  it("places narrated beats' lines just after each beat start, at the film's fps", () => {
+    const { doc } = parseFilm3D({
+      ...FILM,
+      fps: 24,
+      beats: [
+        { ...FILM.beats[0], narration: "A fox crosses the clearing." },
+        { ...FILM.beats[1] }, // silent beat — no line
+      ],
+    });
+    const spec = narrationScript(doc!)!;
+    expect(spec.fps).toBe(24);
+    expect(spec.engine).toBe("espeak");
+    expect(spec.lines).toEqual([{ at: 0.35, text: "A fox crosses the clearing." }]);
+  });
+});
+
+describe("review helpers", () => {
+  it("picks one still per camera segment, at its midpoint", () => {
+    const { doc } = parseFilm3D(FILM);
+    const stills = pickReviewStills(doc!);
+    expect(stills.map((s) => s.sec)).toEqual([3, 8]);
+    expect(stills[0]!.label).toMatch(/follow shot at 3.0s, target fox/);
+  });
+
+  it("falls back to beat midpoints when no camera is authored, capped at 5", () => {
+    const beats = Array.from({ length: 9 }, (_, i) => ({ id: `b${i}`, start: i * 2, end: (i + 1) * 2 }));
+    const { doc } = parseFilm3D({ ...FILM, beats, camera: [] });
+    const stills = pickReviewStills(doc!);
+    expect(stills.length).toBe(5);
+    expect(stills[0]!.sec).toBe(1); // first beat kept
+    expect(stills[4]!.sec).toBe(17); // last beat kept
+  });
+
+  it("reads KEEP verdicts, with or without surrounding prose", () => {
+    expect(parseReviewReply("KEEP")).toEqual({ keep: true });
+    expect(parseReviewReply("  keep\n")).toEqual({ keep: true });
+    expect(parseReviewReply("The framing holds up — KEEP.")).toEqual({ keep: true });
+  });
+
+  it("reads a revised document, tolerating code fences", () => {
+    const reply = "```json\n" + JSON.stringify(FILM) + "\n```";
+    const res = parseReviewReply(reply);
+    expect(res.keep).toBe(false);
+    expect(parseFilm3D((res as { candidate: unknown }).candidate).doc).toBeDefined();
   });
 });

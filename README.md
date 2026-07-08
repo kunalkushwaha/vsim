@@ -180,6 +180,13 @@ command; the hand-written [`films/fox-day.film3d.json`](films/fox-day.film3d.jso
 the whole vocabulary in 50 lines (`pnpm film3d:fox` renders it — `vsim render` accepts
 `*.film3d.json` directly).
 
+3D films are **voiced and self-reviewed** (v2): beats can carry a `narration` line, spoken
+by the same deterministic TTS pipeline that voices the 2D films (espeak-ng offline, or
+ElevenLabs) and muxed into the MP4. And before the final render, the director **watches
+the dailies**: `vsim film --template 3d` renders one still per camera shot, shows them to
+the model, and lets it revise its own screenplay — re-aim cameras, restage actors — with
+every revision re-validated (`--review 0` skips the loop, `--review 2` reviews twice).
+
 ## vsim Studio — the visual editor
 
 The first slice of the **visual editor** (surface 2). A browser app on top of the same engine:

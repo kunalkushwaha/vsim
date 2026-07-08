@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.mjs",
     "./tokens.css": "./tokens.css",
-    "./tools/film-gen.mjs": "./tools/film-gen.mjs"
+    "./tools/film-gen.mjs": "./tools/film-gen.mjs",
+    "./tools/narrate.mjs": "./tools/narrate.mjs"
   },
   "scripts": {
     "gen:tokens": "node gen-tokens.mjs",
