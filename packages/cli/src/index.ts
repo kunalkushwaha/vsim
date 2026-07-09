@@ -225,6 +225,8 @@ async function runFilm(args: Args): Promise<void> {
     for (let round = 1; round <= rounds; round++) {
       const dir = resolve("out", "review", name, `round-${round}`);
       await mkdir(dir, { recursive: true });
+      // Keep the pre-review draft so the director's changes stay diffable.
+      await writeFile(join(dir, "draft.film3d.json"), JSON.stringify(doc, null, 2));
       const compiled = await compileFilm3D(doc);
       const stills = [];
       for (const s of pickReviewStills(doc)) {
