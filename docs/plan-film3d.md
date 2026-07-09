@@ -24,6 +24,13 @@ meshes (flames) no longer shadow their own point light, and world/sun energy flo
 follow the set's own hemisphere level so dusk/night stay art-directed dark. Not translated
 to Cycles (yet): particles (sparks/smoke), fog, and the gradient sky + sun disc.
 
+**v2.2 — the animal cast.** `scripts/blender/make-animal.py` generalizes the quadruped
+generator into a per-species table (bones, parts, gait parameters): deer (long legs,
+antlers), bear (bulk + shoulder hump), rabbit (tall ears, quick gait), each with
+walk/run + a breathing idle clip — vsim's own MIT assets, no licensing bookkeeping,
+regenerable headlessly. Castable set is now fox, dog, deer, bear, rabbit, suited.
+Add a species by adding a table.
+
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).
 This plan applies the same shape to the real 3D engine.

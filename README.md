@@ -169,7 +169,9 @@ pnpm film:gen "how a CDN makes websites fast"   # → screenplay + out/<slug>.mp
 ```
 
 **Direct 3D films from a story** — `vsim film -p "<story>" --template 3d` asks for a
-**Film3DDoc** instead: set preset, props, actors from the character library, beats of
+**Film3DDoc** instead: set preset, props, a cast from the character library (fox, dog,
+deer, bear, rabbit, a suited human — the animals are vsim's own MIT assets, minted by
+`scripts/blender/make-animal.py`), beats of
 `move`/`play`/`face` actions, and a shot list (wide/close/follow/orbit cuts). The
 `@vsim/film3d` compiler lowers it to a plain scene document — gait clips crossfade by
 travel speed, actors turn into their headings, cameras track head-height aim nodes — and
