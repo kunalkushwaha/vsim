@@ -65,21 +65,27 @@ function parseArgs(argv: string[]): Args {
  */
 async function buildFilm3DNarration(doc: Film3DDoc, name: string): Promise<string | undefined> {
   const { narrationScript } = await import("@vsim/film3d");
-  const script = narrationScript(doc);
-  if (!script) return undefined;
+  // ELEVENLABS_API_KEY upgrades the narrator to a production voice; espeak stays the
+  // offline default AND the fallback, so a bad key or blocked network softens the voice,
+  // never fails the render. (VSIM_NARRATOR=espeak forces the deterministic voice.)
+  const wantEleven = !!process.env.ELEVENLABS_API_KEY && process.env.VSIM_NARRATOR !== "espeak";
   const dir = resolve("out", "narration", name);
-  await mkdir(dir, { recursive: true });
-  const spec = join(dir, "narration.json");
-  await writeFile(spec, JSON.stringify(script, null, 2));
-  try {
-    // @ts-expect-error — untyped .mjs tool module (the same engine that voices the 2D films)
-    const { narrate } = await import("@vsim/motion/tools/narrate.mjs");
-    await narrate(spec, dir);
-  } catch (e) {
-    console.warn(`⚠ narration skipped: ${(e as Error).message.split("\n")[0]}`);
-    return undefined;
+  // @ts-expect-error — untyped .mjs tool module (the same engine that voices the 2D films)
+  const { narrate } = await import("@vsim/motion/tools/narrate.mjs");
+  for (const engine of wantEleven ? (["elevenlabs", "espeak"] as const) : (["espeak"] as const)) {
+    const script = narrationScript(doc, { engine });
+    if (!script) return undefined;
+    await mkdir(dir, { recursive: true });
+    const spec = join(dir, "narration.json");
+    await writeFile(spec, JSON.stringify(script, null, 2));
+    try {
+      await narrate(spec, dir);
+      return join(dir, "narration.wav");
+    } catch (e) {
+      console.warn(`⚠ ${engine} narration failed: ${(e as Error).message.split("\n")[0]}`);
+    }
   }
-  return join(dir, "narration.wav");
+  return undefined;
 }
 
 /** Load a scene document from a .ts/.js module (default/`scene`/`document` export) or .json. */

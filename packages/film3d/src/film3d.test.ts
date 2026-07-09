@@ -3,7 +3,7 @@ import { listCharacters } from "@vsim/assets";
 import { SceneRuntime } from "@vsim/core";
 import { parseFilm3D, CHARACTERS, CHARACTER_IDS } from "./schema.js";
 import { compileFilm3D } from "./compile.js";
-import { narrationScript } from "./narration.js";
+import { narrationScript, DEFAULT_ELEVENLABS_VOICE } from "./narration.js";
 import { pickReviewStills, parseReviewReply } from "./review.js";
 import { isFilm3D, film3dToScene } from "./load.js";
 
@@ -249,5 +249,16 @@ describe("film3dToScene", () => {
     const sceneDoc = await film3dToScene(FILM);
     expect(sceneDoc.meta.durationFrames).toBe(300);
     await expect(film3dToScene({ ...FILM, actors: [] })).rejects.toThrow(/unknown actor/);
+  });
+});
+
+describe("narrationScript engines", () => {
+  it("defaults to espeak, switches to elevenlabs with a default voice on request", () => {
+    const { doc } = parseFilm3D({ ...FILM, beats: [{ ...FILM.beats[0], narration: "A fox." }, FILM.beats[1]] });
+    expect(narrationScript(doc!)!.engine).toBe("espeak");
+    const el = narrationScript(doc!, { engine: "elevenlabs" })!;
+    expect(el.engine).toBe("elevenlabs");
+    expect(el.elevenlabs!.voiceId).toBe(DEFAULT_ELEVENLABS_VOICE);
+    expect(narrationScript(doc!, { engine: "elevenlabs", voiceId: "abc" })!.elevenlabs!.voiceId).toBe("abc");
   });
 });
