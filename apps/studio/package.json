@@ -16,6 +16,7 @@
     "@vsim/core": "workspace:*",
     "@vsim/engine-software": "workspace:*",
     "@vsim/engine-three": "workspace:*",
+    "@vsim/film3d": "workspace:*",
     "@vsim/player": "workspace:*",
     "@vsim/render": "workspace:*",
     "@vsim/text": "workspace:*",

@@ -87,9 +87,9 @@ async function loadScene(file: string): Promise<{ doc: SceneDocument; audio?: st
   const abs = resolve(file);
   if (extname(abs) === ".json") {
     const raw = JSON.parse(await readFile(abs, "utf8"));
-    // A Film3DDoc screenplay (version-sniffed) compiles down to a SceneDocument first.
-    if (typeof raw?.version === "string" && raw.version.startsWith("film3d")) {
-      const { parseFilm3D, compileFilm3D } = await import("@vsim/film3d");
+    // A Film3DDoc screenplay compiles down to a SceneDocument first (shared sniff).
+    const { isFilm3D, parseFilm3D, compileFilm3D } = await import("@vsim/film3d");
+    if (isFilm3D(raw)) {
       const res = parseFilm3D(raw);
       if (res.errors) throw new Error(`invalid Film3DDoc:\n  ${res.errors.join("\n  ")}`);
       const audio = await buildFilm3DNarration(res.doc, basename(abs).replace(/\.film3d\.json$/, ""));

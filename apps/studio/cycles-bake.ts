@@ -16,7 +16,13 @@ const [scenePath, outPath, fromArg, toArg, stepArg] = process.argv.slice(2);
 
 async function loadDoc(p: string): Promise<SceneDocument> {
   const abs = resolve(p);
-  if (abs.endsWith(".json")) return parseDocument(JSON.parse(await readFile(abs, "utf8")));
+  if (abs.endsWith(".json")) {
+    const raw = JSON.parse(await readFile(abs, "utf8"));
+    // A Film3DDoc screenplay compiles to a SceneDocument first (shared sniff with the CLI).
+    const { isFilm3D, film3dToScene } = await import("@vsim/film3d");
+    if (isFilm3D(raw)) return film3dToScene(raw);
+    return parseDocument(raw);
+  }
   const { tsImport } = await import("tsx/esm/api");
   const mod: any = await tsImport(pathToFileURL(abs).href, import.meta.url);
   return (await mod.default) as SceneDocument; // scene modules default-export a built (or async) document
@@ -72,6 +78,11 @@ function bakeFrame(frame: number) {
     overlays: f.overlays,
   };
 }
+
+// Springs/IK stance state are stateful forward steps: warm the runtime through the skipped
+// frames (state only, no baking) so an excerpt matches those frames of a full render.
+const warmTo = Number(fromArg ?? 0);
+for (let fr = 0; fr < warmTo; fr++) rt.computeFrameState(fr);
 
 if (outPath!.endsWith(".json")) {
   await writeFile(resolve(outPath!), JSON.stringify(bakeFrame(Number(fromArg ?? 0))));

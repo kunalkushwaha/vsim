@@ -5,6 +5,7 @@ import { parseFilm3D, CHARACTERS, CHARACTER_IDS } from "./schema.js";
 import { compileFilm3D } from "./compile.js";
 import { narrationScript } from "./narration.js";
 import { pickReviewStills, parseReviewReply } from "./review.js";
+import { isFilm3D, film3dToScene } from "./load.js";
 
 /** A minimal valid film: a fox walks across a meadow, then surveys. */
 const FILM = {
@@ -221,5 +222,32 @@ describe("review helpers", () => {
     const res = parseReviewReply(reply);
     expect(res.keep).toBe(false);
     expect(parseFilm3D((res as { candidate: unknown }).candidate).doc).toBeDefined();
+  });
+});
+
+describe("isFilm3D (shared sniff)", () => {
+  it("recognizes the version tag", () => {
+    expect(isFilm3D({ version: "film3d-1" })).toBe(true);
+    expect(isFilm3D({ version: "0.1", meta: {} })).toBe(false);
+  });
+
+  it("recognizes a screenplay that omits the optional version field", () => {
+    const { version, ...versionless } = { ...FILM, version: undefined } as Record<string, unknown>;
+    expect(isFilm3D(versionless)).toBe(true);
+    expect(parseFilm3D(versionless).doc).toBeDefined(); // and it really is valid
+  });
+
+  it("does not claim plain scene documents or junk", () => {
+    expect(isFilm3D({ meta: { fps: 30 }, nodes: [], beats: [] })).toBe(false);
+    expect(isFilm3D(null)).toBe(false);
+    expect(isFilm3D("film3d")).toBe(false);
+  });
+});
+
+describe("film3dToScene", () => {
+  it("compiles raw film3d JSON and throws agent-readable errors on invalid input", async () => {
+    const sceneDoc = await film3dToScene(FILM);
+    expect(sceneDoc.meta.durationFrames).toBe(300);
+    await expect(film3dToScene({ ...FILM, actors: [] })).rejects.toThrow(/unknown actor/);
   });
 });

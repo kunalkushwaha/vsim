@@ -45,6 +45,12 @@ def build_and_render(data, out_png, samples):
         if any(em):
             if "Emission Color" in b.inputs: b.inputs["Emission Color"].default_value = (em[0], em[1], em[2], 1)
             if "Emission Strength" in b.inputs: b.inputs["Emission Strength"].default_value = 1.0
+            # Strongly emissive meshes are light sources (flames), not occluders: without this,
+            # flame geometry wrapped around a fire's point light shadows it into a tiny puddle.
+            # (visible_shadow is Blender ≥3.0; older binaries use cycles_visibility.)
+            if max(em) >= 0.5:
+                if hasattr(obj, "visible_shadow"): obj.visible_shadow = False
+                elif hasattr(obj, "cycles_visibility"): obj.cycles_visibility.shadow = False
 
         def teximg(mapdef, name, non_color=False):
             img = image_from_rgba(name, mapdef["width"], mapdef["height"], mapdef["rgba"])
@@ -82,7 +88,8 @@ def build_and_render(data, out_png, samples):
 
     for l in data["lights"]:
         if l["type"] == "directional":
-            d = bpy.data.lights.new("sun", 'SUN'); d.energy = max(1.0, l["intensity"] * 4.0); d.color = l["color"]
+            # Floor 0.1, not 1.0: a dusk/night "moonlight" sun at intensity ~0.1 must stay faint.
+            d = bpy.data.lights.new("sun", 'SUN'); d.energy = max(0.1, l["intensity"] * 4.0); d.color = l["color"]
             o = bpy.data.objects.new("sun", d); scene.collection.objects.link(o)
             o.rotation_euler = mathutils.Vector(l["direction"]).to_track_quat('-Z', 'Y').to_euler()
         elif l["type"] == "point":
@@ -93,13 +100,17 @@ def build_and_render(data, out_png, samples):
     bg = world.node_tree.nodes["Background"]
     hemi = next((l for l in data["lights"] if l["type"] == "hemisphere"), None)
     amb = next((l for l in data["lights"] if l["type"] == "ambient"), None)
+    # The world is both the visible background AND the ambient GI, so its strength must follow
+    # the scene's own hemisphere level (floor 0.2, ceiling 1.25) — flat floors of 1.2/0.6
+    # washed out the dark sets (dusk, night) that the presets deliberately art-direct dim,
+    # and the ceiling keeps bright sets (overcast snow) at the previously verified level.
+    hemi_strength = min(1.25, max(0.2, hemi["intensity"] * 1.6)) if hemi else None
     if data.get("sky"):
-        c = data["sky"]["top"]; strength = 1.2
+        c = data["sky"]["top"]; strength = hemi_strength if hemi_strength is not None else 1.2
     elif hemi:
-        c = hemi.get("skyColor") or hemi["color"]; strength = max(0.6, hemi["intensity"] * 1.6)
+        c = hemi.get("skyColor") or hemi["color"]; strength = hemi_strength
     else:
         c = data["background"]; strength = 1.0
-    if hemi and not data.get("sky"): strength = max(strength, hemi["intensity"] * 1.6)
     if amb: strength += amb["intensity"]
     bg.inputs[0].default_value = (c[0], c[1], c[2], 1); bg.inputs[1].default_value = strength
 
