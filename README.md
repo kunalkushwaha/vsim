@@ -186,6 +186,9 @@ ElevenLabs) and muxed into the MP4. And before the final render, the director **
 the dailies**: `vsim film --template 3d` renders one still per camera shot, shows them to
 the model, and lets it revise its own screenplay — re-aim cameras, restage actors — with
 every revision re-validated (`--review 0` skips the loop, `--review 2` reviews twice).
+[`films/dusk-meeting.film3d.json`](films/dusk-meeting.film3d.json) is a fully AI-made
+example: written, reviewed (it re-aimed two shots after seeing its own dailies), and
+narrated from one prompt.
 
 ## vsim Studio — the visual editor
 
