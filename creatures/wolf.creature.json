@@ -1,0 +1,247 @@
+{
+  "version": "creature-1",
+  "id": "wolf",
+  "name": "Wolf",
+  "description": "A lean gray wolf with pointed ears, long legs, and a low straight tail.",
+  "bones": [
+    {
+      "name": "hips",
+      "head": [
+        0,
+        -0.3,
+        0.5
+      ],
+      "tail": [
+        0,
+        0,
+        0.53
+      ]
+    },
+    {
+      "name": "spine",
+      "head": [
+        0,
+        0,
+        0.53
+      ],
+      "tail": [
+        0,
+        0.32,
+        0.56
+      ],
+      "parent": "hips"
+    },
+    {
+      "name": "neck",
+      "head": [
+        0,
+        0.32,
+        0.56
+      ],
+      "tail": [
+        0,
+        0.5,
+        0.66
+      ],
+      "parent": "spine"
+    },
+    {
+      "name": "head",
+      "head": [
+        0,
+        0.5,
+        0.66
+      ],
+      "tail": [
+        0,
+        0.7,
+        0.7
+      ],
+      "parent": "neck"
+    },
+    {
+      "name": "tail",
+      "head": [
+        0,
+        -0.3,
+        0.5
+      ],
+      "tail": [
+        0,
+        -0.6,
+        0.4
+      ],
+      "parent": "hips"
+    }
+  ],
+  "legs": {
+    "front_y": 0.28,
+    "back_y": -0.15,
+    "sx": 0.14,
+    "top": 0.5,
+    "knee": 0.22,
+    "r_u": 0.075,
+    "r_l": 0.055
+  },
+  "legsBackR": 0.095,
+  "parts": [
+    {
+      "bone": "hips",
+      "kind": "cube",
+      "loc": [
+        0,
+        -0.15,
+        0.52
+      ],
+      "scale": [
+        0.17,
+        0.19,
+        0.15
+      ]
+    },
+    {
+      "bone": "spine",
+      "kind": "cube",
+      "loc": [
+        0,
+        0.1,
+        0.54
+      ],
+      "scale": [
+        0.15,
+        0.2,
+        0.13
+      ]
+    },
+    {
+      "bone": "spine",
+      "kind": "cube",
+      "loc": [
+        0,
+        0.3,
+        0.56
+      ],
+      "scale": [
+        0.14,
+        0.12,
+        0.14
+      ]
+    },
+    {
+      "bone": "neck",
+      "kind": "cyl",
+      "loc": [
+        0,
+        0.42,
+        0.62
+      ],
+      "scale": [
+        0.1,
+        0.13,
+        0.12
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "cube",
+      "loc": [
+        0,
+        0.58,
+        0.68
+      ],
+      "scale": [
+        0.1,
+        0.14,
+        0.1
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "cube",
+      "loc": [
+        0,
+        0.72,
+        0.65
+      ],
+      "scale": [
+        0.055,
+        0.09,
+        0.055
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "cube",
+      "loc": [
+        -0.06,
+        0.55,
+        0.78
+      ],
+      "scale": [
+        0.028,
+        0.03,
+        0.08
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "cube",
+      "loc": [
+        0.06,
+        0.55,
+        0.78
+      ],
+      "scale": [
+        0.028,
+        0.03,
+        0.08
+      ]
+    },
+    {
+      "bone": "tail",
+      "kind": "cyl",
+      "loc": [
+        0,
+        -0.38,
+        0.48
+      ],
+      "scale": [
+        0.055,
+        0.15,
+        0.055
+      ]
+    },
+    {
+      "bone": "tail",
+      "kind": "cyl",
+      "loc": [
+        0,
+        -0.55,
+        0.42
+      ],
+      "scale": [
+        0.04,
+        0.1,
+        0.04
+      ]
+    }
+  ],
+  "gaits": {
+    "walk": [
+      0.38,
+      -0.28
+    ],
+    "run": [
+      0.55,
+      -0.5
+    ]
+  },
+  "scale": 1,
+  "runAt": 3.8,
+  "eye": 0.65,
+  "tint": [
+    0.5,
+    0.52,
+    0.55
+  ]
+}
