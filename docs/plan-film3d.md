@@ -21,8 +21,9 @@ frame ranges (the baker warm-steps stateful animation through skipped frames) an
 `--audio` muxing offset to film time (exact-rational frame rate, audio apad-ed so a short
 narration never truncates video). Cycles fixes for the film3d sets: strongly emissive
 meshes (flames) no longer shadow their own point light, and world/sun energy floors now
-follow the set's own hemisphere level so dusk/night stay art-directed dark. Not translated
-to Cycles (yet): particles (sparks/smoke), fog, and the gradient sky + sun disc.
+follow the set's own hemisphere level so dusk/night stay art-directed dark. The sky gradient + sun disc and linear fog now translate to Cycles (world shader
+behind a Light Path split; depth-masked compositor fog). Still not translated: particles
+(sparks/smoke).
 
 **v2.2 — the animal cast.** `scripts/blender/make-animal.py` generalizes the quadruped
 generator into a per-species table (bones, parts, gait parameters): deer (long legs,

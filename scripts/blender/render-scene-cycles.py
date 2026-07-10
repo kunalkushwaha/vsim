@@ -97,22 +97,133 @@ def build_and_render(data, out_png, samples):
             o = bpy.data.objects.new("pt", d); o.location = l["position"]; scene.collection.objects.link(o)
 
     world = bpy.data.worlds.new("w"); scene.world = world; world.use_nodes = True
-    bg = world.node_tree.nodes["Background"]
+    wnt = world.node_tree
+    bg = wnt.nodes["Background"]
     hemi = next((l for l in data["lights"] if l["type"] == "hemisphere"), None)
     amb = next((l for l in data["lights"] if l["type"] == "ambient"), None)
-    # The world is both the visible background AND the ambient GI, so its strength must follow
-    # the scene's own hemisphere level (floor 0.2, ceiling 1.25) — flat floors of 1.2/0.6
-    # washed out the dark sets (dusk, night) that the presets deliberately art-direct dim,
-    # and the ceiling keeps bright sets (overcast snow) at the previously verified level.
+    # GI level: follow the scene's own hemisphere (floor 0.2, ceiling 1.25) — flat floors of
+    # 1.2/0.6 washed out the dark sets (dusk, night) that the presets art-direct dim, and the
+    # ceiling keeps bright sets (overcast snow) at the previously verified level.
     hemi_strength = min(1.25, max(0.2, hemi["intensity"] * 1.6)) if hemi else None
-    if data.get("sky"):
-        c = data["sky"]["top"]; strength = hemi_strength if hemi_strength is not None else 1.2
+    sky = data.get("sky")
+    if sky:
+        gi_color = sky["top"]  # what the old flat-world code used — GI tint stays untouched
+        gi_strength = hemi_strength if hemi_strength is not None else 1.2
     elif hemi:
-        c = hemi.get("skyColor") or hemi["color"]; strength = hemi_strength
+        gi_color = hemi.get("skyColor") or hemi["color"]; gi_strength = hemi_strength
     else:
-        c = data["background"]; strength = 1.0
-    if amb: strength += amb["intensity"]
-    bg.inputs[0].default_value = (c[0], c[1], c[2], 1); bg.inputs[1].default_value = strength
+        gi_color = data["background"]; gi_strength = 1.0
+    if amb: gi_strength += amb["intensity"]
+
+    if sky:
+        # The draft paints a vertical gradient + a sun disc/glow; the world-shader analog is a
+        # ramp over the view ray's Y plus an additive disc toward the sun. A Light Path split
+        # keeps this VISIBLE sky on camera rays only — GI rays still see the flat hemisphere
+        # color above, so all previously verified lighting levels are untouched.
+        texco = wnt.nodes.new("ShaderNodeTexCoord")
+        sep = wnt.nodes.new("ShaderNodeSeparateXYZ")
+        wnt.links.new(texco.outputs["Generated"], sep.inputs["Vector"])
+        ramp = wnt.nodes.new("ShaderNodeMath"); ramp.operation = 'MULTIPLY_ADD'
+        ramp.inputs[1].default_value = 1.8; ramp.inputs[2].default_value = 0.22  # horizon band
+        wnt.links.new(sep.outputs["Y"], ramp.inputs[0])
+        tclamp = wnt.nodes.new("ShaderNodeClamp")
+        wnt.links.new(ramp.outputs[0], tclamp.inputs["Value"])
+        grad = wnt.nodes.new("ShaderNodeMixRGB"); grad.blend_type = 'MIX'
+        bot, top = sky["bottom"], sky["top"]
+        grad.inputs[1].default_value = (bot[0], bot[1], bot[2], 1)
+        grad.inputs[2].default_value = (top[0], top[1], top[2], 1)
+        wnt.links.new(tclamp.outputs[0], grad.inputs[0])
+        visible = grad
+
+        sun_l = next((l for l in data["lights"] if l["type"] == "directional"), None)
+        if sky.get("sun") and sun_l:
+            sd = -mathutils.Vector(sun_l["direction"]).normalized()  # toward the sun
+            dot = wnt.nodes.new("ShaderNodeVectorMath"); dot.operation = 'DOT_PRODUCT'
+            dot.inputs[1].default_value = sd
+            wnt.links.new(texco.outputs["Generated"], dot.inputs[0])
+            # Disc: the draft's sun.size/glow are fractions of image height, so the angular
+            # radius is size × the camera's actual vertical FOV (baked per frame).
+            fov = data["camera"]["fovY"]
+            size = sky["sun"].get("size") or 0.04
+            glow = sky["sun"].get("glow") or 0.3
+            disc = wnt.nodes.new("ShaderNodeMapRange"); disc.interpolation_type = 'SMOOTHSTEP'; disc.clamp = True
+            disc.inputs["From Min"].default_value = math.cos(size * fov * 1.6)
+            disc.inputs["From Max"].default_value = math.cos(size * fov)
+            wnt.links.new(dot.outputs["Value"], disc.inputs["Value"])
+            halo = wnt.nodes.new("ShaderNodeMath"); halo.operation = 'POWER'
+            halo.inputs[1].default_value = max(4.0, 10.0 / max(glow, 0.05))
+            dotpos = wnt.nodes.new("ShaderNodeMath"); dotpos.operation = 'MAXIMUM'; dotpos.inputs[1].default_value = 0.0
+            wnt.links.new(dot.outputs["Value"], dotpos.inputs[0])
+            wnt.links.new(dotpos.outputs[0], halo.inputs[0])
+            sun_amt = wnt.nodes.new("ShaderNodeMath"); sun_amt.operation = 'MULTIPLY_ADD'
+            sun_amt.inputs[1].default_value = 3.0  # disc brightness over the gradient
+            wnt.links.new(disc.outputs["Result"], sun_amt.inputs[0])
+            halo_amt = wnt.nodes.new("ShaderNodeMath"); halo_amt.operation = 'MULTIPLY'
+            halo_amt.inputs[1].default_value = 0.5 * glow / 0.4
+            wnt.links.new(halo.outputs[0], halo_amt.inputs[0])
+            wnt.links.new(halo_amt.outputs[0], sun_amt.inputs[2])
+            sc = sky["sun"].get("color") or sun_l["color"]
+            suncol = wnt.nodes.new("ShaderNodeMixRGB"); suncol.blend_type = 'MULTIPLY'; suncol.inputs[0].default_value = 1.0
+            suncol.inputs[2].default_value = (sc[0], sc[1], sc[2], 1)
+            sunfac = wnt.nodes.new("ShaderNodeCombineXYZ")
+            for i in range(3): wnt.links.new(sun_amt.outputs[0], sunfac.inputs[i])
+            wnt.links.new(sunfac.outputs["Vector"], suncol.inputs[1])
+            add = wnt.nodes.new("ShaderNodeMixRGB"); add.blend_type = 'ADD'; add.inputs[0].default_value = 1.0
+            wnt.links.new(grad.outputs[0], add.inputs[1])
+            wnt.links.new(suncol.outputs[0], add.inputs[2])
+            visible = add
+
+        gi = wnt.nodes.new("ShaderNodeMixRGB"); gi.blend_type = 'MULTIPLY'; gi.inputs[0].default_value = 1.0
+        gi.inputs[1].default_value = (gi_color[0], gi_color[1], gi_color[2], 1)
+        gi.inputs[2].default_value = (gi_strength, gi_strength, gi_strength, 1)
+        lp = wnt.nodes.new("ShaderNodeLightPath")
+        pick = wnt.nodes.new("ShaderNodeMixRGB"); pick.blend_type = 'MIX'
+        wnt.links.new(lp.outputs["Is Camera Ray"], pick.inputs[0])
+        wnt.links.new(gi.outputs[0], pick.inputs[1])
+        wnt.links.new(visible.outputs[0], pick.inputs[2])
+        wnt.links.new(pick.outputs[0], bg.inputs[0])
+        bg.inputs[1].default_value = 1.0
+    else:
+        bg.inputs[0].default_value = (gi_color[0], gi_color[1], gi_color[2], 1)
+        bg.inputs[1].default_value = gi_strength
+
+    # Linear distance fog, composited exactly like the draft: k = clamp((depth-near)/(far-near))
+    # on GEOMETRY only (environment rays report a huge depth and are masked out — the sky is
+    # already the hazy gradient and must keep its sun disc).
+    fog = data.get("fog")
+    if fog:
+        scene.view_layers[0].use_pass_z = True
+        # Blender ≥5 hosts the compositor in a node GROUP built from unified shader-node
+        # types; older versions use a scene-level tree with Compositor* node types.
+        new_comp = hasattr(scene, "compositing_node_group")
+        if new_comp:
+            cnt = bpy.data.node_groups.new("fog_comp", "CompositorNodeTree")
+            scene.compositing_node_group = cnt
+            cnt.interface.new_socket("Image", in_out='OUTPUT', socket_type='NodeSocketColor')
+            comp = cnt.nodes.new("NodeGroupOutput")
+        else:
+            scene.use_nodes = True
+            cnt = scene.node_tree; cnt.nodes.clear()
+            comp = cnt.nodes.new("CompositorNodeComposite")
+        t_map = "ShaderNodeMapRange" if new_comp else "CompositorNodeMapRange"
+        t_math = "ShaderNodeMath" if new_comp else "CompositorNodeMath"
+        t_mix = "ShaderNodeMixRGB" if new_comp else "CompositorNodeMixRGB"
+        rl = cnt.nodes.new("CompositorNodeRLayers")
+        k = cnt.nodes.new(t_map)
+        if new_comp: k.clamp = True
+        else: k.use_clamp = True
+        k.inputs["From Min"].default_value = fog["near"]; k.inputs["From Max"].default_value = fog["far"]
+        k.inputs["To Min"].default_value = 0.0; k.inputs["To Max"].default_value = 1.0
+        cnt.links.new(rl.outputs["Depth"], k.inputs["Value"])
+        geom = cnt.nodes.new(t_math); geom.operation = 'LESS_THAN'; geom.inputs[1].default_value = 1e9
+        cnt.links.new(rl.outputs["Depth"], geom.inputs[0])
+        fac = cnt.nodes.new(t_math); fac.operation = 'MULTIPLY'
+        cnt.links.new(k.outputs[0], fac.inputs[0]); cnt.links.new(geom.outputs[0], fac.inputs[1])
+        fmix = cnt.nodes.new(t_mix); fmix.blend_type = 'MIX'
+        fc = fog["color"]; fmix.inputs[2].default_value = (fc[0], fc[1], fc[2], 1)
+        cnt.links.new(rl.outputs["Image"], fmix.inputs[1])
+        cnt.links.new(fac.outputs[0], fmix.inputs[0])
+        cnt.links.new(fmix.outputs[0], comp.inputs[0])
 
     scene.view_settings.view_transform = 'Standard'
     scene.render.engine = 'CYCLES'; scene.cycles.device = 'CPU'; scene.cycles.samples = samples
