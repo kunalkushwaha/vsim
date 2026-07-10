@@ -169,7 +169,9 @@ pnpm film:gen "how a CDN makes websites fast"   # → screenplay + out/<slug>.mp
 ```
 
 **Direct 3D films from a story** — `vsim film -p "<story>" --template 3d` asks for a
-**Film3DDoc** instead: set preset, props, actors from the character library, beats of
+**Film3DDoc** instead: set preset, props, a cast from the character library (fox, dog,
+deer, bear, rabbit, a suited human — the animals are vsim's own MIT assets, minted by
+`scripts/blender/make-animal.py`), beats of
 `move`/`play`/`face` actions, and a shot list (wide/close/follow/orbit cuts). The
 `@vsim/film3d` compiler lowers it to a plain scene document — gait clips crossfade by
 travel speed, actors turn into their headings, cameras track head-height aim nodes — and
@@ -179,6 +181,16 @@ full camera coverage, so the model can't hand back a film that doesn't run.
 command; the hand-written [`films/fox-day.film3d.json`](films/fox-day.film3d.json) shows
 the whole vocabulary in 50 lines (`pnpm film3d:fox` renders it — `vsim render` accepts
 `*.film3d.json` directly).
+
+3D films are **voiced and self-reviewed** (v2): beats can carry a `narration` line, spoken
+by the same deterministic TTS pipeline that voices the 2D films (espeak-ng offline, or
+ElevenLabs) and muxed into the MP4. And before the final render, the director **watches
+the dailies**: `vsim film --template 3d` renders one still per camera shot, shows them to
+the model, and lets it revise its own screenplay — re-aim cameras, restage actors — with
+every revision re-validated (`--review 0` skips the loop, `--review 2` reviews twice).
+[`films/dusk-meeting.film3d.json`](films/dusk-meeting.film3d.json) is a fully AI-made
+example: written, reviewed (it re-aimed two shots after seeing its own dailies), and
+narrated from one prompt.
 
 ## vsim Studio — the visual editor
 

@@ -3,6 +3,9 @@ import { listCharacters } from "@vsim/assets";
 import { SceneRuntime } from "@vsim/core";
 import { parseFilm3D, CHARACTERS, CHARACTER_IDS } from "./schema.js";
 import { compileFilm3D } from "./compile.js";
+import { narrationScript, DEFAULT_ELEVENLABS_VOICE } from "./narration.js";
+import { pickReviewStills, parseReviewReply } from "./review.js";
+import { isFilm3D, film3dToScene } from "./load.js";
 
 /** A minimal valid film: a fox walks across a meadow, then surveys. */
 const FILM = {
@@ -166,5 +169,96 @@ describe("compileFilm3D", () => {
     expect((sceneDoc as any).particles.map((p: any) => p.id)).toEqual(
       expect.arrayContaining(["fire__sparks", "fire__smoke"]),
     );
+  });
+});
+
+describe("narrationScript", () => {
+  it("returns null for a film with no narration", () => {
+    const { doc } = parseFilm3D(FILM);
+    expect(narrationScript(doc!)).toBeNull();
+  });
+
+  it("places narrated beats' lines just after each beat start, at the film's fps", () => {
+    const { doc } = parseFilm3D({
+      ...FILM,
+      fps: 24,
+      beats: [
+        { ...FILM.beats[0], narration: "A fox crosses the clearing." },
+        { ...FILM.beats[1] }, // silent beat — no line
+      ],
+    });
+    const spec = narrationScript(doc!)!;
+    expect(spec.fps).toBe(24);
+    expect(spec.engine).toBe("espeak");
+    expect(spec.lines).toEqual([{ at: 0.35, text: "A fox crosses the clearing." }]);
+  });
+});
+
+describe("review helpers", () => {
+  it("picks one still per camera segment, at its midpoint", () => {
+    const { doc } = parseFilm3D(FILM);
+    const stills = pickReviewStills(doc!);
+    expect(stills.map((s) => s.sec)).toEqual([3, 8]);
+    expect(stills[0]!.label).toMatch(/follow shot at 3.0s, target fox/);
+  });
+
+  it("falls back to beat midpoints when no camera is authored, capped at 5", () => {
+    const beats = Array.from({ length: 9 }, (_, i) => ({ id: `b${i}`, start: i * 2, end: (i + 1) * 2 }));
+    const { doc } = parseFilm3D({ ...FILM, beats, camera: [] });
+    const stills = pickReviewStills(doc!);
+    expect(stills.length).toBe(5);
+    expect(stills[0]!.sec).toBe(1); // first beat kept
+    expect(stills[4]!.sec).toBe(17); // last beat kept
+  });
+
+  it("reads KEEP verdicts, with or without surrounding prose", () => {
+    expect(parseReviewReply("KEEP")).toEqual({ keep: true });
+    expect(parseReviewReply("  keep\n")).toEqual({ keep: true });
+    expect(parseReviewReply("The framing holds up — KEEP.")).toEqual({ keep: true });
+  });
+
+  it("reads a revised document, tolerating code fences", () => {
+    const reply = "```json\n" + JSON.stringify(FILM) + "\n```";
+    const res = parseReviewReply(reply);
+    expect(res.keep).toBe(false);
+    expect(parseFilm3D((res as { candidate: unknown }).candidate).doc).toBeDefined();
+  });
+});
+
+describe("isFilm3D (shared sniff)", () => {
+  it("recognizes the version tag", () => {
+    expect(isFilm3D({ version: "film3d-1" })).toBe(true);
+    expect(isFilm3D({ version: "0.1", meta: {} })).toBe(false);
+  });
+
+  it("recognizes a screenplay that omits the optional version field", () => {
+    const { version, ...versionless } = { ...FILM, version: undefined } as Record<string, unknown>;
+    expect(isFilm3D(versionless)).toBe(true);
+    expect(parseFilm3D(versionless).doc).toBeDefined(); // and it really is valid
+  });
+
+  it("does not claim plain scene documents or junk", () => {
+    expect(isFilm3D({ meta: { fps: 30 }, nodes: [], beats: [] })).toBe(false);
+    expect(isFilm3D(null)).toBe(false);
+    expect(isFilm3D("film3d")).toBe(false);
+  });
+});
+
+describe("film3dToScene", () => {
+  it("compiles raw film3d JSON and throws agent-readable errors on invalid input", async () => {
+    const sceneDoc = await film3dToScene(FILM);
+    expect(sceneDoc.meta.durationFrames).toBe(300);
+    await expect(film3dToScene({ ...FILM, actors: [] })).rejects.toThrow(/unknown actor/);
+  });
+});
+
+describe("narrationScript engines", () => {
+  it("defaults to espeak, switches to elevenlabs with a default voice on request", () => {
+    const { doc } = parseFilm3D({ ...FILM, beats: [{ ...FILM.beats[0], narration: "A fox." }, FILM.beats[1]] });
+    expect(narrationScript(doc!)!.engine).toBe("espeak");
+    const el = narrationScript(doc!, { engine: "elevenlabs" })!;
+    expect(el.engine).toBe("elevenlabs");
+    expect(el.elevenlabs!.voiceId).toBe(DEFAULT_ELEVENLABS_VOICE);
+    expect(narrationScript(doc!, { engine: "elevenlabs", voiceId: "abc" })!.elevenlabs!.voiceId).toBe("abc");
   });
 });

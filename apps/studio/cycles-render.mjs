@@ -37,8 +37,12 @@ async function resolveBlenderRunner(explicit) {
   throw new Error("Cycles rendering needs Blender: set VSIM_BLENDER, put `blender` on PATH, or `pip install bpy`.");
 }
 
-/** @param scenePath path to a scene-document .json OR a scene .ts module. opts: { output, samples, step, fps, blender } */
-export async function renderCycles(scenePath, { output, samples = 40, step = 1, fps, blender } = {}) {
+/**
+ * @param scenePath path to a scene-document .json, a *.film3d.json screenplay, OR a scene .ts module.
+ * opts: { output, samples, step, fps, blender, from, to, audio } — from/to select a frame range
+ * (an excerpt); audio muxes a WAV/MP3, offset by `from` so film-time narration stays in sync.
+ */
+export async function renderCycles(scenePath, { output, samples = 40, step = 1, fps, blender, from = 0, to, audio } = {}) {
   const runBlender = await resolveBlenderRunner(blender);
   const dir = await mkdtemp(join(tmpdir(), "vsim-cycles-"));
   const framesDir = join(dir, "frames"), pngDir = join(dir, "png");
@@ -46,7 +50,7 @@ export async function renderCycles(scenePath, { output, samples = 40, step = 1, 
   try {
     // 1) bake all frames (one tsx process reuses the runtime). A big `to` is clamped to the last
     //    frame by the baker — so .ts scenes (with inline textures that can't round-trip JSON) work too.
-    await run("pnpm", ["exec", "tsx", join(HERE, "cycles-bake.ts"), scenePath, framesDir, "0", "1000000000", String(step)], { cwd: ROOT });
+    await run("pnpm", ["exec", "tsx", join(HERE, "cycles-bake.ts"), scenePath, framesDir, String(from), String(to ?? 1000000000), String(step)], { cwd: ROOT });
     const man = JSON.parse(await readFile(join(framesDir, "manifest.json"), "utf8"));
     const srcFps = man.fps ?? 30;
     // 2) path-trace every frame in a single Blender session
@@ -56,20 +60,43 @@ export async function renderCycles(scenePath, { output, samples = 40, step = 1, 
     await runBlender(join(ROOT, "scripts/blender/render-scene-cycles.py"), [`manifest=${renderManifest}`, `samples=${samples}`]);
     // 2b) composite screen-space text overlays onto the path-traced PNGs (same compositor as draft)
     await run("pnpm", ["exec", "tsx", join(HERE, "cycles-overlay.ts"), framesDir, pngDir], { cwd: ROOT });
-    // 3) ffmpeg → MP4 (play at srcFps/step so the clip keeps real-time duration)
-    const outFps = fps ?? Math.max(1, Math.round(srcFps / step));
-    await run("ffmpeg", ["-y", "-framerate", String(outFps), "-i", join(pngDir, "f_%04d.png"),
-      "-c:v", "libx264", "-pix_fmt", "yuv420p", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", output]);
+    // 3) ffmpeg → MP4. The frame rate is the exact rational srcFps/step (integer rounding
+    //    would drift the clip's duration — and desync any audio). Audio is padded with
+    //    silence and the output cut at the VIDEO's length: narration shorter than the film
+    //    must never truncate rendered frames.
+    const rate = fps ? String(fps) : `${srcFps}/${step}`;
+    const durSecs = fps ? items.length / fps : (items.length * step) / srcFps;
+    await run("ffmpeg", ["-y", "-framerate", rate, "-i", join(pngDir, "f_%04d.png"),
+      ...(audio ? ["-ss", String(from / srcFps), "-i", audio] : []),
+      "-c:v", "libx264", "-pix_fmt", "yuv420p", "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+      ...(audio ? ["-af", "apad", "-t", String(durSecs), "-c:a", "aac", "-b:a", "192k"] : []),
+      output]);
     return output;
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
 }
 
-// CLI: node apps/studio/cycles-render.mjs <doc.json> <out.mp4> [samples] [step]
+// CLI: node apps/studio/cycles-render.mjs <doc.json|film.film3d.json> <out.mp4>
+//        [samples] [step] [--from N] [--to N] [--audio narration.wav]
 if (process.argv[1] && process.argv[1].endsWith("cycles-render.mjs")) {
-  const [doc, out, samples, step] = process.argv.slice(2);
-  renderCycles(doc, { output: out, samples: Number(samples ?? 40), step: Number(step ?? 1) })
+  const pos = [];
+  const flags = {};
+  for (let i = 2; i < process.argv.length; i++) {
+    const t = process.argv[i];
+    if (t.startsWith("--")) flags[t.slice(2)] = process.argv[++i];
+    else pos.push(t);
+  }
+  const [doc, out, samples, step] = pos;
+  const num = (v) => (v === undefined ? undefined : Number(v)); // undefined → signature default
+  renderCycles(doc, {
+    output: out,
+    samples: num(flags.samples ?? samples),
+    step: num(flags.step ?? step),
+    from: num(flags.from),
+    to: num(flags.to),
+    audio: flags.audio,
+  })
     .then((p) => console.log("rendered", p))
     .catch((e) => { console.error(e); process.exit(1); });
 }

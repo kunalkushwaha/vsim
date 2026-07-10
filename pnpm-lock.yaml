@@ -48,6 +48,9 @@ importers:
       '@vsim/engine-three':
         specifier: workspace:*
         version: link:../../packages/engine-three
+      '@vsim/film3d':
+        specifier: workspace:*
+        version: link:../../packages/film3d
       '@vsim/player':
         specifier: workspace:*
         version: link:../../packages/player

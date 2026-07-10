@@ -4,6 +4,7 @@
 // authors the document; the compiler and renderer never see the model.
 import { spawn } from "node:child_process";
 import { CHARACTERS, CHARACTER_IDS, parseFilm3D, type Film3DDoc } from "./schema.js";
+import { extractJson, parseReviewReply, type ReviewStill } from "./review.js";
 
 const CHARACTER_NOTES = CHARACTER_IDS.map((id) => {
   const c = CHARACTERS[id];
@@ -28,6 +29,7 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
   ],
   "beats": [                                                 // contiguous: each start == previous end; total ≤45s
     { "id", "start", "end", "caption": string ≤110 (optional, one sentence of story),
+      "narration": string ≤200 (optional, a voice-over line spoken at the beat's start),
       "actions": [
         { "do": "move", "actor", "to": [x, z], "at": secs-into-beat, "dur": secs, "gait": "walk"|"run" (optional) },
         { "do": "play", "actor", "clip": a clip that character HAS, "at", "dur" },
@@ -50,6 +52,7 @@ Craft rules:
 - Cut the camera with the beats (a new shot per beat reads as film grammar). Vary the shots: a follow for travel, a close for the pause, a wide or orbit for the finale. Orbit sweeps of 40–90° feel cinematic; ±180°+ feels like a video game.
 - Compose in depth: put trees BEHIND the action (more negative z if the camera angle is near 0°), rocks near the path. 5–10 props is plenty.
 - Captions are narration, not stage directions: "Something in the grass makes it stop." not "The fox plays Survey."
+- Narrate the story: give most beats a "narration" line — one warm sentence a nature-documentary narrator would speak (≤20 words; it must fit inside the beat when read aloud). The caption may repeat it, shorten it, or be omitted.
 - dusk/night sets are dark: keep the action within ~6 units of a campfire (dusk) or of the origin so it stays lit and inside the fog.`;
 
 function runClaude(prompt: string, model?: string): Promise<string> {
@@ -79,19 +82,6 @@ function runClaude(prompt: string, model?: string): Promise<string> {
   });
 }
 
-/** Extract a JSON object from model text, tolerating ```json fences or surrounding prose. */
-function extractJson(text: string): unknown {
-  const stripped = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-  try {
-    return JSON.parse(stripped);
-  } catch {
-    const start = stripped.indexOf("{");
-    const end = stripped.lastIndexOf("}");
-    if (start >= 0 && end > start) return JSON.parse(stripped.slice(start, end + 1));
-    throw new Error(`expected a JSON object, got: ${text.slice(0, 200)}`);
-  }
-}
-
 /**
  * Ask the AI for a Film3DDoc about `topic`. Invalid documents get ONE retry with the
  * validator's messages quoted back (the errors are written to be agent-readable).
@@ -111,4 +101,45 @@ export async function generateFilm3D(
   res = parseFilm3D(extractJson(retry));
   if (res.doc) return { doc: res.doc, attempts: 2 };
   throw new Error(`the AI could not produce a valid Film3DDoc:\n  ${res.errors!.join("\n  ")}`);
+}
+
+const REVIEW_INSTRUCTIONS = `You directed the film below, and the dailies are in: each listed PNG is a rendered frame from one of your camera shots. Read every image file, look at it hard, then decide.
+
+Judge like a director watching dailies:
+- Is the subject actually IN frame, at a good size (not a speck, not clipped)?
+- Does the staging read — actor near the interesting props, depth in the composition, not an empty lawn?
+- Is the frame too dark or the horizon dead-centered?
+- Do the shots vary across the film?
+
+Reply with ONLY one of:
+- the single word KEEP if the film holds up as shot
+- the complete corrected Film3DDoc JSON (same schema and craft rules as before) with your fixes — move actors/props, re-aim or re-cut cameras, adjust distances/heights/angles. Keep the story; fix the filmmaking.`;
+
+/**
+ * The render–look–revise loop's "look": show the model its own rendered stills and let it
+ * revise the screenplay. Returns the (validated) revision, or the original with
+ * `revised: false` when the model answers KEEP — or when its revision fails validation
+ * twice (a bad revision never replaces a working film).
+ */
+export async function reviewFilm3D(
+  doc: Film3DDoc,
+  stills: (ReviewStill & { path: string })[],
+  opts: { model?: string } = {},
+): Promise<{ doc: Film3DDoc; revised: boolean }> {
+  const frames = stills.map((s) => `- ${s.label}: ${s.path}`).join("\n");
+  const prompt = `${INSTRUCTIONS}\n\n${REVIEW_INSTRUCTIONS}\n\nThe film:\n${JSON.stringify(doc, null, 2)}\n\nRendered frames (read each file):\n${frames}`;
+  const first = parseReviewReply(await runClaude(prompt, opts.model));
+  if (first.keep) return { doc, revised: false };
+  let res = parseFilm3D(first.candidate);
+  if (res.doc) return { doc: res.doc, revised: true };
+
+  const retry = parseReviewReply(
+    await runClaude(
+      `${prompt}\n\nYour revision was rejected by the validator:\n${res.errors!.map((e) => `- ${e}`).join("\n")}\n\nReply with the corrected JSON only (or KEEP to leave the film as-is).`,
+      opts.model,
+    ),
+  );
+  if (retry.keep) return { doc, revised: false };
+  res = parseFilm3D(retry.candidate);
+  return res.doc ? { doc: res.doc, revised: true } : { doc, revised: false };
 }

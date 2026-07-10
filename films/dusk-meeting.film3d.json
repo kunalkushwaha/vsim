@@ -1,0 +1,301 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "The Fox and the Firelight",
+  "set": "dusk",
+  "props": [
+    {
+      "kind": "campfire",
+      "id": "fire1",
+      "x": 0,
+      "z": 0
+    },
+    {
+      "kind": "tree",
+      "id": "tree1",
+      "x": -9,
+      "z": -7,
+      "height": 3,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree2",
+      "x": -6,
+      "z": -9,
+      "height": 4,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "tree3",
+      "x": -11,
+      "z": -4,
+      "height": 3.5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree4",
+      "x": -4,
+      "z": -8,
+      "height": 2.5,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "tree5",
+      "x": 6,
+      "z": -9,
+      "height": 4,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree6",
+      "x": 9,
+      "z": -6,
+      "height": 3,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "rock",
+      "id": "rock1",
+      "x": 3,
+      "z": 1,
+      "radius": 0.4
+    },
+    {
+      "kind": "rock",
+      "id": "rock2",
+      "x": -2,
+      "z": 1.5,
+      "radius": 0.3
+    }
+  ],
+  "actors": [
+    {
+      "id": "dog1",
+      "character": "dog",
+      "x": 1.8,
+      "z": 0.6,
+      "facing": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "fox1",
+      "character": "fox",
+      "x": -8,
+      "z": -6,
+      "facing": [
+        0,
+        0
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "beat1",
+      "start": 0,
+      "end": 8,
+      "caption": "The dog keeps watch over the fire, alone in the fading light.",
+      "narration": "Dusk settles over the meadow, and a lone dog keeps watch by the campfire.",
+      "actions": [
+        {
+          "do": "face",
+          "actor": "dog1",
+          "to": [
+            0,
+            0
+          ],
+          "at": 0.5,
+          "dur": 2
+        },
+        {
+          "do": "face",
+          "actor": "dog1",
+          "to": [
+            8,
+            3
+          ],
+          "at": 3.5,
+          "dur": 2
+        },
+        {
+          "do": "face",
+          "actor": "dog1",
+          "to": [
+            0,
+            0
+          ],
+          "at": 6.5,
+          "dur": 1.5
+        }
+      ]
+    },
+    {
+      "id": "beat2",
+      "start": 8,
+      "end": 16,
+      "caption": "A sound in the dark makes it rise, ears pricked.",
+      "narration": "Then, a sound beyond the firelight — the dog's ears prick up.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            2,
+            0.5
+          ],
+          "at": 0,
+          "dur": 1.5,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "dog1",
+          "to": [
+            -8,
+            -6
+          ],
+          "at": 2,
+          "dur": 4.5
+        }
+      ]
+    },
+    {
+      "id": "beat3",
+      "start": 16,
+      "end": 27,
+      "caption": "A fox slips from the trees, drawn by the fire's warmth.",
+      "narration": "From the shadows, a fox steps into the firelight, cautious but curious.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "fox1",
+          "to": [
+            -3,
+            -3
+          ],
+          "at": 0,
+          "dur": 4,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "fox1",
+          "clip": "Survey",
+          "at": 4,
+          "dur": 2
+        },
+        {
+          "do": "move",
+          "actor": "fox1",
+          "to": [
+            1.5,
+            -1
+          ],
+          "at": 6,
+          "dur": 4,
+          "gait": "walk"
+        }
+      ]
+    },
+    {
+      "id": "beat4",
+      "start": 27,
+      "end": 36,
+      "caption": "Two strangers share the fire's glow through the night.",
+      "narration": "By the fire's glow, two strangers share the warmth of the night.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "fox1",
+          "to": [
+            0.8,
+            -0.3
+          ],
+          "at": 0,
+          "dur": 3,
+          "gait": "walk"
+        },
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            1.5,
+            0.3
+          ],
+          "at": 0,
+          "dur": 2,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "dog1",
+          "to": [
+            0.8,
+            -0.3
+          ],
+          "at": 2,
+          "dur": 3
+        },
+        {
+          "do": "play",
+          "actor": "fox1",
+          "clip": "Survey",
+          "at": 3,
+          "dur": 3
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 8,
+      "shot": "close",
+      "target": "dog1",
+      "distance": 3,
+      "height": 1.2,
+      "angle": 0,
+      "sweep": 90
+    },
+    {
+      "at": 8,
+      "dur": 8,
+      "shot": "wide",
+      "target": "dog1",
+      "distance": 5,
+      "height": 2,
+      "angle": 15,
+      "sweep": 90
+    },
+    {
+      "at": 16,
+      "dur": 11,
+      "shot": "follow",
+      "target": "fox1",
+      "distance": 4.5,
+      "height": 1.6,
+      "angle": 160,
+      "sweep": 90
+    },
+    {
+      "at": 27,
+      "dur": 9,
+      "shot": "orbit",
+      "target": [
+        1,
+        0,
+        0
+      ],
+      "distance": 6,
+      "height": 2.5,
+      "angle": 0,
+      "sweep": 70
+    }
+  ]
+}

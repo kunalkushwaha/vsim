@@ -136,8 +136,10 @@ export async function renderStill(input: unknown, frame: number, output: string,
   await engine.init(doc);
   await loadAssets(doc, engine);
   await mkdir(dirname(output), { recursive: true });
-  // forward-step to the requested frame
-  for (let f = 0; f <= frame; f++) engine.renderFrame(runtime.computeFrameState(f));
+  // Forward-step the STATE to the requested frame (springs/IK/physics are stateful forward
+  // steps, so every frame must be computed) — but rasterize only the frame we keep.
+  for (let f = 0; f < frame; f++) runtime.computeFrameState(f);
+  engine.renderFrame(runtime.computeFrameState(frame));
   await writeFile(output, encodePNG(doc.meta.width, doc.meta.height, engine.readPixels()));
   engine.dispose();
 }

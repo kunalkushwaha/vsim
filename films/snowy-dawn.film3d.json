@@ -1,0 +1,347 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "Dawn Truce in the Snow",
+  "set": "snow",
+  "props": [
+    {
+      "kind": "tree",
+      "id": "t1",
+      "x": -8,
+      "z": -9,
+      "height": 4,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t2",
+      "x": -10,
+      "z": -4,
+      "height": 3.5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t3",
+      "x": -6,
+      "z": -11,
+      "height": 5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t4",
+      "x": 5,
+      "z": -10,
+      "height": 4.5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t5",
+      "x": 9,
+      "z": -6,
+      "height": 3,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t6",
+      "x": 8,
+      "z": 4,
+      "height": 3.5,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "t7",
+      "x": -9,
+      "z": 3,
+      "height": 3,
+      "variant": "conifer"
+    },
+    {
+      "kind": "rock",
+      "id": "rk1",
+      "x": -1,
+      "z": -4,
+      "radius": 0.5
+    },
+    {
+      "kind": "rock",
+      "id": "rk2",
+      "x": 2,
+      "z": -2,
+      "radius": 0.3
+    },
+    {
+      "kind": "rock",
+      "id": "rk3",
+      "x": -4,
+      "z": 1,
+      "radius": 0.4
+    }
+  ],
+  "actors": [
+    {
+      "id": "d1",
+      "character": "deer",
+      "x": -2,
+      "z": -1,
+      "facing": [
+        1.5,
+        1
+      ]
+    },
+    {
+      "id": "r1",
+      "character": "rabbit",
+      "x": 1.5,
+      "z": 1,
+      "facing": [
+        -2,
+        -1
+      ]
+    },
+    {
+      "id": "b1",
+      "character": "bear",
+      "x": -7,
+      "z": -8,
+      "facing": [
+        0,
+        0
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "b1",
+      "start": 0,
+      "end": 8,
+      "caption": "Dawn light spills over the snow as the clearing wakes.",
+      "narration": "At first light, deer and rabbit share the frosted meadow, unaware of what waits in the trees.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "d1",
+          "clip": "idle",
+          "at": 0,
+          "dur": 8
+        },
+        {
+          "do": "play",
+          "actor": "r1",
+          "clip": "idle",
+          "at": 0,
+          "dur": 8
+        }
+      ]
+    },
+    {
+      "id": "b2",
+      "start": 8,
+      "end": 16,
+      "caption": "They drift closer together, nibbling at frost-covered grass.",
+      "narration": "The two graze on, moving little by little across the quiet snow.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "r1",
+          "to": [
+            0.5,
+            -0.5
+          ],
+          "at": 0,
+          "dur": 3,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "r1",
+          "clip": "idle",
+          "at": 3,
+          "dur": 5
+        },
+        {
+          "do": "move",
+          "actor": "d1",
+          "to": [
+            -1,
+            -2
+          ],
+          "at": 1,
+          "dur": 3,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "d1",
+          "clip": "idle",
+          "at": 4,
+          "dur": 4
+        }
+      ]
+    },
+    {
+      "id": "b3",
+      "start": 16,
+      "end": 25,
+      "caption": "A shape shifts among the pines — the bear has woken too.",
+      "narration": "A bear ambles out from the treeline, drawn by the same quiet morning.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "b1",
+          "to": [
+            -3,
+            -4
+          ],
+          "at": 0,
+          "dur": 5,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "d1",
+          "to": [
+            -3,
+            -4
+          ],
+          "at": 5,
+          "dur": 1
+        },
+        {
+          "do": "face",
+          "actor": "r1",
+          "to": [
+            -3,
+            -4
+          ],
+          "at": 5,
+          "dur": 1
+        },
+        {
+          "do": "play",
+          "actor": "b1",
+          "clip": "idle",
+          "at": 5,
+          "dur": 3
+        }
+      ]
+    },
+    {
+      "id": "b4",
+      "start": 25,
+      "end": 34,
+      "caption": "But the bear only wants the same patch of snow-lit grass.",
+      "narration": "No danger comes — only three creatures, sharing the same cold dawn.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "b1",
+          "to": [
+            -2,
+            -3
+          ],
+          "at": 0,
+          "dur": 3,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "b1",
+          "clip": "idle",
+          "at": 3,
+          "dur": 6
+        },
+        {
+          "do": "move",
+          "actor": "d1",
+          "to": [
+            -3,
+            -1
+          ],
+          "at": 0,
+          "dur": 3,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "d1",
+          "clip": "idle",
+          "at": 3,
+          "dur": 6
+        },
+        {
+          "do": "move",
+          "actor": "r1",
+          "to": [
+            -1,
+            -2
+          ],
+          "at": 0,
+          "dur": 3,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "r1",
+          "clip": "idle",
+          "at": 3,
+          "dur": 6
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 8,
+      "shot": "wide",
+      "target": [
+        -0.5,
+        0.5,
+        -2
+      ],
+      "distance": 10,
+      "height": 4.5,
+      "angle": 20,
+      "sweep": 90
+    },
+    {
+      "at": 8,
+      "dur": 8,
+      "shot": "close",
+      "target": "r1",
+      "distance": 2.8,
+      "height": 0.9,
+      "angle": -35,
+      "sweep": 50
+    },
+    {
+      "at": 16,
+      "dur": 9,
+      "shot": "follow",
+      "target": "b1",
+      "distance": 7,
+      "height": 2.2,
+      "angle": 100,
+      "sweep": 90
+    },
+    {
+      "at": 25,
+      "dur": 9,
+      "shot": "orbit",
+      "target": [
+        -2,
+        0.5,
+        -2
+      ],
+      "distance": 7.5,
+      "height": 3.2,
+      "angle": 45,
+      "sweep": 70
+    }
+  ]
+}

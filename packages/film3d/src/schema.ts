@@ -51,6 +51,39 @@ export const CHARACTERS = {
     runAt: 2.4,
     eye: 1.45,
   },
+  deer: {
+    clips: ["walk", "run", "idle"],
+    idle: { clip: "idle" },
+    walk: { clip: "walk" },
+    run: { clip: "run" },
+    faces: [0, -1] as const,
+    scale: 1,
+    runAt: 2.8,
+    eye: 1.28,
+    tint: [0.55, 0.42, 0.28] as const,
+  },
+  bear: {
+    clips: ["walk", "run", "idle"],
+    idle: { clip: "idle" },
+    walk: { clip: "walk" },
+    run: { clip: "run" },
+    faces: [0, -1] as const,
+    scale: 1.1,
+    runAt: 2.0,
+    eye: 0.88,
+    tint: [0.33, 0.24, 0.18] as const,
+  },
+  rabbit: {
+    clips: ["walk", "run", "idle"],
+    idle: { clip: "idle" },
+    walk: { clip: "walk" },
+    run: { clip: "run" },
+    faces: [0, -1] as const,
+    scale: 0.9,
+    runAt: 1.5,
+    eye: 0.34,
+    tint: [0.7, 0.65, 0.58] as const,
+  },
 } as const;
 
 export type CharacterId = keyof typeof CHARACTERS;
@@ -109,6 +142,8 @@ export const Film3DBeatSchema = z.object({
   start: z.number().min(0),
   end: z.number().positive(),
   caption: z.string().max(110).optional(),
+  /** Spoken voice-over line, read by the narrator at the beat's start (captions stay on screen). */
+  narration: z.string().max(200).optional(),
   actions: z.array(Film3DActionSchema).default([]),
 });
 
