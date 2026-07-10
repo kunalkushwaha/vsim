@@ -131,10 +131,14 @@ Reply with ONLY one of:
 export async function reviewFilm3D(
   doc: Film3DDoc,
   stills: (ReviewStill & { path: string })[],
-  opts: { model?: string } = {},
+  opts: { model?: string; previous?: (ReviewStill & { path: string })[] } = {},
 ): Promise<{ doc: Film3DDoc; revised: boolean }> {
   const frames = stills.map((s) => `- ${s.label}: ${s.path}`).join("\n");
-  const prompt = `${INSTRUCTIONS}\n\n${REVIEW_INSTRUCTIONS}\n\nThe film:\n${JSON.stringify(doc, null, 2)}\n\nRendered frames (read each file):\n${frames}`;
+  // Later rounds see the previous dailies too, so the director can check its fix LANDED.
+  const before = opts.previous?.length
+    ? `\n\nThis is a later review round: the film above already reflects your last revision. The PREVIOUS round's frames, for comparison (did your changes land?):\n${opts.previous.map((s) => `- ${s.label}: ${s.path}`).join("\n")}`
+    : "";
+  const prompt = `${INSTRUCTIONS}\n\n${REVIEW_INSTRUCTIONS}\n\nThe film:\n${JSON.stringify(doc, null, 2)}\n\nRendered frames (read each file):\n${frames}${before}`;
   const first = parseReviewReply(await runClaude(prompt, opts.model));
   if (first.keep) return { doc, revised: false };
   let res = parseFilm3D(first.candidate);
