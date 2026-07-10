@@ -1,0 +1,347 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "Watchfire",
+  "set": "dusk",
+  "props": [
+    {
+      "kind": "campfire",
+      "id": "fire1",
+      "x": 0,
+      "z": 0
+    },
+    {
+      "kind": "tree",
+      "id": "t1",
+      "x": -6,
+      "z": -7,
+      "height": 4,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t2",
+      "x": -4,
+      "z": -8,
+      "height": 5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t3",
+      "x": 5,
+      "z": -7,
+      "height": 4,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "t4",
+      "x": 7,
+      "z": -6,
+      "height": 3,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "rock",
+      "id": "r1",
+      "x": -3,
+      "z": -3,
+      "radius": 0.6
+    },
+    {
+      "kind": "rock",
+      "id": "r2",
+      "x": 3,
+      "z": -2,
+      "radius": 0.5
+    },
+    {
+      "kind": "log",
+      "id": "log1",
+      "x": -2,
+      "z": 2,
+      "length": 2,
+      "angle": 30
+    },
+    {
+      "kind": "bush",
+      "id": "b1",
+      "x": 2,
+      "z": 3,
+      "radius": 0.8
+    },
+    {
+      "kind": "flowers",
+      "id": "f1",
+      "x": -1,
+      "z": 3,
+      "radius": 1
+    },
+    {
+      "kind": "stump",
+      "id": "s1",
+      "x": 2.5,
+      "z": 1,
+      "radius": 0.3
+    }
+  ],
+  "actors": [
+    {
+      "id": "k1",
+      "character": "knight",
+      "x": -4,
+      "z": -2,
+      "facing": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "m1",
+      "character": "mage",
+      "x": 4,
+      "z": -2,
+      "facing": [
+        0,
+        0
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "arrival",
+      "start": 0,
+      "end": 8,
+      "caption": "Two travelers reach the fire as the last light fades.",
+      "narration": "As dusk settles, a knight and a mage make camp beneath the darkening sky.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "k1",
+          "to": [
+            -1.5,
+            -0.5
+          ],
+          "at": 0,
+          "dur": 3,
+          "gait": "walk"
+        },
+        {
+          "do": "move",
+          "actor": "m1",
+          "to": [
+            1.5,
+            -0.5
+          ],
+          "at": 0,
+          "dur": 3,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "k1",
+          "to": [
+            0,
+            0
+          ],
+          "at": 3,
+          "dur": 1
+        },
+        {
+          "do": "face",
+          "actor": "m1",
+          "to": [
+            0,
+            0
+          ],
+          "at": 3,
+          "dur": 1
+        },
+        {
+          "do": "play",
+          "actor": "k1",
+          "clip": "Idle",
+          "at": 4,
+          "dur": 4
+        },
+        {
+          "do": "play",
+          "actor": "m1",
+          "clip": "Idle",
+          "at": 4,
+          "dur": 4
+        }
+      ]
+    },
+    {
+      "id": "conjure",
+      "start": 8,
+      "end": 17,
+      "caption": "A soft light blooms from the mage's hands, pushing back the dark.",
+      "narration": "The mage calls forth a gentle light, while the knight's eyes stay fixed on the shadows.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "m1",
+          "clip": "Spellcasting",
+          "at": 0,
+          "dur": 6
+        },
+        {
+          "do": "play",
+          "actor": "k1",
+          "clip": "Interact",
+          "at": 0,
+          "dur": 4
+        },
+        {
+          "do": "face",
+          "actor": "k1",
+          "to": [
+            4,
+            1
+          ],
+          "at": 4,
+          "dur": 1
+        },
+        {
+          "do": "play",
+          "actor": "k1",
+          "clip": "Idle",
+          "at": 5,
+          "dur": 4
+        }
+      ]
+    },
+    {
+      "id": "watch",
+      "start": 17,
+      "end": 28,
+      "caption": "The knight paces the camp's edge, alert to every rustle in the trees.",
+      "narration": "Round the firelight the knight paces a slow patrol, guarding the mage's rest.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "k1",
+          "to": [
+            -2.5,
+            -3.4
+          ],
+          "at": 0,
+          "dur": 4,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "k1",
+          "to": [
+            -6,
+            -7
+          ],
+          "at": 4,
+          "dur": 1
+        },
+        {
+          "do": "play",
+          "actor": "k1",
+          "clip": "Idle",
+          "at": 5,
+          "dur": 3
+        },
+        {
+          "do": "move",
+          "actor": "k1",
+          "to": [
+            -1,
+            -0.5
+          ],
+          "at": 8,
+          "dur": 3,
+          "gait": "walk"
+        }
+      ]
+    },
+    {
+      "id": "rest",
+      "start": 28,
+      "end": 38,
+      "caption": "With watch done and light glowing, both rest beside the flames.",
+      "narration": "At last both settle by the fire, their small camp glowing warm against the night.",
+      "actions": [
+        {
+          "do": "face",
+          "actor": "k1",
+          "to": [
+            0,
+            0
+          ],
+          "at": 0,
+          "dur": 1
+        },
+        {
+          "do": "play",
+          "actor": "k1",
+          "clip": "Sit_Floor_Idle",
+          "at": 1,
+          "dur": 9
+        },
+        {
+          "do": "play",
+          "actor": "m1",
+          "clip": "Sit_Floor_Idle",
+          "at": 0,
+          "dur": 10
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 8,
+      "shot": "wide",
+      "target": [
+        0,
+        1,
+        0
+      ],
+      "distance": 12,
+      "angle": 15,
+      "sweep": 90
+    },
+    {
+      "at": 8,
+      "dur": 9,
+      "shot": "close",
+      "target": "m1",
+      "distance": 4,
+      "height": 1.6,
+      "angle": -35,
+      "sweep": 60
+    },
+    {
+      "at": 17,
+      "dur": 11,
+      "shot": "follow",
+      "target": "k1",
+      "distance": 4.5,
+      "height": 1.7,
+      "angle": 55,
+      "sweep": 70
+    },
+    {
+      "at": 28,
+      "dur": 10,
+      "shot": "orbit",
+      "target": [
+        0,
+        0.5,
+        0
+      ],
+      "distance": 6,
+      "angle": 0,
+      "sweep": 60
+    }
+  ]
+}
