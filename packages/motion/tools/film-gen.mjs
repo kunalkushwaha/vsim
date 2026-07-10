@@ -13,6 +13,7 @@ import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseFilmDoc, ACTION_KINDS } from "../src/filmdoc.mjs";
+import { buildFilm } from "../build-film.mjs";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 
@@ -122,12 +123,10 @@ export function writeFilm(doc, name) {
   return dir;
 }
 
-/** Record a written film folder to MP4 via the sibling recorder. */
+/** Record a written film folder to MP4 via the shared narration-aware builder (silent unless the
+ *  film opts into narration — e.g. a "voice" block on its filmdoc.json). */
 export async function recordFilm(dir, out) {
-  const rec = spawn("node", [join(HERE, "..", "record.mjs"), join(dir, "index.html"), resolve(out)], { stdio: "inherit" });
-  const code = await new Promise((r) => rec.on("exit", r));
-  if (code !== 0) throw new Error(`recorder exited ${code}`);
-  return resolve(out);
+  return buildFilm(dir, out);
 }
 
 async function main() {

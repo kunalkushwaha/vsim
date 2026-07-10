@@ -85,7 +85,13 @@ function writeWav(pcm, path) {
 }
 
 export async function narrate(scriptPath, outDir) {
-  const spec = JSON.parse(readFileSync(scriptPath, "utf8"));
+  return narrateSpec(JSON.parse(readFileSync(scriptPath, "utf8")), outDir);
+}
+
+/** Same pipeline as narrate(), but from an already-parsed spec — so a caller can build the spec
+ *  in memory (e.g. derive lines from a screenplay's captions) instead of reading a file.
+ *  @param {any} spec @param {string} outDir */
+export async function narrateSpec(spec, outDir) {
   const fps = spec.fps ?? 30;
   const engine = process.env.NARRATE_ENGINE ?? spec.engine ?? "espeak";
   mkdirSync(outDir, { recursive: true });
