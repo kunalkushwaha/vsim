@@ -13,6 +13,18 @@ import { z } from "zod";
  * file access), so this table is the contract — a test asserts it stays in sync with the
  * manifest.
  */
+/** KayKit Adventurers share one rig + animation library (CC0; see library CREDITS). */
+const ADVENTURER = {
+  clips: ["Idle", "Walking_A", "Running_A", "Cheer", "Interact", "PickUp", "Sit_Floor_Idle", "Lie_Down", "Spellcasting", "Jump_Full_Short"],
+  idle: { clip: "Idle" },
+  walk: { clip: "Walking_A" },
+  run: { clip: "Running_A" },
+  faces: [0, 1] as const,
+  scale: 1,
+  runAt: 2.4,
+  eye: 1.05,
+} as const;
+
 export const CHARACTERS = {
   fox: {
     clips: ["Walk", "Run", "Survey"],
@@ -84,6 +96,10 @@ export const CHARACTERS = {
     eye: 0.34,
     tint: [0.7, 0.65, 0.58] as const,
   },
+  knight: ADVENTURER,
+  barbarian: ADVENTURER,
+  mage: ADVENTURER,
+  rogue: ADVENTURER,
 } as const;
 
 export type CharacterId = keyof typeof CHARACTERS;
