@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, copyFile } from "node:fs/promises";
 import { resolve, extname, dirname, join, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseDocument, type PhysicsAdapter, type SceneDocument } from "@vsim/core";
@@ -272,10 +272,104 @@ async function runFilm(args: Args): Promise<void> {
   await gen.recordFilm(dir, output);
 }
 
+
+/**
+ * AI character designer: prompt → CreatureDoc (validated species table) → make-animal.py
+ * compiles a rigged GLB → a TURNTABLE review (the designer sees its own creature from three
+ * angles and may revise) → registration: library GLB + manifest entry + the generated
+ * EXTRA_CHARACTERS cast table. The committed creatures/<id>.creature.json regenerates the
+ * same GLB forever — the cast is self-expanding, but every step stays validated.
+ */
+async function runCreature(args: Args): Promise<void> {
+  if (!args.prompt) {
+    console.log('Usage: vsim creature --prompt "<species description>" [--review N]');
+    process.exit(1);
+  }
+  const { generateCreature, reviewCreature, creatureGeometry } = await import("@vsim/film3d");
+  const { scene } = await import("@vsim/authoring");
+  const { loadGltfRig } = await import("@vsim/assets");
+  const { spawn } = await import("node:child_process");
+
+  console.log(`✎ designing a creature for "${args.prompt}" …`);
+  let { doc, attempts } = await generateCreature(args.prompt, {});
+  console.log(`✓ CreatureDoc "${doc.name}" (${doc.id}) — attempt ${attempts}`);
+
+  const dir = resolve("out", "creature", doc.id);
+  await mkdir(dir, { recursive: true });
+  const glb = join(dir, `${doc.id}.glb`);
+  const compile = async () => {
+    const geo = join(dir, "geometry.json");
+    await writeFile(geo, JSON.stringify(creatureGeometry(doc)));
+    await new Promise<void>((res, rej) => {
+      const p = spawn("python3", [resolve("scripts/blender/make-animal.py"), "--", geo, glb], { stdio: ["ignore", "ignore", "pipe"] });
+      let err = "";
+      p.stderr.on("data", (d) => (err += d));
+      p.on("close", (c) => (c === 0 ? res() : rej(new Error(`make-animal failed: ${err.slice(-400)}`))));
+    });
+  };
+  const turntable = async (round: number) => {
+    const rig = await loadGltfRig(glb, 30);
+    const stills = [];
+    for (const angle of [30, 150, 270]) {
+      const a = (angle * Math.PI) / 180, d = 3.4;
+      const sdoc = scene({ fps: 30, duration: 30, width: 640, height: 360, background: [0.07, 0.075, 0.09] })
+        .sky([0.09, 0.1, 0.13], [0.05, 0.055, 0.07])
+        .material("floor", { color: [0.16, 0.165, 0.19], roughness: 0.9 })
+        .material("tint", { color: doc.tint, roughness: 0.6 })
+        .light({ type: "hemisphere", intensity: 0.5, skyColor: [0.5, 0.52, 0.6], groundColor: [0.12, 0.12, 0.14] })
+        .light({ type: "directional", intensity: 1.1, color: [1, 0.98, 0.94], direction: [-0.5, -0.8, -0.4] })
+        .mesh("ground", { geometry: { kind: "plane", size: [20, 20] }, material: "floor" })
+        .character("c", rig, { clip: "walk", loop: true, material: "tint", scale: [doc.scale, doc.scale, doc.scale] })
+        .camera({ position: [Math.sin(a) * d, doc.eye * 0.9 + 0.4, Math.cos(a) * d], lookAt: [0, doc.eye * 0.6, 0], fov: 40 })
+        .build();
+      const path = join(dir, `round-${round}-a${angle}.png`);
+      await renderStill(sdoc, 8, path, {});
+      stills.push({ label: `turntable ${angle}° (mid-walk)`, path });
+    }
+    return stills;
+  };
+
+  const rounds = args.review ?? 1;
+  for (let round = 1; round <= rounds; round++) {
+    await compile();
+    const stills = await turntable(round);
+    console.log(`✎ reviewing the turntable (round ${round}) …`);
+    const review = await reviewCreature(doc, stills, {});
+    if (!review.revised) { console.log("✓ the designer kept the creature"); break; }
+    doc = review.doc;
+    console.log(`✓ revised after review → "${doc.name}"`);
+    if (round === rounds) await compile();
+  }
+
+  // Register: committed doc + library GLB + manifest + the generated cast table.
+  await mkdir(resolve("creatures"), { recursive: true });
+  await writeFile(resolve("creatures", `${doc.id}.creature.json`), JSON.stringify(doc, null, 2));
+  await copyFile(glb, resolve("packages/assets/library", `${doc.id}.glb`));
+  const manPath = resolve("packages/assets/library/manifest.json");
+  const man = JSON.parse(await readFile(manPath, "utf8"));
+  man.characters = man.characters.filter((c: { id: string }) => c.id !== doc.id);
+  man.characters.push({
+    id: doc.id, name: `${doc.name} (AI-designed)`, file: `${doc.id}.glb`,
+    description: `${doc.description} AI-authored CreatureDoc (creatures/${doc.id}.creature.json) compiled by scripts/blender/make-animal.py — vsim's own MIT asset.`,
+    defaultClip: "idle", clips: ["walk", "run", "idle"], scale: 1, rotation: [0, 0, 0], faces: "-z",
+    credit: "AI-designed via `vsim creature`; generated by make-animal.py — vsim's own asset (MIT).",
+  });
+  await writeFile(manPath, JSON.stringify(man, null, 2) + "\n");
+  const extraPath = resolve("packages/film3d/src/characters.extra.ts");
+  let extra = await readFile(extraPath, "utf8");
+  if (!extra.includes(`  ${doc.id}: {`)) {
+    const entry = `  ${doc.id}: {\n    clips: ["walk", "run", "idle"],\n    idle: { clip: "idle" },\n    walk: { clip: "walk" },\n    run: { clip: "run" },\n    faces: [0, -1] as const,\n    scale: ${doc.scale},\n    runAt: ${doc.runAt},\n    eye: ${doc.eye},\n    tint: [${doc.tint.join(", ")}] as const,\n  },\n`;
+    extra = extra.replace("} as const;", entry + "} as const;");
+    await writeFile(extraPath, extra);
+  }
+  console.log(`✓ registered: library/${doc.id}.glb + manifest + cast table ("${doc.id}" is now castable)`);
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.cmd === "edit") return runEdit(args);
   if (args.cmd === "film") return runFilm(args);
+  if (args.cmd === "creature") return runCreature(args);
   if (args.cmd === "render" && args.file) return runRender(args);
   console.log(
     "Usage:\n" +

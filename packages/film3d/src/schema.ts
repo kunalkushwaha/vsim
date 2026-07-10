@@ -4,6 +4,7 @@
 // SceneDocument for the existing deterministic render pipeline. The model can suggest a
 // bad film; it cannot emit an invalid one, and it never touches geometry or keyframes.
 import { z } from "zod";
+import { EXTRA_CHARACTERS } from "./characters.extra.js";
 
 /**
  * The castable characters — a curated subset of `@vsim/assets`' bundled library, with the
@@ -100,6 +101,7 @@ export const CHARACTERS = {
   barbarian: ADVENTURER,
   mage: ADVENTURER,
   rogue: ADVENTURER,
+  ...EXTRA_CHARACTERS,
 } as const;
 
 export type CharacterId = keyof typeof CHARACTERS;

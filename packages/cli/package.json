@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@vsim/ai": "workspace:*",
+    "@vsim/assets": "workspace:*",
     "@vsim/authoring": "workspace:*",
     "@vsim/core": "workspace:*",
     "@vsim/engine-software": "workspace:*",

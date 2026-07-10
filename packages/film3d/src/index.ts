@@ -8,3 +8,5 @@ export { generateFilm3D, reviewFilm3D } from "./generate.js";
 export { narrationScript, type NarrationSpec } from "./narration.js";
 export { isFilm3D, film3dToScene } from "./load.js";
 export { pickReviewStills, parseReviewReply, type ReviewStill } from "./review.js";
+export { CreatureDocSchema, parseCreature, creatureGeometry, type CreatureDoc } from "./creature.js";
+export { generateCreature, reviewCreature } from "./generate.js";

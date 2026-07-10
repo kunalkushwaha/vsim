@@ -6,6 +6,7 @@ import { compileFilm3D } from "./compile.js";
 import { narrationScript, DEFAULT_ELEVENLABS_VOICE } from "./narration.js";
 import { pickReviewStills, parseReviewReply } from "./review.js";
 import { isFilm3D, film3dToScene } from "./load.js";
+import { parseCreature, creatureGeometry } from "./creature.js";
 
 /** A minimal valid film: a fox walks across a meadow, then surveys. */
 const FILM = {
@@ -309,5 +310,43 @@ describe("id namespace guard", () => {
   it('rejects ids containing "__" — reserved for generated child nodes', () => {
     const res = parseFilm3D({ ...FILM, props: [{ kind: "rock", id: "r1__shore0", x: 0, z: 0 }] });
     expect(res.errors!.join("\n")).toMatch(/reserved for generated nodes/);
+  });
+});
+
+describe("CreatureDoc", () => {
+  const WOLF = {
+    id: "testwolf", name: "Test Wolf", description: "A lean test canid.",
+    bones: [
+      { name: "hips", head: [0, -0.3, 0.6], tail: [0, 0, 0.62] },
+      { name: "spine", head: [0, 0, 0.62], tail: [0, 0.35, 0.62], parent: "hips" },
+      { name: "neck", head: [0, 0.35, 0.62], tail: [0, 0.5, 0.75], parent: "spine" },
+      { name: "head", head: [0, 0.5, 0.75], tail: [0, 0.68, 0.78], parent: "neck" },
+      { name: "tail", head: [0, -0.3, 0.58], tail: [0, -0.6, 0.5], parent: "hips" },
+    ],
+    legs: { front_y: 0.3, back_y: -0.25, sx: 0.1, top: 0.6, knee: 0.32, r_u: 0.045, r_l: 0.035 },
+    parts: [
+      { bone: "hips", kind: "cube", loc: [0, -0.15, 0.6], scale: [0.13, 0.18, 0.13] },
+      { bone: "spine", kind: "cube", loc: [0, 0.15, 0.62], scale: [0.14, 0.24, 0.13] },
+      { bone: "head", kind: "sphere", loc: [0, 0.58, 0.77], scale: [0.08, 0.1, 0.08] },
+      { bone: "tail", kind: "cyl", loc: [0, -0.45, 0.54], scale: [0.03, 0.03, 0.14] },
+    ],
+    gaits: { walk: [0.32, -0.26], run: [0.7, -0.6] },
+    runAt: 2.6, eye: 0.7, tint: [0.45, 0.45, 0.48],
+  };
+
+  it("accepts a valid creature and maps to the generator's table format", () => {
+    const res = parseCreature(WOLF);
+    expect(res.errors).toBeUndefined();
+    const geo = creatureGeometry(res.doc!) as { bones: unknown[][]; parts: unknown[][]; legs: object };
+    expect(geo.bones[0]).toEqual(["hips", [0, -0.3, 0.6], [0, 0, 0.62]]); // rootless = 3-tuple
+    expect(geo.bones[1]![3]).toBe("hips");
+    expect(geo.parts[0]).toEqual(["hips", "cube", [0, -0.15, 0.6], [0.13, 0.18, 0.13]]);
+  });
+
+  it("rejects missing torso bones, orphan bones, and bad legs with readable errors", () => {
+    expect(parseCreature({ ...WOLF, bones: WOLF.bones.slice(0, 4) }).errors!.join("\n")).toMatch(/must include "tail"/);
+    expect(parseCreature({ ...WOLF, bones: [...WOLF.bones.slice(0, 4), { name: "tail", head: [0, 0, 0.5], tail: [0, -0.3, 0.5] }] }).errors!.join("\n")).toMatch(/needs a parent/);
+    expect(parseCreature({ ...WOLF, legs: { ...WOLF.legs, knee: 0.7 } }).errors!.join("\n")).toMatch(/knee must be below/);
+    expect(parseCreature({ ...WOLF, parts: [{ bone: "wings", kind: "cube", loc: [0, 0, 0.5], scale: [0.1, 0.1, 0.1] }] }).errors!.join("\n")).toMatch(/unknown bone "wings"/);
   });
 });

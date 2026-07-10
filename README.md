@@ -120,8 +120,8 @@ pnpm showreel         # renders all 24 reel scenes in parallel → out/showreel.
   drive real locomotion), spring bones for secondary motion, and morph-target lip-sync.
 - **Physics**: deterministic Rapier rigid bodies, fixed-step, reproducible.
 - **Assets**: glTF/GLB load + export — including browser-safe rig parsing (`loadRigFromUrl`),
-  plus a bundled [character library](./packages/assets/library/CREDITS.md) (fox, humans,
-  clothing) loaded by name with `loadCharacter()`.
+  plus a bundled [character library](./packages/assets/library/CREDITS.md) — KayKit heroes,
+  generated animals, MakeHuman humans — loaded by name with `loadCharacter()`.
 - **Audio**: mux a track into the MP4 and drive properties from beat frames.
 - **Live preview**: a browser player that shares the exact runtime with the renderer,
   plus in-browser MP4 export via WebCodecs (`renderToSink`).
@@ -169,28 +169,40 @@ pnpm film:gen "how a CDN makes websites fast"   # → screenplay + out/<slug>.mp
 ```
 
 **Direct 3D films from a story** — `vsim film -p "<story>" --template 3d` asks for a
-**Film3DDoc** instead: set preset, props, a cast from the character library (fox, dog,
-deer, bear, rabbit, a suited human — the animals are vsim's own MIT assets, minted by
-`scripts/blender/make-animal.py`), beats of
-`move`/`play`/`face` actions, and a shot list (wide/close/follow/orbit cuts). The
-`@vsim/film3d` compiler lowers it to a plain scene document — gait clips crossfade by
-travel speed, actors turn into their headings, cameras track head-height aim nodes — and
-the 3D engine renders it. The schema validates per-character clips, contiguous beats, and
-full camera coverage, so the model can't hand back a film that doesn't run.
-[`films/snowy-park.film3d.json`](films/snowy-park.film3d.json) came out of exactly this
-command; the hand-written [`films/fox-day.film3d.json`](films/fox-day.film3d.json) shows
-the whole vocabulary in 50 lines (`pnpm film3d:fox` renders it — `vsim render` accepts
-`*.film3d.json` directly).
+**Film3DDoc** instead: a set preset, dressed props (trees, rocks, bushes, flowers, ponds,
+fallen logs, lanterns, a lit campfire), a cast, beats of `move`/`play`/`face` actions with
+a spoken `narration` line, and a shot list (wide/close/follow/orbit cuts). The
+`@vsim/film3d` compiler lowers it to a plain scene document and the engine renders it —
+the schema validates everything, so the model can't hand back a film that doesn't run.
 
-3D films are **voiced and self-reviewed** (v2): beats can carry a `narration` line, spoken
-by the same deterministic TTS pipeline that voices the 2D films (espeak-ng offline, or
-ElevenLabs) and muxed into the MP4. And before the final render, the director **watches
-the dailies**: `vsim film --template 3d` renders one still per camera shot, shows them to
-the model, and lets it revise its own screenplay — re-aim cameras, restage actors — with
-every revision re-validated (`--review 0` skips the loop, `--review 2` reviews twice).
-[`films/dusk-meeting.film3d.json`](films/dusk-meeting.film3d.json) is a fully AI-made
-example: written, reviewed (it re-aimed two shots after seeing its own dailies), and
-narrated from one prompt.
+<p align="center">
+  <img src="docs/media/watchfire.gif" width="640" alt="Watchfire: a knight keeps watch while a mage conjures light at a dusk campfire — an AI-written, self-reviewed, narrated 3D film" />
+  <br/>
+  <sub><strong>"Watchfire"</strong> — written, staged, and shot by the AI from one prompt
+  (<a href="films/camp-tale.film3d.json"><code>camp-tale.film3d.json</code></a>), starring the
+  CC0 <a href="packages/assets/library/CREDITS.md">KayKit adventurers</a>. Before the final render the
+  director <strong>watched its own dailies twice</strong> and revised the cut both times; the
+  narration is TTS, muxed in deterministically.</sub>
+</p>
+
+| | | |
+|:---:|:---:|:---:|
+| ![The Last Flowers of Autumn](docs/media/lantern-path.gif) | ![Dawn Truce in the Snow](docs/media/snowy-dawn.gif) | ![path-traced firelight master](docs/media/firelight-master.gif) |
+| **Night, dressed** — a rabbit follows lantern light past a starlit pond ([`lantern-path`](films/lantern-path.film3d.json)) | **The animal cast** — deer, rabbit, and bear share a snowy dawn ([`snowy-dawn`](films/snowy-dawn.film3d.json)) | **Photoreal master** — the same screenplay, path-traced by Cycles: GI firelight, fog, sky, sparks ([how](docs/plan-film3d.md)) |
+
+The pipeline behind those: the cast mixes **professional CC0 packs** (KayKit's knight,
+barbarian, mage, rogue — faces, outfits, dozens of clips like `Spellcasting` and `Cheer`),
+**generated animals** (fox, dog, deer, bear, rabbit, wolf — spec tables compiled headlessly
+by Blender, MIT), and MakeHuman humans with baked PBR skin. Beats carry **narration**
+(espeak-ng offline, ElevenLabs via env). The director **reviews its own dailies** — one
+rendered still per shot, two rounds by default, later rounds seeing the previous round's
+frames — and every revision is re-validated. `vsim render` accepts `*.film3d.json`
+directly; the same file renders a **path-traced master** via
+`apps/studio/cycles-render.mjs` (sky, sun, fog, and particles all translate). And the cast
+is **self-expanding**: `vsim creature -p "a gray wolf, lean and watchful"` designs a new
+species as a validated CreatureDoc, compiles it, reviews its own turntable, and registers
+it as castable ([`creatures/wolf.creature.json`](creatures/wolf.creature.json) was made
+exactly that way).
 
 ## vsim Studio — the visual editor
 

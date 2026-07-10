@@ -389,6 +389,9 @@ importers:
       '@vsim/ai':
         specifier: workspace:*
         version: link:../ai
+      '@vsim/assets':
+        specifier: workspace:*
+        version: link:../assets
       '@vsim/authoring':
         specifier: workspace:*
         version: link:../authoring
