@@ -2,6 +2,8 @@
 // Each is lifted from the strongest example scene of that mood (06-fox golden hour,
 // 24-campfire dusk), so an AI-authored film starts from proven lighting, not defaults.
 import type { SceneBuilder, Vec3 } from "@vsim/authoring";
+import { v3 } from "@vsim/core";
+import type { Film3DProp } from "./schema.js";
 
 export interface SetLook {
   background: Vec3;
@@ -15,6 +17,10 @@ export interface SetLook {
   trunk: Vec3;
   leaf: Vec3;
   stone: Vec3;
+  /** Still-water surface color (ponds). */
+  water: Vec3;
+  /** Blossom colors for flower patches — three accents that survive the set's light. */
+  bloom: [Vec3, Vec3, Vec3];
 }
 
 export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", SetLook> = {
@@ -32,6 +38,8 @@ export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", 
     trunk: [0.4, 0.26, 0.13],
     leaf: [0.16, 0.42, 0.17],
     stone: [0.5, 0.5, 0.52],
+    water: [0.2, 0.34, 0.42],
+    bloom: [[0.9, 0.3, 0.3], [0.95, 0.8, 0.3], [0.92, 0.9, 0.88]],
   },
   // Post-sunset (from examples/24-campfire): indigo sky, last orange glow, moonlight fill.
   // Pairs with the campfire prop — ACES rolls the flame highlights off filmically.
@@ -49,6 +57,8 @@ export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", 
     trunk: [0.13, 0.09, 0.06],
     leaf: [0.05, 0.11, 0.06],
     stone: [0.21, 0.2, 0.19],
+    water: [0.05, 0.07, 0.13],
+    bloom: [[0.38, 0.16, 0.18], [0.4, 0.34, 0.16], [0.38, 0.38, 0.42]],
   },
   // Deep night under a blue moon — darker than dusk, no sunset glow on the horizon.
   night: {
@@ -65,6 +75,8 @@ export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", 
     trunk: [0.1, 0.08, 0.06],
     leaf: [0.04, 0.09, 0.06],
     stone: [0.16, 0.17, 0.19],
+    water: [0.03, 0.05, 0.1],
+    bloom: [[0.24, 0.11, 0.14], [0.25, 0.22, 0.12], [0.28, 0.3, 0.36]],
   },
   // Overcast winter: white ground, pale cold sky, everything desaturated by the fog.
   snow: {
@@ -79,6 +91,8 @@ export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", 
     trunk: [0.28, 0.2, 0.14],
     leaf: [0.15, 0.3, 0.2],
     stone: [0.55, 0.58, 0.64],
+    water: [0.52, 0.62, 0.74],
+    bloom: [[0.7, 0.36, 0.36], [0.74, 0.64, 0.4], [0.85, 0.85, 0.9]],
   },
   // Neutral three-point studio — a dark stage for product/character turntables.
   studio: {
@@ -93,6 +107,8 @@ export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", 
     trunk: [0.35, 0.24, 0.13],
     leaf: [0.18, 0.4, 0.2],
     stone: [0.45, 0.46, 0.5],
+    water: [0.12, 0.14, 0.18],
+    bloom: [[0.8, 0.3, 0.3], [0.82, 0.72, 0.36], [0.85, 0.85, 0.88]],
   },
 };
 
@@ -177,4 +193,103 @@ export function campfire(b: SceneBuilder, id: string, x: number, z: number, dura
     velocity: [0.18, 0.5, 0.05], velocitySpread: [0.12, 0.18, 0.12], gravity: [0, 0.1, 0],
     lifeFrames: 85, size: 0.11, color: [0.16, 0.17, 0.21], opacity: 0.14, seed: 11,
   });
+}
+
+// --- Set dressing — the prop vocabulary beyond tree/rock/campfire -------------------------
+// All deterministic: layouts come from a golden-angle scatter (a pure function of the
+// index), colors from the set's palette, so the same document dresses the same set forever.
+
+
+/** Golden-angle scatter inside a disc — even coverage, no RNG, same layout forever. */
+const scatter = (n: number, radius: number) =>
+  Array.from({ length: n }, (_, i) => {
+    const a = i * 2.39996323;
+    const r = radius * Math.sqrt((i + 0.5) / n);
+    return { x: Math.cos(a) * r, z: Math.sin(a) * r, i };
+  });
+
+/** A shrub: overlapping flattened leaf spheres, sized to read at film distance. */
+export function bush(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, radius: number): void {
+  b.group(id, { position: [x, 0, z] });
+  b.material(`${id}__leaf`, { color: v3.scale(look.leaf, 0.92), roughness: 0.92 });
+  const lobes = Math.max(3, Math.min(6, Math.round(radius * 5)));
+  for (const p of scatter(lobes, radius * 0.5)) {
+    const r = radius * (0.46 + 0.14 * (p.i % 3));
+    b.mesh(`${id}__l${p.i}`, {
+      parent: id, geometry: { kind: "sphere", radius: r, segments: 10 },
+      material: `${id}__leaf`, position: [p.x, r * 0.55, p.z], scale: [1, 0.72, 1],
+    });
+  }
+}
+
+/** A patch of blossoms: thin stems + small heads cycling the set's three bloom accents. */
+export function flowers(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, radius: number): void {
+  b.group(id, { position: [x, 0, z] });
+  b.material(`${id}__stem`, { color: v3.scale(look.leaf, 0.8), roughness: 0.95 });
+  look.bloom.forEach((c, i) => b.material(`${id}__bloom${i}`, { color: c, roughness: 0.7 }));
+  const n = Math.max(6, Math.min(16, Math.round(radius * 9)));
+  for (const p of scatter(n, radius)) {
+    const h = 0.14 + (0.06 * (p.i % 4)) / 3;
+    b.mesh(`${id}__s${p.i}`, { parent: id, geometry: { kind: "cylinder", radius: 0.008, height: h, segments: 5 }, material: `${id}__stem`, position: [p.x, h / 2, p.z] })
+      .mesh(`${id}__b${p.i}`, { parent: id, geometry: { kind: "sphere", radius: 0.028, segments: 6 }, material: `${id}__bloom${p.i % 3}`, position: [p.x, h + 0.02, p.z] });
+  }
+}
+
+/** A sawn stump: trunk-colored cylinder with a pale cut face on top. */
+export function stump(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, radius: number): void {
+  b.group(id, { position: [x, 0, z] });
+  b.material(`${id}__bark`, { color: look.trunk, roughness: 0.9 })
+    .material(`${id}__cut`, { color: v3.scale([0.75, 0.62, 0.42], 0.9 + 0.1 * look.ground[1]), roughness: 0.8 })
+    .mesh(`${id}__trunk`, { parent: id, geometry: { kind: "cylinder", radius, height: 0.32, segments: 10 }, material: `${id}__bark`, position: [0, 0.16, 0] })
+    .mesh(`${id}__face`, { parent: id, geometry: { kind: "cylinder", radius: radius * 0.86, height: 0.02, segments: 10 }, material: `${id}__cut`, position: [0, 0.325, 0] });
+}
+
+/** A fallen log lying on the ground, yawed by `angleDeg`, with one stub branch. */
+export function log(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, length: number, angleDeg: number): void {
+  const yaw = (angleDeg * Math.PI) / 180;
+  const r = 0.13;
+  b.group(id, { position: [x, r, z], rotation: [0, yaw, 0] });
+  b.material(`${id}__bark`, { color: v3.scale(look.trunk, 0.85), roughness: 0.92 })
+    .mesh(`${id}__trunk`, { parent: id, geometry: { kind: "cylinder", radius: r, height: length, segments: 9 }, material: `${id}__bark`, rotation: [0, 0, Math.PI / 2] })
+    .mesh(`${id}__branch`, { parent: id, geometry: { kind: "cylinder", radius: r * 0.35, height: 0.34, segments: 7 }, material: `${id}__bark`, position: [length * 0.22, 0.1, 0.06], rotation: [0.5, 0, 0.4] });
+}
+
+/** A still pond: a low water disc ringed by shore stones. */
+export function pond(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, radius: number): void {
+  b.group(id, { position: [x, 0, z] });
+  b.material(`${id}__water`, { color: look.water, roughness: 0.12 })
+    .mesh(`${id}__surface`, { parent: id, geometry: { kind: "cylinder", radius, height: 0.024, segments: 22 }, material: `${id}__water`, position: [0, 0.012, 0] });
+  const stones = Math.max(5, Math.min(9, Math.round(radius * 3.2)));
+  for (let i = 0; i < stones; i++) {
+    const a = (i / stones) * Math.PI * 2 + 0.35 * ((2 * i) % 3);
+    b.rock(`${id}__shore${i}`, { parent: id, position: [Math.cos(a) * radius * 1.03, 0, Math.sin(a) * radius * 1.03], radius: 0.09 + 0.045 * ((2 * i) % 3), color: look.stone });
+  }
+}
+
+/** A standing lantern: dark post, glowing head, and a warm pooled light — night staging. */
+export function lantern(b: SceneBuilder, look: SetLook, id: string, x: number, z: number): void {
+  b.group(id, { position: [x, 0, z] });
+  b.material(`${id}__iron`, { color: [0.1, 0.1, 0.12], roughness: 0.6, metalness: 0.4 })
+    .material(`${id}__glow`, { color: [1, 0.85, 0.5], emissive: [1.7, 1.15, 0.5], roughness: 1 })
+    .mesh(`${id}__post`, { parent: id, geometry: { kind: "cylinder", radius: 0.03, height: 1.05, segments: 8 }, material: `${id}__iron`, position: [0, 0.525, 0] })
+    .mesh(`${id}__cap`, { parent: id, geometry: { kind: "box", size: [0.19, 0.05, 0.19] }, material: `${id}__iron`, position: [0, 1.2, 0] })
+    .mesh(`${id}__base`, { parent: id, geometry: { kind: "cylinder", radius: 0.09, height: 0.05, segments: 10 }, material: `${id}__iron`, position: [0, 0.025, 0] })
+    .mesh(`${id}__flame`, { parent: id, geometry: { kind: "sphere", radius: 0.055, segments: 8 }, material: `${id}__glow`, position: [0, 1.1, 0] });
+  b.light({ type: "point", intensity: 2.4, decay: 2, color: [1, 0.76, 0.42], position: [0, 1.1, 0], parent: id }, `${id}__light`);
+}
+
+/** Place ANY Film3DProp — the single dispatch the compiler (and tests) call. */
+export function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, durationFrames: number): void {
+  switch (p.kind) {
+    case "tree": b.tree(p.id, { position: [p.x, 0, p.z], height: p.height, variant: p.variant, trunkColor: look.trunk, leafColor: look.leaf }); return;
+    case "rock": b.rock(p.id, { position: [p.x, 0, p.z], radius: p.radius, color: look.stone }); return;
+    case "campfire": return campfire(b, p.id, p.x, p.z, durationFrames);
+    case "bush": return bush(b, look, p.id, p.x, p.z, p.radius);
+    case "flowers": return flowers(b, look, p.id, p.x, p.z, p.radius);
+    case "stump": return stump(b, look, p.id, p.x, p.z, p.radius);
+    case "log": return log(b, look, p.id, p.x, p.z, p.length, p.angle);
+    case "pond": return pond(b, look, p.id, p.x, p.z, p.radius);
+    case "lantern": return lantern(b, look, p.id, p.x, p.z);
+    default: { const exhaustive: never = p; throw new Error(`unhandled prop kind ${(exhaustive as Film3DProp).kind}`); }
+  }
 }

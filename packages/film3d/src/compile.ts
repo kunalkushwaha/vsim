@@ -8,7 +8,7 @@ import { scene, type SceneBuilder, type Vec3 } from "@vsim/authoring";
 import { loadCharacter } from "@vsim/assets";
 import type { SceneDocument } from "@vsim/core";
 import { CHARACTERS, type Film3DDoc, type Film3DShot } from "./schema.js";
-import { SET_LOOKS, applySet, campfire } from "./sets.js";
+import { SET_LOOKS, applySet, placeProp } from "./sets.js";
 
 export const FILM3D_WIDTH = 960;
 export const FILM3D_HEIGHT = 540;
@@ -76,11 +76,7 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
   });
   applySet(b, look);
 
-  for (const p of doc.props) {
-    if (p.kind === "tree") b.tree(p.id, { position: [p.x, 0, p.z], height: p.height, variant: p.variant, trunkColor: look.trunk, leafColor: look.leaf });
-    else if (p.kind === "rock") b.rock(p.id, { position: [p.x, 0, p.z], radius: p.radius, color: look.stone });
-    else campfire(b, p.id, p.x, p.z, DUR);
-  }
+  for (const p of doc.props) placeProp(b, look, p, DUR);
 
   // --- actors: place rigs, then walk the beat list tracking (x, z, heading) --------------
   const states = new Map<string, ActorState>();

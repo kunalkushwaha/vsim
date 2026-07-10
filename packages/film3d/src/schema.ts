@@ -91,12 +91,21 @@ export const CHARACTER_IDS = Object.keys(CHARACTERS) as CharacterId[];
 
 /** World-coordinate guard rails: the film plays out on a ±14-unit ground plane. */
 const coord = z.number().min(-14).max(14);
-const ID_RE = /^[a-zA-Z][\w-]*$/;
+/** No "__": the compiler namespaces every generated child node as `<id>__<part>` (and set
+ * pieces as `__<name>`), so a user id containing "__" could collide with a generated node. */
+const ID_RE = /^[a-zA-Z](?!.*__)[\w-]*$/;
 
 export const PropSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("tree"), id: z.string(), x: coord, z: coord, height: z.number().min(1).max(6).default(3), variant: z.enum(["conifer", "broadleaf"]).default("conifer") }),
   z.object({ kind: z.literal("rock"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.1).max(1.5).default(0.4) }),
   z.object({ kind: z.literal("campfire"), id: z.string(), x: coord, z: coord }),
+  // Set dressing (all deterministic geometry, colored from the set's palette):
+  z.object({ kind: z.literal("bush"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.3).max(1.5).default(0.6) }),
+  z.object({ kind: z.literal("flowers"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.3).max(2).default(0.8) }),
+  z.object({ kind: z.literal("stump"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.15).max(0.5).default(0.25) }),
+  z.object({ kind: z.literal("log"), id: z.string(), x: coord, z: coord, length: z.number().min(0.8).max(3).default(1.6), /** Yaw in degrees. */ angle: z.number().default(0) }),
+  z.object({ kind: z.literal("pond"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.8).max(4).default(1.8) }),
+  z.object({ kind: z.literal("lantern"), id: z.string(), x: coord, z: coord }),
 ]);
 
 export const ActorSchema = z.object({
@@ -182,7 +191,7 @@ export const Film3DDocSchema = z
     for (const e of [...doc.props, ...doc.actors]) {
       if (ids.has(e.id)) ctx.addIssue({ code: "custom", message: `id "${e.id}" is not unique across props + actors` });
       ids.add(e.id);
-      if (!ID_RE.test(e.id)) ctx.addIssue({ code: "custom", message: `id "${e.id}" must match [a-zA-Z][\\w-]*` });
+      if (!ID_RE.test(e.id)) ctx.addIssue({ code: "custom", message: `id "${e.id}" must match [a-zA-Z][\\w-]* and must not contain "__" (reserved for generated nodes)` });
     }
     for (const a of doc.actors) actorChar.set(a.id, a.character);
     if (doc.props.length + doc.actors.length === 0) {

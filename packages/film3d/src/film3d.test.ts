@@ -262,3 +262,52 @@ describe("narrationScript engines", () => {
     expect(narrationScript(doc!, { engine: "elevenlabs", voiceId: "abc" })!.elevenlabs!.voiceId).toBe("abc");
   });
 });
+
+describe("set dressing props", () => {
+  const DRESSED = {
+    title: "Dressed set",
+    set: "meadow",
+    props: [
+      { kind: "bush", id: "sh1", x: -2, z: -3 },
+      { kind: "flowers", id: "fl1", x: 1, z: -1, radius: 1.2 },
+      { kind: "stump", id: "st1", x: 3, z: -2 },
+      { kind: "log", id: "lg1", x: -1, z: 1, length: 2, angle: 40 },
+      { kind: "pond", id: "pd1", x: 5, z: 2, radius: 2 },
+      { kind: "lantern", id: "ln1", x: 0, z: 3 },
+    ],
+    actors: [{ id: "fox", character: "fox", x: 4, z: -1 }],
+    beats: [{ id: "b1", start: 0, end: 4 }],
+  } as const;
+
+  it("accepts every dressing kind and fills defaults", () => {
+    const res = parseFilm3D(DRESSED);
+    expect(res.errors).toBeUndefined();
+    const byId = Object.fromEntries(res.doc!.props.map((p) => [p.id, p]));
+    expect((byId.sh1 as { radius: number }).radius).toBe(0.6);
+    expect((byId.lg1 as { angle: number }).angle).toBe(40);
+  });
+
+  it("compiles dressing into scene nodes the runtime accepts", async () => {
+    const sceneDoc = await film3dToScene(DRESSED);
+    const ids = new Set(sceneDoc.nodes.map((n) => n.id));
+    for (const want of ["sh1__l0", "fl1__b0", "st1__face", "lg1__trunk", "pd1__surface", "ln1__flame"]) {
+      expect(ids.has(want), `missing node ${want}`).toBe(true);
+    }
+    // The lantern pools real light: a decay-2 warm point light at head height.
+    const lamp = sceneDoc.nodes.find((n) => n.id === "ln1__light") as { light?: { type: string; decay?: number } };
+    expect(lamp?.light?.type).toBe("point");
+    expect(lamp?.light?.decay).toBe(2);
+    new SceneRuntime(sceneDoc).computeFrameState(60); // evaluates without throwing
+  });
+
+  it("dresses deterministically — identical JSON twice", async () => {
+    expect(JSON.stringify(await film3dToScene(DRESSED))).toBe(JSON.stringify(await film3dToScene(DRESSED)));
+  });
+});
+
+describe("id namespace guard", () => {
+  it('rejects ids containing "__" — reserved for generated child nodes', () => {
+    const res = parseFilm3D({ ...FILM, props: [{ kind: "rock", id: "r1__shore0", x: 0, z: 0 }] });
+    expect(res.errors!.join("\n")).toMatch(/reserved for generated nodes/);
+  });
+});
