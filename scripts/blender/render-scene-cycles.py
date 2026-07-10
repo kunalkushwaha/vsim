@@ -107,7 +107,7 @@ def build_and_render(data, out_png, samples):
     hemi_strength = min(1.25, max(0.2, hemi["intensity"] * 1.6)) if hemi else None
     sky = data.get("sky")
     if sky:
-        gi_color = (hemi.get("skyColor") or hemi["color"]) if hemi else sky["top"]
+        gi_color = sky["top"]  # what the old flat-world code used — GI tint stays untouched
         gi_strength = hemi_strength if hemi_strength is not None else 1.2
     elif hemi:
         gi_color = hemi.get("skyColor") or hemi["color"]; gi_strength = hemi_strength
@@ -141,13 +141,14 @@ def build_and_render(data, out_png, samples):
             dot = wnt.nodes.new("ShaderNodeVectorMath"); dot.operation = 'DOT_PRODUCT'
             dot.inputs[1].default_value = sd
             wnt.links.new(texco.outputs["Generated"], dot.inputs[0])
-            # Disc: the draft's sun.size/glow are fractions of image height; at the film3d
-            # fovs (~0.8 rad vertical) that maps to an angular radius of ~size*0.8.
+            # Disc: the draft's sun.size/glow are fractions of image height, so the angular
+            # radius is size × the camera's actual vertical FOV (baked per frame).
+            fov = data["camera"]["fovY"]
             size = sky["sun"].get("size") or 0.04
             glow = sky["sun"].get("glow") or 0.3
             disc = wnt.nodes.new("ShaderNodeMapRange"); disc.interpolation_type = 'SMOOTHSTEP'; disc.clamp = True
-            disc.inputs["From Min"].default_value = math.cos(size * 0.8 * 1.6)
-            disc.inputs["From Max"].default_value = math.cos(size * 0.8)
+            disc.inputs["From Min"].default_value = math.cos(size * fov * 1.6)
+            disc.inputs["From Max"].default_value = math.cos(size * fov)
             wnt.links.new(dot.outputs["Value"], disc.inputs["Value"])
             halo = wnt.nodes.new("ShaderNodeMath"); halo.operation = 'POWER'
             halo.inputs[1].default_value = max(4.0, 10.0 / max(glow, 0.05))
