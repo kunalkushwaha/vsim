@@ -70,7 +70,7 @@ function bakeFrame(frame: number) {
     });
   }
   return {
-    width: f.width, height: f.height, background: f.background, sky: f.sky ?? null,
+    width: f.width, height: f.height, background: f.background, sky: f.sky ?? null, fog: f.fog ?? null,
     camera: { position: f.camera.position, forward, up, fovY },
     lights: f.lights.map((l) => ({ type: l.type, color: l.color, intensity: l.intensity, position: l.position, direction: l.direction, skyColor: l.skyColor ?? null, groundColor: l.groundColor ?? null })),
     meshes,
