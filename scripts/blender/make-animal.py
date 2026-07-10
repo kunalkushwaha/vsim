@@ -8,10 +8,13 @@
 # Built standing in Blender's Z-up with the body along +Y (head forward at +Y); export_yup makes
 # it Y-up, facing -Z. Every species: spine + neck/head + tail + four two-bone legs, plus species
 # parts (antlers, ears, snout, hump), and walk / run / idle clips.
-import bpy, sys
+import bpy, sys, json
 
 args = [a for a in sys.argv[sys.argv.index("--") + 1:]] if "--" in sys.argv else sys.argv[1:]
 species, out = args[0], args[1]
+# `species` may also be a path to an external table (a validated CreatureDoc's geometry):
+# the same keys as SPECIES entries below — this is how AI-authored creatures compile.
+external = json.load(open(species)) if species.endswith(".json") else None
 
 # Species tables: bones as (name, head, tail, parent); parts as (bone, kind, loc, scale) — each
 # part rigidly weighted to its bone; gaits as (upper-leg swing, lower-leg curl) radians.
@@ -87,7 +90,7 @@ SPECIES = {
     },
 }
 
-cfg = SPECIES[species]
+cfg = external if external else SPECIES[species]
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 
@@ -101,8 +104,9 @@ eb = arm_data.edit_bones
 def bone(n, h, t, p=None):
     b = eb.new(n); b.head = h; b.tail = t
     if p: b.parent = eb[p]
-for n, h, t, p in cfg["bones"]:
-    bone(n, h, t, p)
+for entry in cfg["bones"]:
+    n, h, t = entry[0], entry[1], entry[2]
+    bone(n, h, t, entry[3] if len(entry) > 3 else None)
 L = cfg["legs"]
 for s, sx in (("L", L["sx"]), ("R", -L["sx"])):
     bone("front_u" + s, (sx, L["front_y"], L["top"]), (sx, L["front_y"], L["knee"]), "spine")

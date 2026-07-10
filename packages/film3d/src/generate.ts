@@ -5,6 +5,7 @@
 import { spawn } from "node:child_process";
 import { CHARACTERS, CHARACTER_IDS, parseFilm3D, type Film3DDoc } from "./schema.js";
 import { extractJson, parseReviewReply, type ReviewStill } from "./review.js";
+import { parseCreature, type CreatureDoc } from "./creature.js";
 
 const CHARACTER_NOTES = CHARACTER_IDS.map((id) => {
   const c = CHARACTERS[id];
@@ -152,5 +153,62 @@ export async function reviewFilm3D(
   );
   if (retry.keep) return { doc, revised: false };
   res = parseFilm3D(retry.candidate);
+  return res.doc ? { doc: res.doc, revised: true } : { doc, revised: false };
+}
+
+// ---- CreatureDoc: the same generate → look → revise loop, for ASSETS -----------------------
+
+const CREATURE_INSTRUCTIONS = `You are a character designer for vsim, a deterministic 3D engine. Design a stylised low-poly QUADRUPED as a CreatureDoc — pure JSON, no prose, no fences.
+
+Build space: Blender Z-up, the animal STANDS ON z=0 facing +y (head toward +y). Everything is built from primitives (cube/sphere/cyl are HALF-extent scales) rigidly attached to bones; the whole body gets one subsurf pass, so parts must OVERLAP generously or they detach; very thin parts (<0.02) vanish.
+
+Schema (all numbers bounded; violations are rejected with readable errors):
+{
+  "id": "wolf",                      // lowercase library id
+  "name": "Wolf", "description": one line,
+  "bones": [                          // torso chain: hips(root) → spine → neck → head, plus tail; ≤9 total
+    { "name", "head": [x,y,z], "tail": [x,y,z], "parent"? } ],
+  "legs": { "front_y", "back_y",      // y of front/back leg pairs (near spine ends)
+            "sx": half-stance-width, "top": shoulder z, "knee": z, "r_u", "r_l" },  // radii
+  "legsBackR"?: thicker haunches radius,
+  "parts": [ { "bone", "kind": "cube"|"sphere"|"cyl", "loc": [x,y,z], "scale": [x,y,z] } ],  // 4..24
+  "gaits": { "walk": [swing, curl], "run": [swing, curl] },   // radians; curl is negative
+  "scale": world scale (≤1.6), "runAt": u/s, "eye": aim height after scale, "tint": [r,g,b] flat color
+}
+
+Craft rules:
+- SILHOUETTE FIRST: the animal must read from 8 units away. Exaggerate the one or two features that say the species (neck, ears, horns, hump, tail).
+- Give it a FACE: a muzzle/beak part on the head, plus small dark parts won't show (flat tint) — shape the head so it reads.
+- Parts sit ON bones that exist; leg meshes are automatic from "legs". Keep body parts overlapping by ~30%.
+- Proportions: legs.top is the body height; body parts straddle it. Tail flows off the hips. Bones: hips at the rear (-y), head at the front (+y).
+- Gaits: heavier animal → smaller swing (0.25) and slower runAt; light/quick → bigger swing (0.5+).`;
+
+/** Ask the AI for a CreatureDoc; one validator-quoting retry (same loop as films). */
+export async function generateCreature(
+  topic: string,
+  opts: { model?: string } = {},
+): Promise<{ doc: CreatureDoc; attempts: number }> {
+  const first = await runClaude(`${CREATURE_INSTRUCTIONS}\n\nDesign: ${topic}`, opts.model);
+  let res = parseCreature(extractJson(first));
+  if (res.doc) return { doc: res.doc, attempts: 1 };
+  const retry = await runClaude(
+    `${CREATURE_INSTRUCTIONS}\n\nDesign: ${topic}\n\nYour previous attempt was rejected:\n${res.errors!.map((e) => `- ${e}`).join("\n")}\n\nPrevious attempt:\n${first}\n\nFix every issue; reply with the corrected JSON only.`,
+    opts.model,
+  );
+  res = parseCreature(extractJson(retry));
+  if (res.doc) return { doc: res.doc, attempts: 2 };
+  throw new Error(`the AI could not produce a valid CreatureDoc:\n  ${res.errors!.join("\n  ")}`);
+}
+
+/** Turntable review: the designer sees its own creature from three angles; KEEP or revise. */
+export async function reviewCreature(
+  doc: CreatureDoc,
+  stills: { label: string; path: string }[],
+  opts: { model?: string } = {},
+): Promise<{ doc: CreatureDoc; revised: boolean }> {
+  const prompt = `${CREATURE_INSTRUCTIONS}\n\nYou designed the creature below; the listed PNGs are turntable renders of the ACTUAL compiled model. Read each image and judge the silhouette like a character designer: do the proportions read? Is anything detached, floating, buried, or missing (a head inside the body, legs through the ground, no face)? Reply with ONLY the word KEEP, or the complete corrected CreatureDoc JSON.\n\nThe creature:\n${JSON.stringify(doc, null, 2)}\n\nRenders (read each file):\n${stills.map((s) => `- ${s.label}: ${s.path}`).join("\n")}`;
+  const first = parseReviewReply(await runClaude(prompt, opts.model));
+  if (first.keep) return { doc, revised: false };
+  const res = parseCreature(first.candidate);
   return res.doc ? { doc: res.doc, revised: true } : { doc, revised: false };
 }
