@@ -281,6 +281,8 @@ pnpm lint          # determinism lint (bans Math.random in runtime)
 pnpm build         # compile all packages to dist/
 ```
 
+Asset source packs (MPFB2, KayKit, MakeHuman assets) are optional, fetched with
+`scripts/fetch-asset-packs.sh` — see [`docs/asset-packs.md`](./docs/asset-packs.md).
 Releasing is documented in [`RELEASING.md`](./RELEASING.md).
 
 ## License

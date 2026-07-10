@@ -17,3 +17,4 @@ examples/25-weather/landmarks/*.png
 
 # generated narration artifacts (rebuild with pnpm film:pip)
 packages/motion/films/*/narration.wav
+vendor/
