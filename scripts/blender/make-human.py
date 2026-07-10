@@ -105,7 +105,9 @@ if skin:
     try:
         bpy.context.scene.render.engine = 'CYCLES'
         bpy.context.scene.cycles.samples = 8
-        mat = human.data.materials[0]
+        body = human if human.type == 'MESH' else next(o for o in bpy.data.objects if o.type == 'MESH' and o.data.materials)
+        bpy.ops.object.select_all(action='DESELECT')
+        mat = body.data.materials[0]
         nt = mat.node_tree
         bsdf = next(n for n in nt.nodes if n.type == 'BSDF_PRINCIPLED')
         size = min(MAX_TEX, 1024)
@@ -113,8 +115,8 @@ if skin:
             img = bpy.data.images.new(img_name, size, size)
             tex = nt.nodes.new("ShaderNodeTexImage"); tex.image = img
             nt.nodes.active = tex
-            bpy.context.view_layer.objects.active = human
-            human.select_set(True)
+            bpy.context.view_layer.objects.active = body
+            body.select_set(True)
             bpy.ops.object.bake(type=pass_type, use_selected_to_active=False)
             if pass_type == "NORMAL":
                 img.colorspace_settings.name = 'Non-Color'
