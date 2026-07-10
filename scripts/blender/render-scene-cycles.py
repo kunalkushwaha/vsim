@@ -4,7 +4,7 @@
 #
 #   blender -b -P scripts/blender/render-scene-cycles.py -- <frame.json> <out.png> [samples]
 #   blender -b -P scripts/blender/render-scene-cycles.py -- manifest=<manifest.json> [samples=48]
-import bpy, sys, json, base64, math, mathutils
+import bpy, bmesh, sys, json, base64, math, mathutils
 
 def image_from_rgba(name, w, h, b64):
     raw = base64.b64decode(b64)
@@ -75,6 +75,26 @@ def build_and_render(data, out_png, samples):
             if "Subsurface Radius" in b.inputs: b.inputs["Subsurface Radius"].default_value = (0.36, 0.18, 0.12)
             if "Subsurface Scale" in b.inputs: b.inputs["Subsurface Scale"].default_value = 0.08
         me.materials.append(mat)
+
+    # Particles (sparks/smoke): tiny emissive spheres, transparent-mixed by opacity, never
+    # shadow casters — the draft renders them as soft blended billboards.
+    for i, pt in enumerate(data.get("particles") or []):
+        me = bpy.data.meshes.new(f"pt{i}")
+        bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=6, v_segments=4, radius=pt["size"])
+        bm.to_mesh(me); bm.free()
+        ob = bpy.data.objects.new(f"pt{i}", me); scene.collection.objects.link(ob)
+        ob.location = pt["position"]; ob.visible_shadow = False
+        pm = bpy.data.materials.new(f"pt{i}"); pm.use_nodes = True
+        pnt = pm.node_tree; pnt.nodes.clear()
+        em = pnt.nodes.new("ShaderNodeEmission")
+        c = pt["color"]; em.inputs["Color"].default_value = (c[0], c[1], c[2], 1)
+        em.inputs["Strength"].default_value = 2.0 * pt["opacity"]
+        tr = pnt.nodes.new("ShaderNodeBsdfTransparent")
+        mx = pnt.nodes.new("ShaderNodeMixShader"); mx.inputs[0].default_value = pt["opacity"]
+        out_n = pnt.nodes.new("ShaderNodeOutputMaterial")
+        pnt.links.new(tr.outputs[0], mx.inputs[1]); pnt.links.new(em.outputs[0], mx.inputs[2])
+        pnt.links.new(mx.outputs[0], out_n.inputs["Surface"])
+        me.materials.append(pm)
 
     cd = data["camera"]
     cam = bpy.data.cameras.new("cam"); co = bpy.data.objects.new("cam", cam)

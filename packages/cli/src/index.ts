@@ -227,7 +227,8 @@ async function runFilm(args: Args): Promise<void> {
 
     // The render–look–revise loop: render one still per shot, let the director watch the
     // dailies and revise the screenplay. KEEP (or an invalid revision) ends the loop.
-    const rounds = args.review ?? 1;
+    const rounds = args.review ?? 2;
+    let previous: { sec: number; label: string; path: string }[] | undefined;
     for (let round = 1; round <= rounds; round++) {
       const dir = resolve("out", "review", name, `round-${round}`);
       await mkdir(dir, { recursive: true });
@@ -241,7 +242,8 @@ async function runFilm(args: Args): Promise<void> {
         stills.push({ ...s, path });
       }
       console.log(`✎ reviewing the dailies (round ${round}: ${stills.length} stills) …`);
-      const review = await reviewFilm3D(doc, stills, {});
+      const review = await reviewFilm3D(doc, stills, { previous });
+      previous = stills;
       if (!review.revised) {
         console.log("✓ the director kept the cut");
         break;

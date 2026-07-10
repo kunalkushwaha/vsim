@@ -1,0 +1,34 @@
+# Asset source packs (setup-time, optional)
+
+Everything vsim renders with at runtime is **committed** in `packages/assets/library/`
+(see its `CREDITS.md` for per-asset licenses). The packs below are the **sources** those
+assets were built from — fetch them only to regenerate or extend the library:
+
+```bash
+scripts/fetch-asset-packs.sh     # clones everything into vendor/ (gitignored)
+```
+
+| Pack | Source | License | Used for |
+|---|---|---|---|
+| MPFB2 (MakeHuman Blender add-on) | [makehumancommunity/mpfb2](https://github.com/makehumancommunity/mpfb2) | GPL (tool only — its *output* is CC0) | `scripts/blender/make-human.py`: realistic rigged humans with baked skin + PBR normal/roughness maps (`human`, `man`, `kid`, `suited`, …) |
+| MakeHuman community assets | [makehumancommunity/makehuman-assets](https://github.com/makehumancommunity/makehuman-assets) | CC0 / CC-BY **per file** — verify before bundling | Hair, clothes, eyes, expressions, poses for richer humans |
+| KayKit Adventurers | [KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) | CC0 | Source of the bundled `knight` / `barbarian` / `mage` / `rogue` (copied unmodified) |
+
+Regeneration recipes:
+
+```bash
+# a realistic human variant (skin optional; see make-human.py header for macros)
+python3 scripts/blender/make-human.py -- vendor/mpfb2.zip out/human.glb [skin.mhmat] [gender=1.0 age=0.9 ...]
+
+# a stylised animal (species table in the script — add a species by adding a table)
+python3 scripts/blender/make-animal.py -- deer packages/assets/library/deer.glb
+```
+
+## The download-vs-clone quirk
+
+In sandboxed environments (CI, Claude Code on the web) direct downloads
+(`curl` of release zips, itch.io, project sites) are commonly blocked by the egress
+policy — but **`git clone` of public GitHub repos works**. Prefer clone-able sources
+when adding packs; the fetch script follows this rule. Candidates for future packs:
+the [KayKit org](https://github.com/KayKit-Game-Assets) (skeletons, dungeon/environment
+sets) and the [awesome-cc0 index](https://github.com/madjin/awesome-cc0).

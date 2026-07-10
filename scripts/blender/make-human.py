@@ -100,6 +100,35 @@ if want_mouth:
 if skin:
     HumanService.set_character_skin(skin, human, skin_type="GAMEENGINE")
     print("SKIN:", os.path.basename(skin))
+    # R3.2: bake NORMAL + ROUGHNESS from the MPFB material graph so the glTF carries the
+    # full PBR map set (vsim's loader + renderers already sample normal/metallicRoughness).
+    try:
+        bpy.context.scene.render.engine = 'CYCLES'
+        bpy.context.scene.cycles.samples = 8
+        body = human if human.type == 'MESH' else next(o for o in bpy.data.objects if o.type == 'MESH' and o.data.materials)
+        bpy.ops.object.select_all(action='DESELECT')
+        mat = body.data.materials[0]
+        nt = mat.node_tree
+        bsdf = next(n for n in nt.nodes if n.type == 'BSDF_PRINCIPLED')
+        size = min(MAX_TEX, 1024)
+        for pass_type, img_name in (("NORMAL", "baked_normal"), ("ROUGHNESS", "baked_rough")):
+            img = bpy.data.images.new(img_name, size, size)
+            tex = nt.nodes.new("ShaderNodeTexImage"); tex.image = img
+            nt.nodes.active = tex
+            bpy.context.view_layer.objects.active = body
+            body.select_set(True)
+            bpy.ops.object.bake(type=pass_type, use_selected_to_active=False)
+            if pass_type == "NORMAL":
+                img.colorspace_settings.name = 'Non-Color'
+                nrm = nt.nodes.new("ShaderNodeNormalMap")
+                nt.links.new(tex.outputs["Color"], nrm.inputs["Color"])
+                nt.links.new(nrm.outputs["Normal"], bsdf.inputs["Normal"])
+            else:
+                img.colorspace_settings.name = 'Non-Color'
+                nt.links.new(tex.outputs["Color"], bsdf.inputs["Roughness"])
+        print("PBR BAKE: normal + roughness attached")
+    except Exception as e:
+        print("PBR BAKE skipped:", e)
 
 # --- author a clip LIBRARY (walk / run / idle / wave) on the Unreal-style game_engine rig ---
 # Each clip is its own Action, stashed to its own NLA track, so glTF exports them as separate,
