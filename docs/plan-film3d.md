@@ -31,6 +31,13 @@ walk/run + a breathing idle clip — vsim's own MIT assets, no licensing bookkee
 regenerable headlessly. Castable set is now fox, dog, deer, bear, rabbit, suited.
 Add a species by adding a table.
 
+**v2.3 — set dressing.** Six new prop kinds — `bush`, `flowers`, `stump`, `log`, `pond`,
+`lantern` — all deterministic geometry (golden-angle scatter, no RNG) colored from the
+set's palette (`SetLook` gains `water` + `bloom`). The lantern is a real staging light
+(warm decay-2 point). Prop placement is consolidated into one exhaustiveness-checked
+`placeProp()` dispatch; authored ids may no longer contain `__` (reserved for generated
+child nodes). The director's prompt now tells the model to dress sets like locations.
+
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).
 This plan applies the same shape to the real 3D engine.

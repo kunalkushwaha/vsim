@@ -22,7 +22,13 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
   "props": [                                                 // ≤24, scatter for depth: trees behind/around the action, rocks near it
     { "kind": "tree", "id", "x", "z", "height": 1..6, "variant": "conifer"|"broadleaf" },
     { "kind": "rock", "id", "x", "z", "radius": 0.1..1.5 },
-    { "kind": "campfire", "id", "x", "z" }                   // a full lit fire: stones, logs, flames, sparks, warm light
+    { "kind": "campfire", "id", "x", "z" },                  // a full lit fire: stones, logs, flames, sparks, warm light
+    { "kind": "bush", "id", "x", "z", "radius": 0.3..1.5 },
+    { "kind": "flowers", "id", "x", "z", "radius": 0.3..2 },  // a patch of blossoms in the set's accent colors
+    { "kind": "stump", "id", "x", "z", "radius": 0.15..0.5 },
+    { "kind": "log", "id", "x", "z", "length": 0.8..3, "angle": yaw degrees },  // fallen trunk — a natural bench/obstacle
+    { "kind": "pond", "id", "x", "z", "radius": 0.8..4 },     // still water ringed by shore stones
+    { "kind": "lantern", "id", "x", "z" }                     // glowing post light — pools warm light (great at dusk/night)
   ],
   "actors": [                                                // ≤3
     { "id", "character": one of the list below, "x", "z", "facing": [x, z] (optional point to face) }
@@ -50,7 +56,8 @@ Craft rules:
 - Rhythm: move, then rest. After each "move", let the actor "play" an idle-ish clip or hold a "face" so the audience can breathe. Actions must fit inside their beat.
 - Move at animal/human speed: roughly 1–2 units per second walking, 2–3 running. Don't teleport across the world in one beat.
 - Cut the camera with the beats (a new shot per beat reads as film grammar). Vary the shots: a follow for travel, a close for the pause, a wide or orbit for the finale. Orbit sweeps of 40–90° feel cinematic; ±180°+ feels like a video game.
-- Compose in depth: put trees BEHIND the action (more negative z if the camera angle is near 0°), rocks near the path. 5–10 props is plenty.
+- Compose in depth: put trees BEHIND the action (more negative z if the camera angle is near 0°), rocks near the path. 6–12 props is plenty.
+- Dress the set like a location, not a lawn: a pond or fallen log as the scene's landmark, bushes and flowers along the path, a stump or lantern where someone pauses. Give actors somewhere to go TO.
 - Captions are narration, not stage directions: "Something in the grass makes it stop." not "The fox plays Survey."
 - Narrate the story: give most beats a "narration" line — one warm sentence a nature-documentary narrator would speak (≤20 words; it must fit inside the beat when read aloud). The caption may repeat it, shorten it, or be omitted.
 - dusk/night sets are dark: keep the action within ~6 units of a campfire (dusk) or of the origin so it stays lit and inside the fog.`;
