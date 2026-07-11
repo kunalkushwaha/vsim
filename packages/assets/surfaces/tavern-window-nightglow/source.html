@@ -1,0 +1,234 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face{
+  font-family:'Bebas';
+  src:url("../../../motion/fonts/BebasNeue-Regular.ttf");
+}
+html,body{margin:0;width:512px;height:640px;overflow:hidden;background:#050208;}
+*{box-sizing:border-box;}
+.scene{position:relative;width:512px;height:640px;overflow:hidden;font-family:'Bebas',sans-serif;}
+
+.sky{
+  position:absolute;left:0;top:0;width:512px;height:640px;
+  background:
+    radial-gradient(120px 90px at 90px 70px, rgba(255,244,200,0.08), transparent 70%),
+    radial-gradient(160px 120px at 420px 130px, rgba(255,244,200,0.05), transparent 70%),
+    linear-gradient(180deg,#0a0518 0%,#140a24 30%,#1c1230 55%,#150a1e 100%);
+}
+
+.wall{
+  position:absolute;left:0;top:0;width:512px;height:640px;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 2px,
+      transparent 2px, transparent 40px),
+    repeating-linear-gradient(90deg,
+      #241733 0px, #241733 38px,
+      #2c1d3c 38px, #2c1d3c 40px),
+    linear-gradient(180deg,#1a1026 0%,#231532 45%,#170c22 100%);
+  mix-blend-mode:normal;
+  opacity:0.96;
+}
+
+.vignette{
+  position:absolute;left:0;top:0;width:512px;height:640px;
+  background:radial-gradient(380px 420px at 256px 300px, transparent 40%, rgba(0,0,0,0.55) 100%);
+}
+
+.ground{
+  position:absolute;left:0;bottom:0;width:512px;height:60px;
+  background:linear-gradient(180deg,#150a1e,#0a0510);
+}
+
+/* bracket + chain + sign */
+.bracket{
+  position:absolute;left:236px;top:88px;width:40px;height:20px;
+  border-top:5px solid #1d1108;
+  border-right:5px solid #1d1108;
+  border-radius:0 60% 0 0;
+}
+.chainL,.chainR{
+  position:absolute;top:106px;width:2px;height:34px;background:#241608;
+}
+.chainL{left:242px;}
+.chainR{left:270px;}
+
+.signPivot{
+  position:absolute;left:256px;top:140px;width:0;height:0;
+}
+.sign{
+  position:absolute;left:-78px;top:0px;width:156px;height:58px;
+  background:
+    repeating-linear-gradient(90deg,#7a4a20 0px,#7a4a20 10px,#6a3f1a 10px,#6a3f1a 20px);
+  border:4px solid #3a220d;
+  border-radius:3px;
+  box-shadow:0 6px 14px rgba(0,0,0,0.6);
+  display:flex;align-items:center;justify-content:center;
+}
+.sign span{
+  font-family:'Bebas',sans-serif;
+  font-size:34px;
+  letter-spacing:4px;
+  color:#ffe4a3;
+  text-shadow:0 0 6px rgba(255,190,90,0.8), 0 0 14px rgba(255,150,40,0.6);
+}
+
+/* window */
+.frame{
+  position:absolute;left:96px;top:210px;width:320px;height:360px;
+  background:repeating-linear-gradient(135deg,#6b4423 0px,#6b4423 5px,#573417 5px,#573417 10px);
+  border-radius:6px;
+  box-shadow:0 0 0 4px #3a2210, inset 0 0 0 4px #3a2210, 0 10px 30px rgba(0,0,0,0.65);
+}
+.sill{
+  position:absolute;left:82px;top:566px;width:348px;height:16px;
+  background:linear-gradient(180deg,#6b4423,#4a2c14);
+  border-radius:3px;
+  box-shadow:0 6px 10px rgba(0,0,0,0.5);
+}
+
+.glow{
+  position:absolute;left:110px;top:224px;width:292px;height:332px;
+  border-radius:2px;
+  background:radial-gradient(220px 260px at 50% 46%, rgba(255,200,110,0.9), rgba(200,110,30,0.5) 55%, rgba(60,20,10,0.2) 100%);
+}
+
+.panes{
+  position:absolute;left:110px;top:224px;width:292px;height:332px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  grid-template-rows:repeat(4,1fr);
+  gap:8px;
+  background:#1b0f06;
+  border-radius:2px;
+  padding:8px;
+}
+.pane{
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 42%,
+    #fff1c4 0%, #ffdf94 12%, #ffc35f 28%, #e89a3c 45%,
+    #b96a28 62%, #7c4419 80%, #4a270e 100%);
+  box-shadow:inset 0 0 6px rgba(0,0,0,0.5);
+}
+
+.frameCross{
+  position:absolute;left:96px;top:210px;width:320px;height:360px;
+  background:
+    linear-gradient(90deg, transparent 49%, #3a2210 49%, #3a2210 51%, transparent 51%),
+    linear-gradient(180deg, transparent 49%, #3a2210 49%, #3a2210 51%, transparent 51%);
+  opacity:0.0;
+}
+
+.fireflies .firefly{
+  position:absolute;width:6px;height:6px;border-radius:50%;
+  background:radial-gradient(circle,#f4ffb0 0%, #c8ff5a 40%, rgba(180,255,60,0) 75%);
+  box-shadow:0 0 8px 3px rgba(190,255,80,0.7);
+}
+</style>
+</head>
+<body>
+<div class="scene" id="scene">
+  <div class="sky"></div>
+  <div class="wall"></div>
+
+  <div class="bracket"></div>
+  <div class="chainL"></div>
+  <div class="chainR"></div>
+  <div class="signPivot" id="signPivot">
+    <div class="sign" id="sign"><span>OPEN</span></div>
+  </div>
+
+  <div class="frame"></div>
+  <div class="glow" id="glow"></div>
+  <div class="panes" id="panes"></div>
+  <div class="sill"></div>
+
+  <div class="vignette"></div>
+  <div class="ground"></div>
+
+  <div class="fireflies" id="fireflies"></div>
+</div>
+
+<script>
+(function(){
+  var scene = document.getElementById('scene');
+  var panesEl = document.getElementById('panes');
+  var glowEl = document.getElementById('glow');
+  var signEl = document.getElementById('sign');
+  var fliesEl = document.getElementById('fireflies');
+
+  var PANE_COUNT = 16;
+  var panes = [];
+  for(var i=0;i<PANE_COUNT;i++){
+    var p = document.createElement('div');
+    p.className = 'pane';
+    panesEl.appendChild(p);
+    panes.push(p);
+  }
+
+  var FLY_COUNT = 6;
+  var flyDefs = [
+    {bx:40,  by:260, rx:26, ry:18, k:1, phase:0.0,  tphase:0.1},
+    {bx:70,  by:420, rx:20, ry:24, k:1, phase:1.3,  tphase:0.6},
+    {bx:440, by:300, rx:24, ry:16, k:1, phase:2.4,  tphase:0.2},
+    {bx:462, by:460, rx:18, ry:22, k:1, phase:3.6,  tphase:0.8},
+    {bx:30,  by:540, rx:22, ry:14, k:1, phase:4.4,  tphase:0.4},
+    {bx:470, by:190, rx:16, ry:20, k:1, phase:5.2,  tphase:0.9}
+  ];
+  var flies = [];
+  for(var j=0;j<FLY_COUNT;j++){
+    var f = document.createElement('div');
+    f.className = 'firefly';
+    fliesEl.appendChild(f);
+    flies.push(f);
+  }
+
+  var FPS = 12;
+  var FRAMES = 36;
+
+  function seek(fr){
+    var t = fr / FRAMES;
+    var TAU = Math.PI * 2;
+
+    var avgFlicker = 0;
+    for(var i=0;i<panes.length;i++){
+      var phase = i * 0.55;
+      var flick = Math.cos(TAU * t + phase) * 0.5 + Math.cos(TAU * 2 * t + phase * 1.7) * 0.2;
+      var bright = 1 + flick * 0.16;
+      avgFlicker += flick;
+      panes[i].style.filter = 'brightness(' + bright.toFixed(3) + ')';
+    }
+    avgFlicker /= panes.length;
+
+    var glowBright = 1 + avgFlicker * 0.22;
+    var glowOpacity = 0.85 + avgFlicker * 0.12;
+    glowEl.style.filter = 'brightness(' + glowBright.toFixed(3) + ')';
+    glowEl.style.opacity = glowOpacity.toFixed(3);
+
+    var swing = 6 * Math.sin(TAU * t);
+    signEl.style.transform = 'rotate(' + swing.toFixed(2) + 'deg)';
+    signEl.style.transformOrigin = '50% 0%';
+
+    for(var k=0;k<flies.length;k++){
+      var d = flyDefs[k];
+      var ang = TAU * t * d.k + d.phase;
+      var x = d.bx + Math.cos(ang) * d.rx;
+      var y = d.by + Math.sin(ang) * d.ry;
+      var twinkle = 0.35 + 0.65 * Math.abs(Math.sin(TAU * 2 * t + d.tphase));
+      flies[k].style.left = x.toFixed(1) + 'px';
+      flies[k].style.top = y.toFixed(1) + 'px';
+      flies[k].style.opacity = twinkle.toFixed(3);
+      var scale = 0.8 + twinkle * 0.5;
+      flies[k].style.transform = 'scale(' + scale.toFixed(2) + ')';
+    }
+  }
+
+  seek(0);
+  window.__film = { fps: FPS, frames: FRAMES, seek: seek };
+})();
+</script>
+</body>
+</html>

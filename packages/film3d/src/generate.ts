@@ -235,30 +235,49 @@ Hard constraints on the html (a strict lint rejects violations):
 
 Craft: design like a print artist — strong silhouette, 2-4 color palette, big type, textures from layered gradients (wood grain, paper, sky). It will be seen from a few meters away in a film, so bold beats intricate.`;
 
+const SURFACE_ANIM_INSTRUCTIONS = `
+This artifact is ANIMATED (it plays on an in-world screen). Additional contract:
+- Add "anim": { "fps": 6..15, "frames": 8..48 } to the JSON — a short seamless LOOP (frame N-1 flows back into frame 0).
+- The html ends with ONE <script> that lays out the page, defines seek(f) — a PURE function of the integer frame index (same f ⇒ same pixels, no other state) — calls seek(0), and sets window.__film = { fps, frames, seek } with EXACTLY the same numbers as "anim".
+- Inside the script: no Math.random, no Date/performance (f is the only clock), no rAF/timers (the recorder drives seek), no fetch/storage/eval.
+- Animate by toggling classes or setting style properties from f (lights chasing, glow breathing via Math.cos(2*Math.PI*f/frames), elements stepping along a path).`;
+
 /** Ask the AI for a SurfaceDoc; one lint-quoting retry (same loop as films/creatures). */
 export async function generateSurface(
   topic: string,
-  opts: { model?: string } = {},
+  opts: { model?: string; anim?: boolean } = {},
 ): Promise<{ doc: SurfaceDoc; attempts: number }> {
-  const first = await runClaude(`${SURFACE_INSTRUCTIONS}\n\nDesign: ${topic}`, opts.model);
+  const instructions = opts.anim ? `${SURFACE_INSTRUCTIONS}\n${SURFACE_ANIM_INSTRUCTIONS}` : SURFACE_INSTRUCTIONS;
+  // Mode is the caller's, not the model's: a static request must not sneak in a script.
+  const modeCheck = (doc: SurfaceDoc): string[] =>
+    opts.anim && !doc.anim ? ['this is an ANIMATED surface — include "anim": { fps, frames }']
+    : !opts.anim && doc.anim ? ["this is a STATIC surface — no anim field"] : [];
+  const first = await runClaude(`${instructions}\n\nDesign: ${topic}`, opts.model);
   let res = parseSurface(extractJson(first));
-  if (res.doc) return { doc: res.doc, attempts: 1 };
+  let errors = res.doc ? modeCheck(res.doc) : res.errors!;
+  if (res.doc && errors.length === 0) return { doc: res.doc, attempts: 1 };
   const retry = await runClaude(
-    `${SURFACE_INSTRUCTIONS}\n\nDesign: ${topic}\n\nYour previous attempt was rejected:\n${res.errors!.map((e) => `- ${e}`).join("\n")}\n\nFix every issue; reply with the corrected JSON only.`,
+    `${instructions}\n\nDesign: ${topic}\n\nYour previous attempt was rejected:\n${errors.map((e) => `- ${e}`).join("\n")}\n\nFix every issue; reply with the corrected JSON only.`,
     opts.model,
   );
   res = parseSurface(extractJson(retry));
-  if (res.doc) return { doc: res.doc, attempts: 2 };
-  throw new Error(`the AI could not produce a valid SurfaceDoc:\n  ${res.errors!.join("\n  ")}`);
+  errors = res.doc ? modeCheck(res.doc) : res.errors!;
+  if (res.doc && errors.length === 0) return { doc: res.doc, attempts: 2 };
+  throw new Error(`the AI could not produce a valid SurfaceDoc:\n  ${errors.join("\n  ")}`);
 }
 
-/** The designer looks at its own bake and may revise the HTML once. */
+/** The designer looks at its own bake (one still, or sample frames of a loop) and may revise once. */
 export async function reviewSurface(
   doc: SurfaceDoc,
-  bakePath: string,
+  bakePath: string | string[],
   opts: { model?: string } = {},
 ): Promise<{ doc: SurfaceDoc; revised: boolean }> {
-  const prompt = `${SURFACE_INSTRUCTIONS}\n\nYou designed the artifact below; the PNG at ${bakePath} is the ACTUAL bake. Read the image and judge it like a print proof: composition, contrast, type legibility at a glance, anything clipped or overlapping. Reply with ONLY the word KEEP, or the complete corrected SurfaceDoc JSON.\n\nThe artifact:\n${JSON.stringify(doc, null, 2)}`;
+  const paths = Array.isArray(bakePath) ? bakePath : [bakePath];
+  const proof = paths.length === 1
+    ? `the PNG at ${paths[0]} is the ACTUAL bake`
+    : `these PNGs are ACTUAL frames of your loop, in order:\n${paths.map((p) => `- ${p}`).join("\n")}\nJudge the motion too: does the loop read (change between frames, seamless wrap)?`;
+  const instructions = doc.anim ? `${SURFACE_INSTRUCTIONS}\n${SURFACE_ANIM_INSTRUCTIONS}` : SURFACE_INSTRUCTIONS;
+  const prompt = `${instructions}\n\nYou designed the artifact below; ${proof}. Read the image${paths.length > 1 ? "s" : ""} and judge it like a print proof: composition, contrast, type legibility at a glance, anything clipped or overlapping. Reply with ONLY the word KEEP, or the complete corrected SurfaceDoc JSON.\n\nThe artifact:\n${JSON.stringify(doc, null, 2)}`;
   const first = parseReviewReply(await runClaude(prompt, opts.model));
   if (first.keep) return { doc, revised: false };
   const res = parseSurface(first.candidate);

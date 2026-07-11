@@ -442,5 +442,24 @@ describe("checkSurfaceHtml (the artifact lint)", () => {
     expect(checkSurfaceHtml(OK.replace("</style>", "h1{animation:spin 1s}</style>")).join()).toMatch(/no CSS animations/);
     expect(checkSurfaceHtml(OK + '<img src="data:image/png;base64,AA==">')).toEqual([]); // data URIs pass
     expect(checkSurfaceHtml(OK.replace('src:url', 'src:local("Impact"),url')).join()).toMatch(/no local\(/); // host fonts banned
+    // SMIL runs on wall-clock time and is NOT frozen by the recorder's animations:"disabled".
+    expect(checkSurfaceHtml(OK + '<svg><rect><animate attributeName="x" dur="1s"/></rect></svg>').join()).toMatch(/no SVG SMIL/);
+  });
+
+  it("anim mode allows exactly the film contract and bans nondeterminism", async () => {
+    const SEEK = `<script>function seek(f){document.body.style.opacity=String(0.5+0.5*Math.cos(2*Math.PI*f/12))}seek(0);window.__film={fps:12,frames:12,seek};</script>`;
+    expect(checkSurfaceHtml(OK + SEEK, { anim: true })).toEqual([]);
+    // Scripts without the contract, or with clocks/randomness/timers, are rejected.
+    expect(checkSurfaceHtml(OK + "<script>seek(0)</script>", { anim: true }).join()).toMatch(/window\.__film/);
+    expect(checkSurfaceHtml(OK + SEEK.replace("Math.cos", "Math.random()+Math.cos"), { anim: true }).join()).toMatch(/no Math.random/);
+    expect(checkSurfaceHtml(OK + SEEK.replace("seek(0);", "seek(Date.now());"), { anim: true }).join()).toMatch(/no Date/);
+    expect(checkSurfaceHtml(OK + SEEK.replace("seek(0);", "setInterval(seek,90);"), { anim: true }).join()).toMatch(/no self-scheduling/);
+    expect(checkSurfaceHtml(OK + SEEK.replace("seek(0);", 'fetch("/x");'), { anim: true }).join()).toMatch(/no runtime IO/);
+    // Static mode is unchanged: any script is still rejected.
+    expect(checkSurfaceHtml(OK + SEEK).join()).toMatch(/no <script>/);
+    // The committed festival-marquee (the screen prop's showcase) passes the anim lint.
+    const { readFile } = await import("node:fs/promises");
+    const marquee = await readFile(new URL("../../assets/surfaces/festival-marquee/source.html", import.meta.url), "utf8");
+    expect(checkSurfaceHtml(marquee, { anim: true })).toEqual([]);
   });
 });
