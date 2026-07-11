@@ -29,6 +29,16 @@
       ],
       "license": "generated (vsim, MIT)",
       "prompt": "hand-written proof — a painted wooden trail sign pointing to the pond"
+    },
+    {
+      "name": "woodland-welcome-board",
+      "type": "html",
+      "size": [
+        1024,
+        640
+      ],
+      "license": "generated (vsim, MIT)",
+      "prompt": "a rustic carved wooden welcome board for a woodland festival at dusk, warm lantern-lit palette"
     }
   ]
 }

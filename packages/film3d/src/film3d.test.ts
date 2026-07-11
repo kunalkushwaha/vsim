@@ -398,5 +398,6 @@ describe("checkSurfaceHtml (the artifact lint)", () => {
     expect(checkSurfaceHtml(OK.replace("linear-gradient(#fff,#eee)", 'url("wood.png")')).join()).toMatch(/only the bundled font/);
     expect(checkSurfaceHtml(OK.replace("</style>", "h1{animation:spin 1s}</style>")).join()).toMatch(/no CSS animations/);
     expect(checkSurfaceHtml(OK + '<img src="data:image/png;base64,AA==">')).toEqual([]); // data URIs pass
+    expect(checkSurfaceHtml(OK.replace('src:url', 'src:local("Impact"),url')).join()).toMatch(/no local\(/); // host fonts banned
   });
 });

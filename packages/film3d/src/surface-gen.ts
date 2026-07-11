@@ -30,6 +30,7 @@ export function checkSurfaceHtml(html: string): string[] {
   ban(/@import\b/i, "no @import — all CSS inline in the one file");
   ban(/<link\b/i, "no <link> — styles go in a <style> block");
   ban(/<iframe\b|<object\b|<embed\b|<video\b|<audio\b/i, "no embedded documents or media elements");
+  ban(/\blocal\(/i, "no local() font sources — host-installed fonts break bake reproducibility");
   ban(/\banimation(-\w+)?\s*:/i, "no CSS animations — a surface is one deterministic still");
   ban(/\btransition(-\w+)?\s*:/i, "no CSS transitions — a surface is one deterministic still");
   for (const m of html.matchAll(/url\(\s*['"]?([^'")]+)['"]?\s*\)/gi)) {

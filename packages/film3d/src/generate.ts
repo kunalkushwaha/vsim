@@ -255,7 +255,7 @@ export async function reviewSurface(
   bakePath: string,
   opts: { model?: string } = {},
 ): Promise<{ doc: SurfaceDoc; revised: boolean }> {
-  const prompt = `${SURFACE_INSTRUCTIONS}\n\nYou designed the artifact below; the PNG at ${bakePath} is the ACTUAL bake. Read the image and judge it like a print proof: composition, contrast, type legibility at a glance, anything clipped or overlapping. Reply with ONLY the word KEEP, or the complete corrected SurfaceDoc JSON.\n\nThe artifact:\n${JSON.stringify({ ...doc, html: doc.html.slice(0, 4000) }, null, 2)}`;
+  const prompt = `${SURFACE_INSTRUCTIONS}\n\nYou designed the artifact below; the PNG at ${bakePath} is the ACTUAL bake. Read the image and judge it like a print proof: composition, contrast, type legibility at a glance, anything clipped or overlapping. Reply with ONLY the word KEEP, or the complete corrected SurfaceDoc JSON.\n\nThe artifact:\n${JSON.stringify(doc, null, 2)}`;
   const first = parseReviewReply(await runClaude(prompt, opts.model));
   if (first.keep) return { doc, revised: false };
   const res = parseSurface(first.candidate);

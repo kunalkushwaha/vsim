@@ -386,7 +386,15 @@ async function runSurface(args: Args): Promise<void> {
   let { doc, attempts } = await generateSurface(args.prompt, {});
   console.log(`✓ SurfaceDoc "${doc.name}" ${doc.size[0]}x${doc.size[1]} — attempt ${attempts}`);
 
-  const dir = resolve("packages/assets/surfaces", doc.name);
+  // Never clobber an existing surface (the model could pick a curated name like
+  // "trail-sign"): take the first free -2/-3… suffix instead.
+  const { listSurfaces } = await import("@vsim/assets");
+  const taken = new Set((await listSurfaces()).map((s) => s.name));
+  let name = doc.name;
+  for (let n = 2; taken.has(name); n++) name = `${doc.name}-${n}`;
+  if (name !== doc.name) console.log(`✎ "${doc.name}" exists — registering as "${name}"`);
+  doc = { ...doc, name };
+  const dir = resolve("packages/assets/surfaces", name);
   await mkdir(dir, { recursive: true });
   const bake = async () => {
     await writeFile(join(dir, "source.html"), doc.html);
@@ -398,7 +406,9 @@ async function runSurface(args: Args): Promise<void> {
   console.log("✎ reviewing the proof …");
   const review = await reviewSurface(doc, join(dir, "art.png"), {});
   if (review.revised) {
-    doc = review.doc;
+    // A revision may change the ART, not the identity: files already live under `name`,
+    // and the manifest/codegen key off it — a renamed revision would break registration.
+    doc = { ...review.doc, name };
     await bake();
     console.log(`✓ revised after review → "${doc.name}"`);
   } else {
