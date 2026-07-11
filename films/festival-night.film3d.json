@@ -1,0 +1,323 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "The Path to the Welcome Board",
+  "set": "night",
+  "props": [
+    {
+      "kind": "lantern",
+      "id": "lant1",
+      "x": -4,
+      "z": -2
+    },
+    {
+      "kind": "lantern",
+      "id": "lant2",
+      "x": -1,
+      "z": -1
+    },
+    {
+      "kind": "lantern",
+      "id": "lant3",
+      "x": 1.5,
+      "z": 0.5
+    },
+    {
+      "kind": "tree",
+      "id": "tree1",
+      "x": -6,
+      "z": -5,
+      "height": 3,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree2",
+      "x": -3,
+      "z": -6,
+      "height": 4,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "tree3",
+      "x": 3,
+      "z": -5,
+      "height": 3.5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree4",
+      "x": 5,
+      "z": -3,
+      "height": 4,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "tree5",
+      "x": -5,
+      "z": 3,
+      "height": 3,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree6",
+      "x": 6,
+      "z": 4,
+      "height": 3,
+      "variant": "conifer"
+    },
+    {
+      "kind": "bush",
+      "id": "bush1",
+      "x": -2.5,
+      "z": -2,
+      "radius": 0.5
+    },
+    {
+      "kind": "bush",
+      "id": "bush2",
+      "x": 0.5,
+      "z": -0.5,
+      "radius": 0.6
+    },
+    {
+      "kind": "rock",
+      "id": "rock1",
+      "x": -3.6,
+      "z": -2.9,
+      "radius": 0.4
+    },
+    {
+      "kind": "rock",
+      "id": "rock2",
+      "x": 1,
+      "z": 0,
+      "radius": 0.3
+    },
+    {
+      "kind": "flowers",
+      "id": "flowers1",
+      "x": 3,
+      "z": 0.5,
+      "radius": 1
+    },
+    {
+      "kind": "stump",
+      "id": "stump1",
+      "x": -1,
+      "z": 1.5,
+      "radius": 0.3
+    },
+    {
+      "kind": "sign",
+      "id": "sign1",
+      "x": 2.5,
+      "z": 1.2,
+      "art": "woodland-welcome-board",
+      "angle": 210
+    }
+  ],
+  "actors": [
+    {
+      "id": "rabbit1",
+      "character": "rabbit",
+      "x": -5,
+      "z": -3,
+      "facing": [
+        -2,
+        -1
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "beat1",
+      "start": 0,
+      "end": 8,
+      "caption": "The rabbit finds the lantern-lit path.",
+      "narration": "Under a still, moonlit sky, the little rabbit finds the lantern-lit path.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "rabbit1",
+          "to": [
+            -2,
+            -1
+          ],
+          "at": 0,
+          "dur": 6,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 6,
+          "dur": 2
+        }
+      ]
+    },
+    {
+      "id": "beat2",
+      "start": 8,
+      "end": 16,
+      "caption": "Warm light guides it deeper into the woods.",
+      "narration": "Warm lantern light guides each careful hop deeper into the woods.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "rabbit1",
+          "to": [
+            0,
+            0
+          ],
+          "at": 0,
+          "dur": 5,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 5,
+          "dur": 3
+        }
+      ]
+    },
+    {
+      "id": "beat3",
+      "start": 16,
+      "end": 26,
+      "caption": "A wooden board glows into view.",
+      "narration": "At last, a wooden board glows softly into view at the path's end.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "rabbit1",
+          "to": [
+            2,
+            1
+          ],
+          "at": 0,
+          "dur": 6,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "rabbit1",
+          "to": [
+            2.5,
+            1.2
+          ],
+          "at": 6,
+          "dur": 1
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 7,
+          "dur": 3
+        }
+      ]
+    },
+    {
+      "id": "beat4",
+      "start": 26,
+      "end": 34,
+      "caption": "It pauses to read of the festival.",
+      "narration": "The rabbit pauses, nose twitching, to read of the woodland festival.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 0,
+          "dur": 8
+        }
+      ]
+    },
+    {
+      "id": "beat5",
+      "start": 34,
+      "end": 40,
+      "caption": "It lingers in the quiet night.",
+      "narration": "Satisfied, it lingers a moment longer in the quiet, lantern-lit night.",
+      "actions": [
+        {
+          "do": "face",
+          "actor": "rabbit1",
+          "to": [
+            -2,
+            -1
+          ],
+          "at": 0,
+          "dur": 1
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 1,
+          "dur": 5
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 8,
+      "shot": "follow",
+      "target": "rabbit1",
+      "distance": 3.8,
+      "height": 1.6,
+      "angle": 0,
+      "sweep": 90
+    },
+    {
+      "at": 8,
+      "dur": 8,
+      "shot": "close",
+      "target": "rabbit1",
+      "distance": 3,
+      "height": 1.5,
+      "angle": 0,
+      "sweep": 90
+    },
+    {
+      "at": 16,
+      "dur": 10,
+      "shot": "follow",
+      "target": "rabbit1",
+      "distance": 5,
+      "height": 2,
+      "angle": 0,
+      "sweep": 90
+    },
+    {
+      "at": 26,
+      "dur": 8,
+      "shot": "orbit",
+      "target": "rabbit1",
+      "distance": 4,
+      "height": 2,
+      "angle": 0,
+      "sweep": 70
+    },
+    {
+      "at": 34,
+      "dur": 6,
+      "shot": "wide",
+      "target": "rabbit1",
+      "distance": 7,
+      "height": 3,
+      "angle": 0,
+      "sweep": 90
+    }
+  ]
+}
