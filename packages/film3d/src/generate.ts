@@ -4,6 +4,7 @@
 // authors the document; the compiler and renderer never see the model.
 import { spawn } from "node:child_process";
 import { CHARACTERS, CHARACTER_IDS, parseFilm3D, type Film3DDoc } from "./schema.js";
+import { SURFACE_NAMES, CUTOUT_NAMES } from "./surfaces.js";
 import { extractJson, parseReviewReply, type ReviewStill } from "./review.js";
 import { parseCreature, type CreatureDoc } from "./creature.js";
 
@@ -29,7 +30,9 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
     { "kind": "stump", "id", "x", "z", "radius": 0.15..0.5 },
     { "kind": "log", "id", "x", "z", "length": 0.8..3, "angle": yaw degrees },  // fallen trunk — a natural bench/obstacle
     { "kind": "pond", "id", "x", "z", "radius": 0.8..4 },     // still water ringed by shore stones
-    { "kind": "lantern", "id", "x", "z" }                     // glowing post light — pools warm light (great at dusk/night)
+    { "kind": "lantern", "id", "x", "z" },                    // glowing post light — pools warm light (great at dusk/night)
+    { "kind": "sign", "id", "x", "z", "art": one of ${JSON.stringify([...SURFACE_NAMES])}, "angle": yaw degrees },  // a wooden board with real painted artwork
+    { "kind": "cutout", "id", "x", "z", "art": one of ${JSON.stringify([...CUTOUT_NAMES])}, "height": 0.5..4, "angle": yaw }  // an extruded silhouette, like stage scenery
   ],
   "actors": [                                                // ≤3
     { "id", "character": one of the list below, "x", "z", "facing": [x, z] (optional point to face) }

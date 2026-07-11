@@ -4,6 +4,9 @@
 import type { SceneBuilder, Vec3 } from "@vsim/authoring";
 import { v3 } from "@vsim/core";
 import type { Film3DProp } from "./schema.js";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { loadSurface, svgToMesh } from "@vsim/assets";
 
 export interface SetLook {
   background: Vec3;
@@ -278,8 +281,31 @@ export function lantern(b: SceneBuilder, look: SetLook, id: string, x: number, z
   b.light({ type: "point", intensity: 2.4, decay: 2, color: [1, 0.76, 0.42], position: [0, 1.1, 0], parent: id }, `${id}__light`);
 }
 
+/** A baked HTML surface on a wooden board between two posts (the trail-sign pattern). */
+export async function sign(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, art: string, angleDeg: number): Promise<void> {
+  const tex = await loadSurface(art);
+  const w = 1.5, h = (w * tex.height) / tex.width, postH = 0.85;
+  b.group(id, { position: [x, 0, z], rotation: [0, (angleDeg * Math.PI) / 180, 0] });
+  b.material(`${id}__post`, { color: v3.scale(look.trunk, 0.9), roughness: 0.9 });
+  for (const [pid, px] of [["l", -w * 0.42], ["r", w * 0.42]] as const) {
+    b.mesh(`${id}__post_${pid}`, { parent: id, geometry: { kind: "cylinder", radius: 0.05, height: postH + h * 0.75, segments: 8 }, material: `${id}__post`, position: [px, (postH + h * 0.75) / 2, 0] });
+  }
+  b.texturedQuad(`${id}__board`, { parent: id, texture: tex, width: w, height: h, back: true, position: [0, postH, 0.055] });
+}
+
+/** An extruded SVG silhouette — stage-scenery shapes, logos, cutout landmarks. */
+export async function cutout(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, art: string, height: number, depth: number, angleDeg: number): Promise<void> {
+  const dir = fileURLToPath(new URL("../../assets/surfaces/", import.meta.url));
+  const svg = await readFile(`${dir}${art}/source.svg`, "utf8");
+  b.group(id, { position: [x, 0, z], rotation: [0, (angleDeg * Math.PI) / 180, 0] });
+  svgToMesh(svg, { height, depth }).forEach((m, i) => {
+    b.material(`${id}__c${i}`, { color: m.color as Vec3, roughness: 0.75 });
+    b.mesh(`${id}__m${i}`, { parent: id, geometry: { kind: "mesh", data: { positions: m.positions, normals: m.normals, indices: m.indices } }, material: `${id}__c${i}` });
+  });
+}
+
 /** Place ANY Film3DProp — the single dispatch the compiler (and tests) call. */
-export function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, durationFrames: number): void {
+export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, durationFrames: number): Promise<void> {
   switch (p.kind) {
     case "tree": b.tree(p.id, { position: [p.x, 0, p.z], height: p.height, variant: p.variant, trunkColor: look.trunk, leafColor: look.leaf }); return;
     case "rock": b.rock(p.id, { position: [p.x, 0, p.z], radius: p.radius, color: look.stone }); return;
@@ -290,6 +316,8 @@ export function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, duratio
     case "log": return log(b, look, p.id, p.x, p.z, p.length, p.angle);
     case "pond": return pond(b, look, p.id, p.x, p.z, p.radius);
     case "lantern": return lantern(b, look, p.id, p.x, p.z);
+    case "sign": return sign(b, look, p.id, p.x, p.z, p.art, p.angle);
+    case "cutout": return cutout(b, look, p.id, p.x, p.z, p.art, p.height, p.depth, p.angle);
     default: { const exhaustive: never = p; throw new Error(`unhandled prop kind ${(exhaustive as Film3DProp).kind}`); }
   }
 }
