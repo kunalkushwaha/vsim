@@ -443,6 +443,19 @@ describe("surface props (sign + cutout)", () => {
     expect(bad.errors!.join("\n")).toMatch(/variant/);
   });
 
+  it("compiles weather into a seeded stage-wide particle system", async () => {
+    const sceneDoc = await film3dToScene({ ...DOC, props: [], weather: "snowfall" });
+    const p = (sceneDoc as unknown as { particles: { id: string; count: number; loop: boolean }[] }).particles.find((x) => x.id === "__weather")!;
+    expect(p).toBeDefined();
+    expect(p.count).toBeGreaterThan(100);
+    expect(p.loop).toBe(true);
+    // No weather field → no ambient system.
+    const clear = await film3dToScene({ ...DOC, props: [] });
+    expect((clear as unknown as { particles: { id: string }[] }).particles.some((x) => x.id === "__weather")).toBe(false);
+    // Unknown weather is rejected.
+    expect(parseFilm3D({ ...DOC, weather: "hail" }).errors!.join("\n")).toMatch(/weather/);
+  });
+
   it("compiles a windmill whose fan turns for the whole film", async () => {
     const sceneDoc = await film3dToScene({
       ...DOC,
