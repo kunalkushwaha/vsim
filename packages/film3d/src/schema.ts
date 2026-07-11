@@ -203,6 +203,8 @@ export const Film3DDocSchema = z
     title: z.string().max(60),
     /** Art-directed look preset — sky, fog, lights, ground palette, tone mapping. */
     set: z.enum(["meadow", "dusk", "night", "snow", "studio"]),
+    /** Ambient particles across the whole stage and film (deterministic, seeded). */
+    weather: z.enum(["snowfall", "rain", "fireflies", "leaves"]).optional(),
     props: z.array(PropSchema).max(24).default([]),
     actors: z.array(ActorSchema).max(3).default([]),
     beats: z.array(Film3DBeatSchema).min(1),

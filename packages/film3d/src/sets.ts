@@ -373,6 +373,25 @@ export async function windmill(b: SceneBuilder, id: string, x: number, z: number
   ]);
 }
 
+/**
+ * Ambient weather: one tuned, seeded particle system spanning the stage. Slow drifts use
+ * zero gravity with a constant fall velocity (real gravity reads as hail); fireflies are
+ * short-lived wanderers near the ground so they blink as they respawn.
+ */
+export function weather(b: SceneBuilder, kind: "snowfall" | "rain" | "fireflies" | "leaves"): void {
+  const presets = {
+    snowfall: { position: [0, 8, -3], spread: [14, 2, 10], count: 1100, velocity: [0.15, -0.55, 0], velocitySpread: [0.2, 0.15, 0.2], gravity: [0, 0, 0], lifeFrames: 460, size: 0.042, color: [0.99, 0.99, 1], opacity: 0.95 },
+    rain: { position: [0, 9, -3], spread: [14, 1, 10], count: 900, velocity: [0.4, -8.5, 0], velocitySpread: [0.3, 1.2, 0.3], gravity: [0, 0, 0], lifeFrames: 40, size: 0.018, color: [0.62, 0.68, 0.8], opacity: 0.45 },
+    fireflies: { position: [0, 0.8, -2], spread: [9, 0.5, 7], count: 70, velocity: [0, 0.06, 0], velocitySpread: [0.28, 0.18, 0.28], gravity: [0, 0, 0], lifeFrames: 55, size: 0.02, color: [1, 0.88, 0.45], opacity: 0.95 },
+    leaves: { position: [0, 6, -3], spread: [13, 1.5, 9], count: 220, velocity: [-0.5, -0.5, 0.1], velocitySpread: [0.4, 0.2, 0.3], gravity: [0, 0, 0], lifeFrames: 420, size: 0.045, color: [0.78, 0.5, 0.2], opacity: 0.95 },
+  } as const;
+  const p = presets[kind];
+  b.particles("__weather", { ...p, position: [...p.position] as Vec3, spread: [...p.spread] as Vec3, velocity: [...p.velocity] as Vec3, velocitySpread: [...p.velocitySpread] as Vec3, gravity: [...p.gravity] as Vec3, color: [...p.color] as Vec3, loop: true, seed: 7,
+    // Pre-warm one full lifetime: births stagger from startFrame, so starting at 0 would
+    // leave the first ~lifeFrames with an empty lower sky (snow that hasn't fallen yet).
+    startFrame: -p.lifeFrames });
+}
+
 /** Place ANY Film3DProp — the single dispatch the compiler (and tests) call. */
 export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, durationFrames: number, fps = 30): Promise<void> {
   switch (p.kind) {
