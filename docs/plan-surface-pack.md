@@ -1,5 +1,10 @@
 # Plan — the surface pack: HTML → textures, SVG → geometry, AI-authored
 
+**STATUS: SHIPPED (S1–S4, PRs #53–#56).** captureStill baker + surface library +
+loadSurface (S1); svgToMesh + texturedQuad (S2); sign/cutout film props with codegen'd art
+tables (S3); `vsim surface` generate→look→revise + the first AI-designed surface,
+woodland-welcome-board (S4). Animated textures remain the designed v2.
+
 *Goal: let the AI design **surface detail** (signs, posters, screens, patterns) in the two
 visual languages it is genuinely fluent in — HTML/CSS and SVG — and bake those artifacts
 into deterministic assets the films can cast, exactly the way characters work today.*

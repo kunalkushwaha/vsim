@@ -202,7 +202,11 @@ directly; the same file renders a **path-traced master** via
 is **self-expanding**: `vsim creature -p "a gray wolf, lean and watchful"` designs a new
 species as a validated CreatureDoc, compiles it, reviews its own turntable, and registers
 it as castable ([`creatures/wolf.creature.json`](creatures/wolf.creature.json) was made
-exactly that way).
+exactly that way). Even the ARTWORK is AI-made: `vsim surface -p "a rustic welcome
+board…"` designs a self-contained HTML artifact under a strict determinism lint, bakes it
+with a pinned headless Chromium, reviews its own proof, and registers it — films then
+stage it as a `sign` prop, or extrude committed SVGs as `cutout` scenery
+([the surface pack](docs/plan-surface-pack.md)).
 
 ## vsim Studio — the visual editor
 
