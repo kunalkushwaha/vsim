@@ -20,6 +20,8 @@ export interface MeshData {
   uvs?: number[];
   /** Base-color texture (albedo), sampled at `uvs` and multiplied with lighting. */
   texture?: Texture;
+  /** Frame sequence for animated textures — ResolvedNode.textureFrame selects the index. */
+  textureFrames?: Texture[];
   /** Additional PBR maps (loaded from glTF) for photoreal/preview rendering, sampled at `uvs`. */
   normalMap?: Texture;
   /** glTF packing: R=occlusion (unused here), G=roughness, B=metalness. */

@@ -65,7 +65,9 @@ function bakeFrame(frame: number) {
       name: n.id, positions, normals, indices: md.indices, uvs: md.uvs ?? null,
       color: mat?.color ?? [0.8, 0.8, 0.8], roughness: mat?.roughness ?? 0.8, metalness: mat?.metalness ?? 0,
       emissive: mat?.emissive ?? [0, 0, 0], skin: skinned,
-      texture: enc(md.texture), normalMap: enc(md.normalMap), metallicRoughnessMap: enc(md.metallicRoughnessMap),
+      // texture.frame tracks are a software-engine channel; the bake uses the static base
+      // texture (falling back to the sequence's first frame).
+      texture: enc(md.texture ?? md.textureFrames?.[0]), normalMap: enc(md.normalMap), metallicRoughnessMap: enc(md.metallicRoughnessMap),
       occlusionMap: enc(md.occlusionMap), emissiveMap: enc(md.emissiveMap),
     });
   }

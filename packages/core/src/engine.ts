@@ -24,6 +24,8 @@ export interface ResolvedNode {
   /** Morph-target weights for this frame, aligned to the mesh's `morphTargets` order. The engine
    *  displaces each vertex by Σ weightᵢ·deltaᵢ before skinning. */
   morphWeights?: number[];
+  /** Active frame index into the mesh's `textureFrames` (driven by a "texture.frame" track). */
+  textureFrame?: number;
 }
 
 export interface ResolvedLight {

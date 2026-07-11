@@ -270,10 +270,13 @@ export class SceneRuntime {
       }
     }
 
+    const texFrameByNode = new Map<string, number>();
     const cameraOverrides = new Map<string, { fov?: number; lookAt?: Vec3 }>();
     for (const track of this.doc.animation) {
       const value = evaluateTrack(track, frame);
-      if (track.target.nodeId && track.target.path.startsWith("morph.")) {
+      if (track.target.nodeId && track.target.path === "texture.frame") {
+        if (typeof value === "number") texFrameByNode.set(track.target.nodeId, value);
+      } else if (track.target.nodeId && track.target.path.startsWith("morph.")) {
         const weights = morphByNode.get(track.target.nodeId);
         const names = morphNames.get(track.target.nodeId);
         if (weights && typeof value === "number") {
@@ -433,7 +436,7 @@ export class SceneRuntime {
           skin = { jointMatrices };
         }
       }
-      nodes.push({ id: n.id, worldMatrix: world, mesh: n.mesh, light: n.light, material, skin, morphWeights: morphByNode.get(n.id) });
+      nodes.push({ id: n.id, worldMatrix: world, mesh: n.mesh, light: n.light, material, skin, morphWeights: morphByNode.get(n.id), textureFrame: texFrameByNode.get(n.id) });
       if (n.light) {
         lights.push({
           type: n.light.type,

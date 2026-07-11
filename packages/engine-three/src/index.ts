@@ -88,7 +88,7 @@ export class ThreeEngine implements Engine {
       const docMat = node.mesh.materialId ? doc.materials.find((m) => m.id === node.mesh!.materialId) : undefined;
       // PBR-textured per-node material when the mesh carries maps; else the shared doc material.
       let mat: THREE.Material;
-      if (!this.toon && (data.texture || data.normalMap || data.emissiveMap || data.metallicRoughnessMap)) {
+      if (!this.toon && (data.texture || data.textureFrames?.length || data.normalMap || data.emissiveMap || data.metallicRoughnessMap)) {
         mat = this.texturedMaterial(docMat, data);
       } else {
         mat = (node.mesh.materialId ? this.materials.get(node.mesh.materialId) : undefined) ?? this.defaultMat();
@@ -108,12 +108,15 @@ export class ThreeEngine implements Engine {
 
   /** A PBR material carrying the mesh's glTF maps (base colour / normal / metal-rough / emissive). */
   private texturedMaterial(docMat: Material | undefined, data: MeshData): THREE.MeshStandardMaterial {
+    // texture.frame tracks are a software-engine channel; this preview engine shows the
+    // static base texture (falling back to the sequence's first frame).
+    const baseTex = data.texture ?? data.textureFrames?.[0];
     const m = new THREE.MeshStandardMaterial({
-      color: data.texture ? new THREE.Color(1, 1, 1) : new THREE.Color(docMat?.color[0] ?? 0.8, docMat?.color[1] ?? 0.8, docMat?.color[2] ?? 0.8),
+      color: baseTex ? new THREE.Color(1, 1, 1) : new THREE.Color(docMat?.color[0] ?? 0.8, docMat?.color[1] ?? 0.8, docMat?.color[2] ?? 0.8),
       roughness: docMat?.roughness ?? 0.8,
       metalness: docMat?.metalness ?? 0,
     });
-    if (data.texture) m.map = dataTex(data.texture, THREE.SRGBColorSpace);
+    if (baseTex) m.map = dataTex(baseTex, THREE.SRGBColorSpace);
     if (data.normalMap) m.normalMap = dataTex(data.normalMap, THREE.NoColorSpace);
     if (data.metallicRoughnessMap) { const t = dataTex(data.metallicRoughnessMap, THREE.NoColorSpace); m.roughnessMap = t; m.metalnessMap = t; }
     if (data.emissiveMap) { m.emissiveMap = dataTex(data.emissiveMap, THREE.SRGBColorSpace); m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = 1; }

@@ -408,7 +408,7 @@ export class SoftwareEngine implements Engine {
       const nx = new Float64Array(vcount), ny = new Float64Array(vcount), nz = new Float64Array(vcount);
       const cx = new Float64Array(vcount), cy = new Float64Array(vcount), cz = new Float64Array(vcount), cw = new Float64Array(vcount);
       const useUV = md.uvs !== undefined &&
-        (md.texture !== undefined || md.normalMap !== undefined || md.metallicRoughnessMap !== undefined ||
+        (md.texture !== undefined || md.textureFrames !== undefined || md.normalMap !== undefined || md.metallicRoughnessMap !== undefined ||
           md.occlusionMap !== undefined || md.emissiveMap !== undefined);
       const cu = useUV ? new Float64Array(vcount) : undefined;
       const cv = useUV ? new Float64Array(vcount) : undefined;
@@ -479,7 +479,14 @@ export class SoftwareEngine implements Engine {
     // sorted back-to-front across ALL transparent meshes, alpha-blended without depth writes. ----
     const prepareDraw = (b: MeshBatch) => {
       const { md, material, useUV } = b;
-      const tex = md.texture, nrmMap = md.normalMap, mrMap = md.metallicRoughnessMap;
+      // Animated textures: a "texture.frame" track picks from the frame sequence. The +1e-6
+      // absorbs lerp drift (a linear 0→N ramp lands at 14.999… where the author meant 15,
+      // and a bare floor would hold the stale previous frame).
+      const frames = md.textureFrames;
+      const tex = frames?.length
+        ? frames[Math.min(frames.length - 1, Math.max(0, Math.floor((b.node.textureFrame ?? 0) + 1e-6)))]
+        : md.texture;
+      const nrmMap = md.normalMap, mrMap = md.metallicRoughnessMap;
       const aoMap = md.occlusionMap, emiMap = md.emissiveMap;
       const hasTangents = b.tx !== undefined;
       // Mip chains for the color maps (albedo/emissive) — the ones where minification shimmer

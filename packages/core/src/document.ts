@@ -58,6 +58,8 @@ export const GeometrySchema = z.discriminatedUnion("kind", [
       uvs: z.array(z.number()).optional(),
       // In-memory RGBA textures (not JSON-serializable; reference a glTF asset for that path).
       texture: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
+      /** Frame sequence for ANIMATED textures — a "texture.frame" track selects the index. */
+      textureFrames: z.array(z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) })).optional(),
       normalMap: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
       metallicRoughnessMap: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
       occlusionMap: z.object({ width: z.number(), height: z.number(), data: z.instanceof(Uint8Array) }).optional(),
