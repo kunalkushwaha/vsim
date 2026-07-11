@@ -7,6 +7,7 @@ import { narrationScript, DEFAULT_ELEVENLABS_VOICE } from "./narration.js";
 import { pickReviewStills, parseReviewReply } from "./review.js";
 import { isFilm3D, film3dToScene } from "./load.js";
 import { parseCreature, creatureGeometry } from "./creature.js";
+import { checkSurfaceHtml } from "./surface-gen.js";
 
 /** A minimal valid film: a fox walks across a meadow, then surveys. */
 const FILM = {
@@ -385,5 +386,18 @@ describe("surface props (sign + cutout)", () => {
     const board = sceneDoc.nodes.find((n) => n.id === "s1__board") as { mesh?: { geometry: { data?: { texture?: { width: number } } } } };
     expect(board.mesh?.geometry.data?.texture?.width).toBe(512); // the trail-sign bake
     new SceneRuntime(sceneDoc).computeFrameState(30);
+  });
+});
+
+describe("checkSurfaceHtml (the artifact lint)", () => {
+  const OK = `<!doctype html><style>@font-face{font-family:B;src:url("../../../motion/fonts/BebasNeue-Regular.ttf")}html,body{margin:0;width:512px;height:384px;overflow:hidden}body{background:linear-gradient(#fff,#eee)}</style><h1>HI</h1>`;
+  it("accepts a self-contained artifact", () => expect(checkSurfaceHtml(OK)).toEqual([]));
+  it("rejects scripts, network, animation, and foreign files", () => {
+    expect(checkSurfaceHtml(`${OK}<script>x()</script>`).join()).toMatch(/no <script>/);
+    expect(checkSurfaceHtml(OK.replace("HI", 'HI <img src="https://x.com/a.png">')).join()).toMatch(/no external URLs/);
+    expect(checkSurfaceHtml(OK.replace("linear-gradient(#fff,#eee)", 'url("wood.png")')).join()).toMatch(/only the bundled font/);
+    expect(checkSurfaceHtml(OK.replace("</style>", "h1{animation:spin 1s}</style>")).join()).toMatch(/no CSS animations/);
+    expect(checkSurfaceHtml(OK + '<img src="data:image/png;base64,AA==">')).toEqual([]); // data URIs pass
+    expect(checkSurfaceHtml(OK.replace('src:url', 'src:local("Impact"),url')).join()).toMatch(/no local\(/); // host fonts banned
   });
 });

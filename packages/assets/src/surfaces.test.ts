@@ -8,8 +8,10 @@ const dir = fileURLToPath(new URL("../surfaces/", import.meta.url));
 
 describe("surface library", () => {
   it("lists the bundled surfaces", async () => {
-    const names = (await listSurfaces()).map((s) => s.name).sort();
-    expect(names).toEqual(["festival-poster", "star-cutout", "trail-sign"]);
+    // Generated surfaces join the library over time — assert the hand-written proofs are
+    // present rather than pinning a closed list.
+    const names = (await listSurfaces()).map((s) => s.name);
+    expect(names).toEqual(expect.arrayContaining(["festival-poster", "star-cutout", "trail-sign"]));
   });
 
   it("every surface folder has source + bake + metadata, and the manifest matches", async () => {
@@ -37,6 +39,6 @@ describe("surface library", () => {
   });
 
   it("names the available surfaces in the unknown-surface error", async () => {
-    await expect(loadSurface("nope")).rejects.toThrow(/available: festival-poster, star-cutout, trail-sign/);
+    await expect(loadSurface("nope")).rejects.toThrow(/unknown surface "nope" \(available: .*trail-sign/);
   });
 });
