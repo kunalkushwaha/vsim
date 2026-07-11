@@ -8,26 +8,40 @@ import { join, dirname } from "node:path";
 const K = new URL("../vendor/kaykit-medieval-hexagon/addons/kaykit_medieval_hexagon_pack/Assets/gltf/", import.meta.url).pathname;
 const OUT = new URL("../packages/assets/models/medieval/", import.meta.url).pathname;
 
-// name → source path (relative to the pack's gltf/ root). Red-roof building variants: the
-// warm accent reads best across the film sets.
+// name → source path (relative to the pack's gltf/ root), optionally with a `mutate`
+// that edits the glTF json before packing. Red-roof building variants: the warm accent
+// reads best across the film sets.
+//
+// The windmill ships split so films can SPIN the blades: `windmill` is the body with the
+// fan node detached; `windmill-fan` is the fan mesh alone re-rooted at identity, so it
+// bakes in fan-local space and a rotation track turns it around its own hub. The fan
+// pivot in body space is node1.T + node0.T ≈ [0, 0.957, 0.332] (see sets.ts windmill()).
 const MODELS = {
-  hut: "buildings/red/building_home_A_red.gltf",
-  tavern: "buildings/red/building_tavern_red.gltf",
-  windmill: "buildings/red/building_windmill_red.gltf",
-  well: "buildings/red/building_well_red.gltf",
-  tower: "buildings/red/building_tower_A_red.gltf",
-  barrel: "decoration/props/barrel.gltf",
-  crate: "decoration/props/crate_A_big.gltf",
-  tent: "decoration/props/tent.gltf",
-  wheelbarrow: "decoration/props/wheelbarrow.gltf",
-  sack: "decoration/props/sack.gltf",
+  hut: { src: "buildings/red/building_home_A_red.gltf" },
+  tavern: { src: "buildings/red/building_tavern_red.gltf" },
+  windmill: {
+    src: "buildings/red/building_windmill_red.gltf",
+    mutate: (json) => { json.nodes[1].children = []; }, // detach the fan from the tower top
+  },
+  "windmill-fan": {
+    src: "buildings/red/building_windmill_red.gltf",
+    mutate: (json) => { json.scenes[json.scene ?? 0].nodes = [0]; delete json.nodes[0].translation; },
+  },
+  well: { src: "buildings/red/building_well_red.gltf" },
+  tower: { src: "buildings/red/building_tower_A_red.gltf" },
+  barrel: { src: "decoration/props/barrel.gltf" },
+  crate: { src: "decoration/props/crate_A_big.gltf" },
+  tent: { src: "decoration/props/tent.gltf" },
+  wheelbarrow: { src: "decoration/props/wheelbarrow.gltf" },
+  sack: { src: "decoration/props/sack.gltf" },
 };
 
 const pad4 = (n) => (n + 3) & ~3;
 
 /** gltf (external .bin + .png) → GLB bytes with the buffer AND texture embedded. */
-async function toGlb(gltfPath) {
+async function toGlb(gltfPath, mutate) {
   const json = JSON.parse(await readFile(gltfPath, "utf8"));
+  mutate?.(json);
   const dir = dirname(gltfPath);
   if ((json.buffers ?? []).length !== 1) throw new Error(`${gltfPath}: expected exactly 1 buffer`);
   const bin = await readFile(join(dir, json.buffers[0].uri));
@@ -71,11 +85,11 @@ async function toGlb(gltfPath) {
 
 await mkdir(OUT, { recursive: true });
 const entries = [];
-for (const [name, rel] of Object.entries(MODELS)) {
-  const glb = await toGlb(join(K, rel));
+for (const [name, spec] of Object.entries(MODELS)) {
+  const glb = await toGlb(join(K, spec.src), spec.mutate);
   await writeFile(join(OUT, `${name}.glb`), glb);
-  entries.push({ name, file: `${name}.glb`, source: rel });
-  console.log(`✓ ${name}.glb (${glb.length} bytes) ← ${rel}`);
+  entries.push({ name, file: `${name}.glb`, source: spec.src });
+  console.log(`✓ ${name}.glb (${glb.length} bytes) ← ${spec.src}`);
 }
 await writeFile(join(OUT, "manifest.json"), JSON.stringify({
   credit: "KayKit Medieval Hexagon Pack 1.0 by Kay Lousberg (kaylousberg.com) — CC0",
