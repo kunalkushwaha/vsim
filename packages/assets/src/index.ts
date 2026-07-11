@@ -454,6 +454,7 @@ function appendMesh(json: any, buffers: Uint8Array[], mesh: any, world: Mat4, me
     const pos = readAccessor(json, buffers, prim.attributes.POSITION);
     const vcount = pos.length / 3;
     const nrm = prim.attributes.NORMAL != null ? readAccessor(json, buffers, prim.attributes.NORMAL) : undefined;
+    const uv = prim.attributes.TEXCOORD_0 != null ? readAccessor(json, buffers, prim.attributes.TEXCOORD_0) : undefined;
     const idx = prim.indices != null ? readAccessor(json, buffers, prim.indices) : Array.from({ length: vcount }, (_, i) => i);
 
     const baseVertex = merged.positions.length / 3;
@@ -464,6 +465,16 @@ function appendMesh(json: any, buffers: Uint8Array[], mesh: any, world: Mat4, me
       const n: Vec3 = nrm ? [nrm[i * 3]!, nrm[i * 3 + 1]!, nrm[i * 3 + 2]!] : [0, 1, 0];
       const wn = v3.normalize(mat4.transformDir(world, n));
       merged.normals.push(wn[0], wn[1], wn[2]);
+    }
+    // UVs + base-color texture ride along when any primitive has them (palette-textured
+    // packs like KayKit color entirely via TEXCOORD_0); primitives without uvs pad zeros.
+    if (uv || merged.uvs) {
+      merged.uvs = merged.uvs ?? new Array(baseVertex * 2).fill(0);
+      for (let i = 0; i < vcount; i++) merged.uvs.push(uv?.[i * 2] ?? 0, uv?.[i * 2 + 1] ?? 0);
+    }
+    if (!merged.texture) {
+      const tex = texRef(json, buffers, json.materials?.[prim.material]?.pbrMetallicRoughness?.baseColorTexture);
+      if (tex) merged.texture = tex;
     }
     for (const k of idx) merged.indices.push(baseVertex + k);
     if (!nrm) computeNormals(merged, baseVertex);
@@ -593,6 +604,42 @@ export async function loadSurface(name: string): Promise<{ width: number; height
   const png = PNG.sync.read(Buffer.from(await readFile(resolve(surfacesDir, name, "art.png"))));
   return { width: png.width, height: png.height, data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.length) };
 }
+// ---- Bundled static models (CC0 packs → self-contained GLBs; scripts/bundle-medieval.mjs) ----
+
+const modelsDir = fileURLToPath(new URL("../models/medieval/", import.meta.url));
+
+export interface ModelMeta {
+  name: string;
+  file: string;
+  /** Pack-relative source path the GLB was bundled from. */
+  source: string;
+}
+
+/** List the bundled static models (buildings, clutter) from the medieval manifest. */
+export async function listModels(): Promise<ModelMeta[]> {
+  const raw = JSON.parse(await readFile(resolve(modelsDir, "manifest.json"), "utf8"));
+  return raw.models as ModelMeta[];
+}
+
+// One decode per model per process: several props of the same kind share the MeshData
+// (and therefore one texture object) inside a compiled scene.
+const modelCache = new Map<string, Promise<MeshData>>();
+
+/** Load a bundled static model as merged MeshData (world-baked, uvs + palette texture). */
+export function loadModel(name: string): Promise<MeshData> {
+  let p = modelCache.get(name);
+  if (!p) {
+    p = (async () => {
+      const metas = await listModels();
+      const meta = metas.find((m) => m.name === name);
+      if (!meta) throw new Error(`unknown model "${name}" (available: ${metas.map((m) => m.name).join(", ")})`);
+      return loadGltf(resolve(modelsDir, meta.file));
+    })();
+    modelCache.set(name, p);
+  }
+  return p;
+}
+
 /** Load an "anim" surface's committed frame sequence — ready for mesh `data.textureFrames`. */
 export async function loadSurfaceFrames(name: string): Promise<{ width: number; height: number; fps: number; frames: { width: number; height: number; data: Uint8Array }[] }> {
   const metas = await listSurfaces();

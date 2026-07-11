@@ -6,7 +6,7 @@ import { v3 } from "@vsim/core";
 import type { Film3DProp } from "./schema.js";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { loadSurface, loadSurfaceFrames, svgToMesh } from "@vsim/assets";
+import { loadSurface, loadSurfaceFrames, loadModel, svgToMesh } from "@vsim/assets";
 
 export interface SetLook {
   background: Vec3;
@@ -329,6 +329,29 @@ export async function cutout(b: SceneBuilder, look: SetLook, id: string, x: numb
   });
 }
 
+/**
+ * World scale per bundled model (they ship at hex-tile scale, ~1 unit per tile): a hut
+ * becomes a ~2.2-unit cottage, a barrel ~0.6 units — sized against the ~1.5-unit cast.
+ */
+const MODEL_SCALE: Record<string, number> = {
+  hut: 2.4, tavern: 2.2, windmill: 2.2, well: 1.6, tower: 1.6,
+  barrel: 3, crate: 3, tent: 2.6, wheelbarrow: 3, sack: 3.5,
+};
+
+/** A bundled CC0 model (building or clutter) at (x, 0, z) — palette texture, white material. */
+export async function model(b: SceneBuilder, id: string, name: string, x: number, z: number, angleDeg: number): Promise<void> {
+  const md = await loadModel(name);
+  const s = MODEL_SCALE[name] ?? 1;
+  b.material(`${id}__palette`, { color: [1, 1, 1], roughness: 0.85 });
+  b.mesh(id, {
+    geometry: { kind: "mesh", data: md as never },
+    material: `${id}__palette`,
+    position: [x, 0, z],
+    rotation: [0, (angleDeg * Math.PI) / 180, 0],
+    scale: [s, s, s],
+  });
+}
+
 /** Place ANY Film3DProp — the single dispatch the compiler (and tests) call. */
 export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, durationFrames: number, fps = 30): Promise<void> {
   switch (p.kind) {
@@ -344,6 +367,8 @@ export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, d
     case "sign": return sign(b, look, p.id, p.x, p.z, p.art, p.angle);
     case "cutout": return cutout(b, look, p.id, p.x, p.z, p.art, p.height, p.depth, p.angle);
     case "screen": return screen(b, look, p.id, p.x, p.z, p.art, p.angle, durationFrames, fps);
+    case "building": return model(b, p.id, p.variant, p.x, p.z, p.angle);
+    case "clutter": return model(b, p.id, p.variant, p.x, p.z, p.angle);
     default: { const exhaustive: never = p; throw new Error(`unhandled prop kind ${(exhaustive as Film3DProp).kind}`); }
   }
 }

@@ -13,6 +13,7 @@ scripts/fetch-asset-packs.sh     # clones everything into vendor/ (gitignored)
 | MPFB2 (MakeHuman Blender add-on) | [makehumancommunity/mpfb2](https://github.com/makehumancommunity/mpfb2) | GPL (tool only — its *output* is CC0) | `scripts/blender/make-human.py`: realistic rigged humans with baked skin + PBR normal/roughness maps (`human`, `man`, `kid`, `suited`, …) |
 | MakeHuman community assets | [makehumancommunity/makehuman-assets](https://github.com/makehumancommunity/makehuman-assets) | CC0 / CC-BY **per file** — verify before bundling | Hair, clothes, eyes, expressions, poses for richer humans |
 | KayKit Adventurers | [KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) | CC0 | Source of the bundled `knight` / `barbarian` / `mage` / `rogue` (copied unmodified) |
+| KayKit Medieval Hexagon | [KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0](https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0) | CC0 | Village models in `packages/assets/models/medieval/` (film3d `building` / `clutter` props) — rebundle with `node scripts/bundle-medieval.mjs` |
 
 Regeneration recipes:
 

@@ -130,6 +130,9 @@ export const PropSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("sign"), id: z.string(), x: coord, z: coord, art: z.enum(SURFACE_NAMES as unknown as [string, ...string[]]), /** Yaw in degrees. */ angle: z.number().default(0) }),
   z.object({ kind: z.literal("cutout"), id: z.string(), x: coord, z: coord, art: z.enum(CUTOUT_NAMES as unknown as [string, ...string[]]), height: z.number().min(0.5).max(4).default(1.5), depth: z.number().min(0).max(0.5).default(0.1), angle: z.number().default(0) }),
   z.object({ kind: z.literal("screen"), id: z.string(), x: coord, z: coord, art: z.enum(SCREEN_NAMES as unknown as [string, ...string[]]), /** Yaw in degrees. */ angle: z.number().default(0) }),
+  // Bundled CC0 model props (KayKit Medieval Hexagon; scripts/bundle-medieval.mjs):
+  z.object({ kind: z.literal("building"), id: z.string(), x: coord, z: coord, variant: z.enum(["hut", "tavern", "windmill", "well", "tower"]).default("hut"), angle: z.number().default(0) }),
+  z.object({ kind: z.literal("clutter"), id: z.string(), x: coord, z: coord, variant: z.enum(["barrel", "crate", "tent", "wheelbarrow", "sack"]).default("barrel"), angle: z.number().default(0) }),
 ]);
 
 export const ActorSchema = z.object({
