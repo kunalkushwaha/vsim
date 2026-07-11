@@ -4,7 +4,7 @@ import { listCharacters, loadCharacter, loadVrm } from "./index.js";
 describe("character library", () => {
   it("lists the bundled characters", async () => {
     const ids = (await listCharacters()).map((c) => c.id).sort();
-    expect(ids).toEqual(["avatar", "barbarian", "bear", "deer", "dog", "figure", "fox", "human", "kid", "knight", "mage", "man", "person", "rabbit", "rogue", "speaker", "suited", "wolf"]);
+    expect(ids).toEqual(["avatar", "barbarian", "barnowl", "bear", "deer", "dog", "figure", "fox", "human", "kid", "knight", "mage", "man", "person", "rabbit", "rogue", "speaker", "suited", "wolf"]);
   });
 
   it("loads the MakeHuman-generated human (realistic rig + clip library + skin texture)", async () => {

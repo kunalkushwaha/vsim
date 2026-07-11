@@ -1,0 +1,260 @@
+{
+  "version": "creature-1",
+  "id": "barnowl",
+  "name": "Barn Owl",
+  "description": "Compact low-poly barn owl with an oversized round head, protruding heart-shaped facial disc, folded rounded wings, and a stubby tail.",
+  "bones": [
+    {
+      "name": "hips",
+      "head": [
+        0,
+        -0.05,
+        0.42
+      ],
+      "tail": [
+        0,
+        0.05,
+        0.48
+      ]
+    },
+    {
+      "name": "spine",
+      "head": [
+        0,
+        0.05,
+        0.48
+      ],
+      "tail": [
+        0,
+        0.13,
+        0.55
+      ],
+      "parent": "hips"
+    },
+    {
+      "name": "neck",
+      "head": [
+        0,
+        0.13,
+        0.55
+      ],
+      "tail": [
+        0,
+        0.16,
+        0.62
+      ],
+      "parent": "spine"
+    },
+    {
+      "name": "head",
+      "head": [
+        0,
+        0.16,
+        0.62
+      ],
+      "tail": [
+        0,
+        0.18,
+        0.72
+      ],
+      "parent": "neck"
+    },
+    {
+      "name": "tail",
+      "head": [
+        0,
+        -0.05,
+        0.42
+      ],
+      "tail": [
+        0,
+        -0.14,
+        0.4
+      ],
+      "parent": "hips"
+    }
+  ],
+  "legs": {
+    "front_y": 0.02,
+    "back_y": -0.06,
+    "sx": 0.14,
+    "top": 0.42,
+    "knee": 0.22,
+    "r_u": 0.06,
+    "r_l": 0.05
+  },
+  "parts": [
+    {
+      "bone": "spine",
+      "kind": "sphere",
+      "loc": [
+        0,
+        0.06,
+        0.5
+      ],
+      "scale": [
+        0.24,
+        0.28,
+        0.26
+      ]
+    },
+    {
+      "bone": "hips",
+      "kind": "sphere",
+      "loc": [
+        0,
+        -0.02,
+        0.44
+      ],
+      "scale": [
+        0.22,
+        0.24,
+        0.22
+      ]
+    },
+    {
+      "bone": "spine",
+      "kind": "sphere",
+      "loc": [
+        0,
+        0.16,
+        0.5
+      ],
+      "scale": [
+        0.2,
+        0.18,
+        0.22
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "sphere",
+      "loc": [
+        0,
+        0.17,
+        0.68
+      ],
+      "scale": [
+        0.24,
+        0.24,
+        0.24
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "cube",
+      "loc": [
+        0,
+        0.38,
+        0.68
+      ],
+      "scale": [
+        0.15,
+        0.07,
+        0.17
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "cube",
+      "loc": [
+        0,
+        0.44,
+        0.62
+      ],
+      "scale": [
+        0.04,
+        0.06,
+        0.04
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "sphere",
+      "loc": [
+        -0.09,
+        0.36,
+        0.72
+      ],
+      "scale": [
+        0.05,
+        0.05,
+        0.05
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "sphere",
+      "loc": [
+        0.09,
+        0.36,
+        0.72
+      ],
+      "scale": [
+        0.05,
+        0.05,
+        0.05
+      ]
+    },
+    {
+      "bone": "spine",
+      "kind": "sphere",
+      "loc": [
+        -0.19,
+        0.02,
+        0.48
+      ],
+      "scale": [
+        0.09,
+        0.22,
+        0.2
+      ]
+    },
+    {
+      "bone": "spine",
+      "kind": "sphere",
+      "loc": [
+        0.19,
+        0.02,
+        0.48
+      ],
+      "scale": [
+        0.09,
+        0.22,
+        0.2
+      ]
+    },
+    {
+      "bone": "tail",
+      "kind": "cube",
+      "loc": [
+        0,
+        -0.2,
+        0.4
+      ],
+      "scale": [
+        0.13,
+        0.09,
+        0.06
+      ]
+    }
+  ],
+  "gaits": {
+    "walk": [
+      0.25,
+      -0.15
+    ],
+    "run": [
+      0.35,
+      -0.25
+    ]
+  },
+  "scale": 0.8,
+  "runAt": 1.2,
+  "eye": 0.6,
+  "tint": [
+    0.75,
+    0.6,
+    0.4
+  ]
+}

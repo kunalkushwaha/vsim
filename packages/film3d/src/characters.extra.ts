@@ -14,4 +14,15 @@ export const EXTRA_CHARACTERS = {
     eye: 0.65,
     tint: [0.5, 0.52, 0.55] as const,
   },
+  barnowl: {
+    clips: ["walk", "run", "idle"],
+    idle: { clip: "idle" },
+    walk: { clip: "walk" },
+    run: { clip: "run" },
+    faces: [0, -1] as const,
+    scale: 0.8,
+    runAt: 1.2,
+    eye: 0.6,
+    tint: [0.75, 0.6, 0.4] as const,
+  },
 } as const;
