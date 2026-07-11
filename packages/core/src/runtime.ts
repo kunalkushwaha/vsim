@@ -272,9 +272,17 @@ export class SceneRuntime {
 
     const texFrameByNode = new Map<string, number>();
     const cameraOverrides = new Map<string, { fov?: number; lookAt?: Vec3 }>();
+    // Environment overrides ("sky.top", "fog.near", "background", …): applied onto per-frame
+    // copies of the doc's sky/fog below — the doc itself is never mutated.
+    const env = new Map<string, number | Vec3>();
+    const lightIntensityByNode = new Map<string, number>();
     for (const track of this.doc.animation) {
       const value = evaluateTrack(track, frame);
-      if (track.target.nodeId && track.target.path === "texture.frame") {
+      if (track.target.environment) {
+        env.set(track.target.path, Array.isArray(value) ? [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0] : value);
+      } else if (track.target.nodeId && track.target.path === "light.intensity") {
+        if (typeof value === "number") lightIntensityByNode.set(track.target.nodeId, value);
+      } else if (track.target.nodeId && track.target.path === "texture.frame") {
         if (typeof value === "number") texFrameByNode.set(track.target.nodeId, value);
       } else if (track.target.nodeId && track.target.path.startsWith("morph.")) {
         const weights = morphByNode.get(track.target.nodeId);
@@ -409,8 +417,21 @@ export class SceneRuntime {
     const lights: ResolvedLight[] = [];
     // Sky-derived ambient (R2.2): a synthetic hemisphere light tinted by the sky itself, so
     // the environment "bounces" onto geometry. Engines treat it like any hemisphere light.
-    const sky = this.doc.environment?.sky;
-    if (sky?.type === "gradient" && sky.ambient && sky.ambient > 0) {
+    const docSky = this.doc.environment?.sky;
+    const v3v = (k: string, fb: Vec3): Vec3 => (Array.isArray(env.get(k)) ? (env.get(k) as Vec3) : fb);
+    const nv = (k: string, fb: number | undefined): number | undefined => (typeof env.get(k) === "number" ? (env.get(k) as number) : fb);
+    const sky = docSky?.type === "gradient"
+      ? {
+          ...docSky,
+          top: v3v("sky.top", docSky.top),
+          bottom: v3v("sky.bottom", docSky.bottom),
+          ambient: nv("sky.ambient", docSky.ambient),
+          sun: docSky.sun
+            ? { ...docSky.sun, color: docSky.sun.color ? v3v("sky.sun.color", docSky.sun.color) : docSky.sun.color, size: nv("sky.sun.size", docSky.sun.size) ?? docSky.sun.size, glow: nv("sky.sun.glow", docSky.sun.glow) ?? docSky.sun.glow }
+            : docSky.sun,
+        }
+      : undefined;
+    if (sky && sky.ambient && sky.ambient > 0) {
       lights.push({
         type: "hemisphere",
         color: [1, 1, 1],
@@ -421,6 +442,10 @@ export class SceneRuntime {
         groundColor: sky.bottom,
       });
     }
+    const docFog = this.doc.environment?.fog;
+    const fog = docFog
+      ? { ...docFog, color: v3v("fog.color", docFog.color), near: nv("fog.near", docFog.near) ?? docFog.near, far: nv("fog.far", docFog.far) ?? docFog.far }
+      : undefined;
     for (const n of this.doc.nodes) {
       const world = computeWorld(n.id);
       const material = n.mesh?.materialId ? materials.get(n.mesh.materialId) : undefined;
@@ -441,7 +466,7 @@ export class SceneRuntime {
         lights.push({
           type: n.light.type,
           color: n.light.color,
-          intensity: n.light.intensity,
+          intensity: lightIntensityByNode.get(n.id) ?? n.light.intensity,
           position: mat4.getTranslation(world),
           direction: n.light.direction
             ? v3.normalize(n.light.direction)
@@ -461,12 +486,9 @@ export class SceneRuntime {
       time: frame / this.doc.meta.fps,
       width: this.doc.meta.width,
       height: this.doc.meta.height,
-      background: this.doc.meta.background,
-      sky:
-        this.doc.environment?.sky?.type === "gradient"
-          ? { top: this.doc.environment.sky.top, bottom: this.doc.environment.sky.bottom, sun: this.doc.environment.sky.sun }
-          : undefined,
-      fog: this.doc.environment?.fog,
+      background: v3v("background", this.doc.meta.background),
+      sky: sky ? { top: sky.top, bottom: sky.bottom, sun: sky.sun } : undefined,
+      fog,
       style: this.doc.meta.style,
       tone: this.doc.meta.tone,
       nodes,

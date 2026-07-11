@@ -205,6 +205,12 @@ export const Film3DDocSchema = z
     set: z.enum(["meadow", "dusk", "night", "snow", "studio"]),
     /** Ambient particles across the whole stage and film (deterministic, seeded). */
     weather: z.enum(["snowfall", "rain", "fireflies", "leaves"]).optional(),
+    /** In-film time-of-day: the sky/fog/background lerp to another set's look over [start, end] seconds. */
+    transition: z.object({
+      to: z.enum(["meadow", "dusk", "night", "snow", "studio"]),
+      start: z.number().min(0),
+      end: z.number().positive(),
+    }).optional(),
     props: z.array(PropSchema).max(24).default([]),
     actors: z.array(ActorSchema).max(3).default([]),
     beats: z.array(Film3DBeatSchema).min(1),
@@ -212,6 +218,10 @@ export const Film3DDocSchema = z
     camera: z.array(ShotSchema).default([]),
   })
   .superRefine((doc, ctx) => {
+    if (doc.transition) {
+      if (doc.transition.end <= doc.transition.start) ctx.addIssue({ code: "custom", message: "transition.end must be after transition.start" });
+      if (doc.transition.to === doc.set) ctx.addIssue({ code: "custom", message: "transition.to must differ from the film's set" });
+    }
     const ids = new Set<string>();
     const actorChar = new Map<string, CharacterId>();
     for (const e of [...doc.props, ...doc.actors]) {

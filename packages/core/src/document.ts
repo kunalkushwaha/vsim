@@ -240,6 +240,8 @@ export const TrackSchema = z.object({
     cameraId: z.string().optional(),
     /** A text overlay (by id) — animate "opacity", "x", "y", "size" (numbers) or "color" (vec3). */
     overlayId: z.string().optional(),
+    /** Animate the environment: "sky.top"|"sky.bottom"|"sky.ambient"|"sky.sun.color"|"sky.sun.size"|"sky.sun.glow"|"fog.color"|"fog.near"|"fog.far"|"background". */
+    environment: z.boolean().optional(),
     /** Dot path, e.g. "position", "position.y", "rotation", "color", "fov", "lookAt", "opacity". */
     path: z.string(),
   }),

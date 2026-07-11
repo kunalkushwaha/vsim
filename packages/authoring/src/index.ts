@@ -639,6 +639,12 @@ export class SceneBuilder {
     return this;
   }
 
+  /** Animate the environment ("sky.top", "fog.near", "background", …) — in-film time-of-day. */
+  animateEnv(path: string, keyframes: Keyframes): this {
+    this.doc.animation!.push({ target: { environment: true, path } as never, keyframes });
+    return this;
+  }
+
   /**
    * Add a screen-space text overlay (title / caption / lower-third), drawn on top of the render.
    * Position is normalized [0..1] (origin top-left); `align` anchors horizontally, `y` is the line's

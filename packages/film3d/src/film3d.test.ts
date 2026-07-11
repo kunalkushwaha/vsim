@@ -443,6 +443,27 @@ describe("surface props (sign + cutout)", () => {
     expect(bad.errors!.join("\n")).toMatch(/variant/);
   });
 
+  it("compiles a transition into environment tracks lerping between set looks", async () => {
+    const sceneDoc = await film3dToScene({ ...DOC, props: [], transition: { to: "night", start: 1, end: 3 } });
+    const envTracks = sceneDoc.animation.filter((t) => (t.target as { environment?: boolean }).environment);
+    const paths = envTracks.map((t) => t.target.path).sort();
+    expect(paths).toEqual(["background", "fog.color", "fog.far", "fog.near", "sky.ambient", "sky.bottom", "sky.sun.glow", "sky.sun.size", "sky.top"]);
+    // The meadow sun disc fades out entirely (night is sunless).
+    const sunSize = envTracks.find((t) => t.target.path === "sky.sun.size")!;
+    expect(sunSize.keyframes[1]!.value).toBe(0);
+    const top = envTracks.find((t) => t.target.path === "sky.top")!;
+    expect(top.keyframes[0]!.frame).toBe(30); // 1s @ 30fps
+    expect(top.keyframes[1]!.frame).toBe(90);
+    // The rendered sky actually darkens across the window.
+    const rt = new SceneRuntime(sceneDoc);
+    const before = rt.computeFrameState(30).sky!.top[2];
+    const after = rt.computeFrameState(90).sky!.top[2];
+    expect(after).toBeLessThan(before);
+    // Same-set and inverted windows are rejected.
+    expect(parseFilm3D({ ...DOC, transition: { to: "meadow", start: 0, end: 2 } }).errors!.join("\n")).toMatch(/differ/);
+    expect(parseFilm3D({ ...DOC, transition: { to: "night", start: 3, end: 1 } }).errors!.join("\n")).toMatch(/after/);
+  });
+
   it("compiles weather into a seeded stage-wide particle system", async () => {
     const sceneDoc = await film3dToScene({ ...DOC, props: [], weather: "snowfall" });
     const p = (sceneDoc as unknown as { particles: { id: string; count: number; loop: boolean }[] }).particles.find((x) => x.id === "__weather")!;
