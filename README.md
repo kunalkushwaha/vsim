@@ -214,7 +214,10 @@ the `screen` prop plays it in-world on a kiosk — a marquee with chasing bulbs,
 deterministically via a `texture.frame` track. And the sets got an architecture upgrade:
 `building` (hut, tavern, windmill, well, tower) and `clutter` (barrels, crates, tents)
 props stage real CC0 KayKit models, bundled as self-contained GLBs — so one prompt can
-now raise a whole village.
+now raise a whole village. And the sky joined the vocabulary: one `weather` field stages
+deterministic snowfall, rain, fireflies, or falling leaves across the whole film
+([`first-snow`](films/first-snow.film3d.json) — the director's own call, the windmill
+turning through steady snow).
 
 ## vsim Studio — the visual editor
 
