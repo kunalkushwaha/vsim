@@ -183,6 +183,15 @@ export function svgToMesh(svg: string, opts: { depth?: number; height?: number }
   for (const shape of shapesOf(svg)) {
     for (const contour of shape.contours) {
       const pts: Pt[] = contour.map(([px, py]) => [X(px), Y(py)]);
+      // Normalize the OUTLINE to counter-clockwise before triangulating: earClip only fixes
+      // its internal index order, but the side walls below iterate `pts` directly — a
+      // clockwise-authored path would get inward normals and inside-out wall winding.
+      let area = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const [x1, y1] = pts[i]!, [x2, y2] = pts[(i + 1) % pts.length]!;
+        area += x1 * y2 - x2 * y1;
+      }
+      if (area < 0) pts.reverse();
       const tris = earClip(pts);
       if (tris.length === 0) continue;
       const n = pts.length;

@@ -398,13 +398,13 @@ export class SceneBuilder {
       uvs.push(1, 1, 0, 1, 0, 0, 1, 0); // mirrored so text isn't backwards from behind
       indices.push(4, 6, 5, 4, 7, 6);
     }
-    if (!this.doc.materials!.some((m) => m.id === "prop_surface")) {
-      this.material("prop_surface", { color: [1, 1, 1], roughness: opts.roughness ?? 0.85 });
-    }
+    // Per-quad material: a shared one would silently pin every quad to the FIRST caller's
+    // roughness (a matte sign and a glossy screen must coexist).
+    this.material(`${id}__surface`, { color: [1, 1, 1], roughness: opts.roughness ?? 0.85 });
     this.node(id, opts, {
       mesh: {
         geometry: { kind: "mesh", data: { positions, normals, uvs, indices, texture: opts.texture } },
-        materialId: "prop_surface",
+        materialId: `${id}__surface`,
       },
     });
     return this;

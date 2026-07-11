@@ -43,3 +43,20 @@ describe("svgToMesh", () => {
     expect(() => svgToMesh(`<svg><path fill="#fff" d="M0 0 L1 0 L1 1 Z"/></svg>`)).toThrow(/viewBox/);
   });
 });
+
+describe("review-pass regressions", () => {
+  it("side walls face outward regardless of authored winding (CW star == CCW star)", () => {
+    const CW = `<svg viewBox="0 0 100 100"><path fill="#e5b34a" d="M50 5 L61 38 L95 38 L67 59 L78 92 L50 71 L22 92 L33 59 L5 38 L39 38 Z"/></svg>`;
+    const [m] = svgToMesh(CW, { depth: 0.1 });
+    // Centroid of the outline; every wall normal must point away from it.
+    const n = 10, front = m!.positions.slice(0, n * 3);
+    const cx = front.filter((_, i) => i % 3 === 0).reduce((a, b) => a + b, 0) / n;
+    const cy = front.filter((_, i) => i % 3 === 1).reduce((a, b) => a + b, 0) / n;
+    for (let w = 0; w < n; w++) {
+      const base = (n * 2 + w * 4) * 3; // first wall vertex of edge w
+      const [px, py] = [m!.positions[base]!, m!.positions[base + 1]!];
+      const [nx, ny] = [m!.normals[base]!, m!.normals[base + 1]!];
+      expect(nx * (px - cx) + ny * (py - cy), `wall ${w} points inward`).toBeGreaterThan(0);
+    }
+  });
+});
