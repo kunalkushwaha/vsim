@@ -27,4 +27,8 @@ clone https://github.com/makehumancommunity/makehuman-assets makehuman-assets
 # KayKit Character Pack: Adventurers (CC0) — source of the bundled knight/barbarian/mage/rogue.
 clone https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 kaykit-adventurers
 
+# KayKit Medieval Hexagon Pack (CC0) — source of the bundled village models
+# (packages/assets/models/medieval/; rebundle with scripts/bundle-medieval.mjs).
+clone https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 kaykit-medieval-hexagon
+
 echo "done — see docs/asset-packs.md"

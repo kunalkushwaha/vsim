@@ -34,7 +34,9 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
     { "kind": "lantern", "id", "x", "z" },                    // glowing post light — pools warm light (great at dusk/night)
     { "kind": "sign", "id", "x", "z", "art": one of ${JSON.stringify([...SURFACE_NAMES])}, "angle": yaw degrees },  // a wooden board with real painted artwork
     { "kind": "cutout", "id", "x", "z", "art": one of ${JSON.stringify([...CUTOUT_NAMES])}, "height": 0.5..4, "angle": yaw },  // an extruded silhouette, like stage scenery
-    { "kind": "screen", "id", "x", "z", "art": one of ${JSON.stringify([...SCREEN_NAMES])}, "angle": yaw }  // an ANIMATED kiosk panel — its artwork plays on a loop (eye-catching at dusk/night)
+    { "kind": "screen", "id", "x", "z", "art": one of ${JSON.stringify([...SCREEN_NAMES])}, "angle": yaw },  // an ANIMATED kiosk panel — its artwork plays on a loop (eye-catching at dusk/night)
+    { "kind": "building", "id", "x", "z", "variant": "hut"|"tavern"|"windmill"|"well"|"tower", "angle": yaw },  // a real medieval building model (CC0) — stage villages, farms, castles
+    { "kind": "clutter", "id", "x", "z", "variant": "barrel"|"crate"|"tent"|"wheelbarrow"|"sack", "angle": yaw }  // small village clutter models — cluster 2-3 near buildings for life
   ],
   "actors": [                                                // ≤3
     { "id", "character": one of the list below, "x", "z", "facing": [x, z] (optional point to face) }

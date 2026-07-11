@@ -1,0 +1,55 @@
+{
+  "credit": "KayKit Medieval Hexagon Pack 1.0 by Kay Lousberg (kaylousberg.com) — CC0",
+  "models": [
+    {
+      "name": "hut",
+      "file": "hut.glb",
+      "source": "buildings/red/building_home_A_red.gltf"
+    },
+    {
+      "name": "tavern",
+      "file": "tavern.glb",
+      "source": "buildings/red/building_tavern_red.gltf"
+    },
+    {
+      "name": "windmill",
+      "file": "windmill.glb",
+      "source": "buildings/red/building_windmill_red.gltf"
+    },
+    {
+      "name": "well",
+      "file": "well.glb",
+      "source": "buildings/red/building_well_red.gltf"
+    },
+    {
+      "name": "tower",
+      "file": "tower.glb",
+      "source": "buildings/red/building_tower_A_red.gltf"
+    },
+    {
+      "name": "barrel",
+      "file": "barrel.glb",
+      "source": "decoration/props/barrel.gltf"
+    },
+    {
+      "name": "crate",
+      "file": "crate.glb",
+      "source": "decoration/props/crate_A_big.gltf"
+    },
+    {
+      "name": "tent",
+      "file": "tent.glb",
+      "source": "decoration/props/tent.gltf"
+    },
+    {
+      "name": "wheelbarrow",
+      "file": "wheelbarrow.glb",
+      "source": "decoration/props/wheelbarrow.gltf"
+    },
+    {
+      "name": "sack",
+      "file": "sack.glb",
+      "source": "decoration/props/sack.gltf"
+    }
+  ]
+}

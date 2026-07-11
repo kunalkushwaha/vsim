@@ -411,6 +411,25 @@ describe("surface props (sign + cutout)", () => {
     const bad = parseFilm3D({ ...DOC, props: [{ kind: "screen", id: "tv1", x: 0, z: 0, art: "trail-sign" }] });
     expect(bad.errors!.join("\n")).toMatch(/art/);
   });
+
+  it("compiles building + clutter props from the bundled model pack", async () => {
+    const sceneDoc = await film3dToScene({
+      ...DOC,
+      props: [
+        { kind: "building", id: "inn", x: -4, z: -6, variant: "tavern", angle: 15 },
+        { kind: "clutter", id: "keg", x: -2.5, z: -4.5, variant: "barrel" },
+      ],
+    });
+    const inn = sceneDoc.nodes.find((n) => n.id === "inn") as { mesh?: { geometry: { data?: { texture?: { width: number }; uvs?: number[] } } }; scale?: number[] };
+    expect(inn.mesh?.geometry.data?.texture?.width).toBe(1024); // the KayKit palette
+    expect(inn.mesh?.geometry.data?.uvs?.length).toBeGreaterThan(0);
+    expect(inn.scale?.[0]).toBeGreaterThan(1); // hex-tile models scale up to world units
+    expect(sceneDoc.nodes.some((n) => n.id === "keg")).toBe(true);
+    new SceneRuntime(sceneDoc).computeFrameState(10);
+    // Unknown variants are rejected by the schema.
+    const bad = parseFilm3D({ ...DOC, props: [{ kind: "building", id: "b", x: 0, z: 0, variant: "castle" }] });
+    expect(bad.errors!.join("\n")).toMatch(/variant/);
+  });
 });
 
 describe("checkSurfaceHtml (the artifact lint)", () => {
