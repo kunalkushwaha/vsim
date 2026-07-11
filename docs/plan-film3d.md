@@ -39,6 +39,23 @@ set's palette (`SetLook` gains `water` + `bloom`). The lantern is a real staging
 `placeProp()` dispatch; authored ids may no longer contain `__` (reserved for generated
 child nodes). The director's prompt now tells the model to dress sets like locations.
 
+**v3 — the living stage (PRs #59–#74).** The stage itself now moves and reads:
+- **Animated textures** — mesh `textureFrames[]` + a `"texture.frame"` track (core channel,
+  PR #59); the `screen` prop plays baked HTML frame sequences on a kiosk (#60), the
+  animated surfaces are AI-designable under a strict lint (`vsim surface --anim`, #63),
+  and Cycles masters play them too (per-frame bake selection, #69).
+- **A real village** — `building` (hut/tavern/windmill/well/tower) and `clutter` props from
+  bundled CC0 KayKit models (#61); the windmill's blades turn (sub-node extraction + a
+  rotation track, #65).
+- **Weather** — one screenplay field stages deterministic snowfall/rain/fireflies/leaves,
+  pre-warmed so the sky is full from frame 0 (#72, tuned #74).
+- **A colored cast** — CreatureDoc parts take per-part colors baked to a palette texture
+  (barn owl #66/#67, wolf #68, the built-in deer/bear/rabbit #70); species read by coat,
+  not just silhouette.
+- Showcase screenplays, all AI-directed: `village-dusk` (#62), `tavern-night` (#64),
+  `first-snow` (#73). The mux `-shortest` bug (short narration truncating renders with
+  EPIPE) was found and fixed by the village film (#62).
+
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).
 This plan applies the same shape to the real 3D engine.
