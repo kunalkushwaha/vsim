@@ -430,6 +430,24 @@ describe("surface props (sign + cutout)", () => {
     const bad = parseFilm3D({ ...DOC, props: [{ kind: "building", id: "b", x: 0, z: 0, variant: "castle" }] });
     expect(bad.errors!.join("\n")).toMatch(/variant/);
   });
+
+  it("compiles a windmill whose fan turns for the whole film", async () => {
+    const sceneDoc = await film3dToScene({
+      ...DOC,
+      props: [{ kind: "building", id: "mill", x: 5, z: -8, variant: "windmill", angle: 30 }],
+      beats: [{ id: "b1", start: 0, end: 8 }],
+    });
+    const ids = new Set(sceneDoc.nodes.map((n) => n.id));
+    expect(ids.has("mill__body") && ids.has("mill__fan")).toBe(true);
+    const track = sceneDoc.animation.find((t) => t.target.nodeId === "mill__fan" && t.target.path === "rotation.z")!;
+    expect(track).toBeDefined();
+    // One revolution per 8s: the last keyframe's angle is duration/(8*fps) turns.
+    const last = track.keyframes[track.keyframes.length - 1]!;
+    const dur = sceneDoc.meta.durationFrames;
+    expect(last.frame).toBe(dur);
+    expect(last.value as number).toBeCloseTo((2 * Math.PI * dur) / (8 * 30), 6);
+    new SceneRuntime(sceneDoc).computeFrameState(30);
+  });
 });
 
 describe("checkSurfaceHtml (the artifact lint)", () => {

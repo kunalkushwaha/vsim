@@ -17,6 +17,11 @@
       "source": "buildings/red/building_windmill_red.gltf"
     },
     {
+      "name": "windmill-fan",
+      "file": "windmill-fan.glb",
+      "source": "buildings/red/building_windmill_red.gltf"
+    },
+    {
       "name": "well",
       "file": "well.glb",
       "source": "buildings/red/building_well_red.gltf"

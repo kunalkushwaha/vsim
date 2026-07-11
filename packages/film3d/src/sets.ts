@@ -352,6 +352,27 @@ export async function model(b: SceneBuilder, id: string, name: string, x: number
   });
 }
 
+/** The fan hub in windmill-body space (tower-top + fan node translations of the source glTF). */
+const WINDMILL_FAN_PIVOT: Vec3 = [0, 0.957, 0.332];
+
+/**
+ * The windmill with TURNING blades: the bundled model is split (body + fan re-rooted at its
+ * hub — scripts/bundle-medieval.mjs), so a linear rotation track spins the fan for the whole
+ * film. One stately revolution every 8 seconds.
+ */
+export async function windmill(b: SceneBuilder, id: string, x: number, z: number, angleDeg: number, durationFrames: number, fps: number): Promise<void> {
+  const [body, fan] = await Promise.all([loadModel("windmill"), loadModel("windmill-fan")]);
+  const s = MODEL_SCALE.windmill!;
+  b.group(id, { position: [x, 0, z], rotation: [0, (angleDeg * Math.PI) / 180, 0], scale: [s, s, s] });
+  b.material(`${id}__palette`, { color: [1, 1, 1], roughness: 0.85 });
+  b.mesh(`${id}__body`, { parent: id, geometry: { kind: "mesh", data: body as never }, material: `${id}__palette` });
+  b.mesh(`${id}__fan`, { parent: id, geometry: { kind: "mesh", data: fan as never }, material: `${id}__palette`, position: WINDMILL_FAN_PIVOT });
+  b.animate(`${id}__fan`, "rotation.z", [
+    { frame: 0, value: 0 },
+    { frame: Math.max(1, durationFrames), value: (2 * Math.PI * Math.max(1, durationFrames)) / (8 * fps) },
+  ]);
+}
+
 /** Place ANY Film3DProp — the single dispatch the compiler (and tests) call. */
 export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, durationFrames: number, fps = 30): Promise<void> {
   switch (p.kind) {
@@ -367,7 +388,9 @@ export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, d
     case "sign": return sign(b, look, p.id, p.x, p.z, p.art, p.angle);
     case "cutout": return cutout(b, look, p.id, p.x, p.z, p.art, p.height, p.depth, p.angle);
     case "screen": return screen(b, look, p.id, p.x, p.z, p.art, p.angle, durationFrames, fps);
-    case "building": return model(b, p.id, p.variant, p.x, p.z, p.angle);
+    case "building": return p.variant === "windmill"
+      ? windmill(b, p.id, p.x, p.z, p.angle, durationFrames, fps)
+      : model(b, p.id, p.variant, p.x, p.z, p.angle);
     case "clutter": return model(b, p.id, p.variant, p.x, p.z, p.angle);
     default: { const exhaustive: never = p; throw new Error(`unhandled prop kind ${(exhaustive as Film3DProp).kind}`); }
   }

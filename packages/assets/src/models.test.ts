@@ -14,10 +14,13 @@ describe("bundled static models (KayKit medieval)", () => {
       expect(md.uvs?.length, `${m.name} uvs`).toBe(verts * 2);
       expect(md.texture, `${m.name} texture`).toBeDefined();
       expect(md.texture!.data.length).toBe(md.texture!.width * md.texture!.height * 4);
-      // Grounded at y=0 (props sit on the film's ground plane without offsets).
-      let minY = Infinity;
-      for (let i = 1; i < md.positions.length; i += 3) minY = Math.min(minY, md.positions[i]!);
-      expect(minY, `${m.name} rests on the ground`).toBeGreaterThan(-0.05);
+      // Grounded at y=0 (props sit on the film's ground plane without offsets) — except
+      // sub-node parts re-rooted at their pivot (the windmill fan is centered on its hub).
+      if (m.name !== "windmill-fan") {
+        let minY = Infinity;
+        for (let i = 1; i < md.positions.length; i += 3) minY = Math.min(minY, md.positions[i]!);
+        expect(minY, `${m.name} rests on the ground`).toBeGreaterThan(-0.05);
+      }
     }
   });
 
