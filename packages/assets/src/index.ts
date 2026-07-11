@@ -564,6 +564,8 @@ const surfacesDir = fileURLToPath(new URL("../surfaces/", import.meta.url));
 
 export interface SurfaceMeta {
   name: string;
+  /** "html" bakes to art.png; "svg" is consumed as geometry (svgToMesh). */
+  type?: "html" | "svg";
   /** [width, height] in pixels. */
   size: [number, number];
   license: string;

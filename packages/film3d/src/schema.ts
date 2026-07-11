@@ -5,6 +5,7 @@
 // bad film; it cannot emit an invalid one, and it never touches geometry or keyframes.
 import { z } from "zod";
 import { EXTRA_CHARACTERS } from "./characters.extra.js";
+import { SURFACE_NAMES, CUTOUT_NAMES } from "./surfaces.js";
 
 /**
  * The castable characters — a curated subset of `@vsim/assets`' bundled library, with the
@@ -124,6 +125,10 @@ export const PropSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("log"), id: z.string(), x: coord, z: coord, length: z.number().min(0.8).max(3).default(1.6), /** Yaw in degrees. */ angle: z.number().default(0) }),
   z.object({ kind: z.literal("pond"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.8).max(4).default(1.8) }),
   z.object({ kind: z.literal("lantern"), id: z.string(), x: coord, z: coord }),
+  // Baked-artifact props (docs/plan-surface-pack.md): art names come from the surface
+  // library's generated tables so validation stays synchronous.
+  z.object({ kind: z.literal("sign"), id: z.string(), x: coord, z: coord, art: z.enum(SURFACE_NAMES as unknown as [string, ...string[]]), /** Yaw in degrees. */ angle: z.number().default(0) }),
+  z.object({ kind: z.literal("cutout"), id: z.string(), x: coord, z: coord, art: z.enum(CUTOUT_NAMES as unknown as [string, ...string[]]), height: z.number().min(0.5).max(4).default(1.5), depth: z.number().min(0).max(0.5).default(0.1), angle: z.number().default(0) }),
 ]);
 
 export const ActorSchema = z.object({

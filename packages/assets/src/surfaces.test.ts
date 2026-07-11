@@ -9,16 +9,19 @@ const dir = fileURLToPath(new URL("../surfaces/", import.meta.url));
 describe("surface library", () => {
   it("lists the bundled surfaces", async () => {
     const names = (await listSurfaces()).map((s) => s.name).sort();
-    expect(names).toEqual(["festival-poster", "trail-sign"]);
+    expect(names).toEqual(["festival-poster", "star-cutout", "trail-sign"]);
   });
 
   it("every surface folder has source + bake + metadata, and the manifest matches", async () => {
     const folders = (await readdir(dir, { withFileTypes: true })).filter((d) => d.isDirectory()).map((d) => d.name).sort();
     const manifest = (await listSurfaces()).map((s) => s.name).sort();
     expect(folders).toEqual(manifest); // no orphan folders, no phantom entries
-    for (const name of folders) {
-      for (const f of ["source.html", "art.png", "surface.json"]) {
-        await expect(readFile(join(dir, name, f)), `${name}/${f}`).resolves.toBeDefined();
+    for (const meta of await listSurfaces()) {
+      const files = meta.type === "svg"
+        ? ["source.svg", "surface.json"] // svg surfaces are consumed as geometry — no bake
+        : ["source.html", "art.png", "surface.json"];
+      for (const f of files) {
+        await expect(readFile(join(dir, meta.name, f)), `${meta.name}/${f}`).resolves.toBeDefined();
       }
     }
   });
@@ -34,6 +37,6 @@ describe("surface library", () => {
   });
 
   it("names the available surfaces in the unknown-surface error", async () => {
-    await expect(loadSurface("nope")).rejects.toThrow(/available: festival-poster, trail-sign/);
+    await expect(loadSurface("nope")).rejects.toThrow(/available: festival-poster, star-cutout, trail-sign/);
   });
 });

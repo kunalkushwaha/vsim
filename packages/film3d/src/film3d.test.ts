@@ -350,3 +350,40 @@ describe("CreatureDoc", () => {
     expect(parseCreature({ ...WOLF, parts: [{ bone: "wings", kind: "cube", loc: [0, 0, 0.5], scale: [0.1, 0.1, 0.1] }] }).errors!.join("\n")).toMatch(/unknown bone "wings"/);
   });
 });
+
+describe("surface props (sign + cutout)", () => {
+  const DOC = {
+    title: "Signage", set: "meadow",
+    props: [
+      { kind: "sign", id: "s1", x: 2, z: -1, art: "trail-sign", angle: 20 },
+      { kind: "cutout", id: "c1", x: -2, z: -2, art: "star-cutout", height: 2 },
+    ],
+    actors: [{ id: "fox", character: "fox", x: 4, z: -1 }],
+    beats: [{ id: "b1", start: 0, end: 4 }],
+  } as const;
+
+  it("validates art against the generated surface tables", () => {
+    expect(parseFilm3D(DOC).errors).toBeUndefined();
+    const bad = parseFilm3D({ ...DOC, props: [{ kind: "sign", id: "s1", x: 0, z: 0, art: "nope" }] });
+    expect(bad.errors!.join("\n")).toMatch(/art/);
+  });
+
+  it("keeps the generated tables in sync with the surfaces manifest", async () => {
+    const { listSurfaces } = await import("@vsim/assets");
+    const metas = await listSurfaces();
+    const { SURFACE_NAMES, CUTOUT_NAMES } = await import("./surfaces.js");
+    expect([...SURFACE_NAMES].sort()).toEqual(metas.filter((m) => m.type !== "svg").map((m) => m.name).sort());
+    expect([...CUTOUT_NAMES].sort()).toEqual(metas.filter((m) => m.type === "svg").map((m) => m.name).sort());
+  });
+
+  it("compiles a sign (textured board + posts) and a cutout (extruded meshes)", async () => {
+    const sceneDoc = await film3dToScene(DOC);
+    const ids = new Set(sceneDoc.nodes.map((n) => n.id));
+    for (const want of ["s1__board", "s1__post_l", "s1__post_r", "c1__m0"]) {
+      expect(ids.has(want), `missing ${want}`).toBe(true);
+    }
+    const board = sceneDoc.nodes.find((n) => n.id === "s1__board") as { mesh?: { geometry: { data?: { texture?: { width: number } } } } };
+    expect(board.mesh?.geometry.data?.texture?.width).toBe(512); // the trail-sign bake
+    new SceneRuntime(sceneDoc).computeFrameState(30);
+  });
+});
