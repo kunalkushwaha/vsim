@@ -6,7 +6,7 @@ import { v3 } from "@vsim/core";
 import type { Film3DProp } from "./schema.js";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { loadSurface, svgToMesh } from "@vsim/assets";
+import { loadSurface, loadSurfaceFrames, svgToMesh } from "@vsim/assets";
 
 export interface SetLook {
   background: Vec3;
@@ -293,6 +293,31 @@ export async function sign(b: SceneBuilder, look: SetLook, id: string, x: number
   b.texturedQuad(`${id}__board`, { parent: id, texture: tex, width: w, height: h, back: true, position: [0, postH, 0.055] });
 }
 
+/**
+ * An animated surface on a kiosk stand: the panel's texture is a baked HTML frame sequence
+ * (surface type "anim") looped for the film's whole duration by a step-eased "texture.frame"
+ * track — exact integer holds, no lerp drift. A soft point light in front keeps the panel
+ * readable in night sets.
+ */
+export async function screen(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, art: string, angleDeg: number, durationFrames: number, fps: number): Promise<void> {
+  const seq = await loadSurfaceFrames(art);
+  const w = 1.6, h = (w * seq.height) / seq.width, standH = 0.55;
+  b.group(id, { position: [x, 0, z], rotation: [0, (angleDeg * Math.PI) / 180, 0] });
+  b.material(`${id}__case`, { color: [0.16, 0.16, 0.19], roughness: 0.55, metalness: 0.35 });
+  b.mesh(`${id}__frame`, { parent: id, geometry: { kind: "box", size: [w + 0.14, h + 0.14, 0.08] }, material: `${id}__case`, position: [0, standH + h / 2, 0] });
+  for (const [pid, px] of [["l", -w * 0.3], ["r", w * 0.3]] as const) {
+    b.mesh(`${id}__leg_${pid}`, { parent: id, geometry: { kind: "cylinder", radius: 0.04, height: standH, segments: 8 }, material: `${id}__case`, position: [px, standH / 2, 0] });
+  }
+  b.texturedQuad(`${id}__panel`, { parent: id, texture: seq.frames[0]!, frames: seq.frames, width: w, height: h, roughness: 0.35, position: [0, standH, 0.045] });
+  const step = fps / seq.fps; // film frames per surface frame
+  const keyframes = [];
+  for (let i = 0; i * step <= durationFrames; i++) {
+    keyframes.push({ frame: i * step, value: i % seq.frames.length, easing: "step" as const });
+  }
+  b.animate(`${id}__panel`, "texture.frame", keyframes);
+  b.light({ type: "point", intensity: 1.1, decay: 2, color: [0.85, 0.88, 1], position: [0, standH + h / 2, 0.7], parent: id }, `${id}__glow`);
+}
+
 /** An extruded SVG silhouette — stage-scenery shapes, logos, cutout landmarks. */
 export async function cutout(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, art: string, height: number, depth: number, angleDeg: number): Promise<void> {
   const dir = fileURLToPath(new URL("../../assets/surfaces/", import.meta.url));
@@ -305,7 +330,7 @@ export async function cutout(b: SceneBuilder, look: SetLook, id: string, x: numb
 }
 
 /** Place ANY Film3DProp — the single dispatch the compiler (and tests) call. */
-export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, durationFrames: number): Promise<void> {
+export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, durationFrames: number, fps = 30): Promise<void> {
   switch (p.kind) {
     case "tree": b.tree(p.id, { position: [p.x, 0, p.z], height: p.height, variant: p.variant, trunkColor: look.trunk, leafColor: look.leaf }); return;
     case "rock": b.rock(p.id, { position: [p.x, 0, p.z], radius: p.radius, color: look.stone }); return;
@@ -318,6 +343,7 @@ export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, d
     case "lantern": return lantern(b, look, p.id, p.x, p.z);
     case "sign": return sign(b, look, p.id, p.x, p.z, p.art, p.angle);
     case "cutout": return cutout(b, look, p.id, p.x, p.z, p.art, p.height, p.depth, p.angle);
+    case "screen": return screen(b, look, p.id, p.x, p.z, p.art, p.angle, durationFrames, fps);
     default: { const exhaustive: never = p; throw new Error(`unhandled prop kind ${(exhaustive as Film3DProp).kind}`); }
   }
 }

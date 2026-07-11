@@ -1,0 +1,67 @@
+<!-- festival-marquee: an ANIMATED surface — a fairground marquee board with chasing
+     bulbs and a pulsing title. Implements the motion recorder's film contract
+     (window.__film = { fps, frames, seek }); seek(f) is a pure function of the frame
+     index, so the baked frames/ sequence is deterministic. Baked by
+     scripts/bake-surfaces.mjs into frames/f_XX.png (art.png = frame 0). -->
+<meta charset="utf-8">
+<style>
+  @font-face {
+    font-family: "Bebas Neue";
+    src: url("../../../motion/fonts/BebasNeue-Regular.ttf");
+  }
+  html, body { margin: 0; padding: 0; }
+  body { width: 384px; height: 256px; overflow: hidden; background: #14102a; }
+  .board {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 90% 80% at 50% 42%, #2b1d52 0%, #1a1238 62%, #100b24 100%);
+    border: 10px solid #3d2c14;
+    box-sizing: border-box;
+  }
+  .bulb {
+    position: absolute; width: 14px; height: 14px; border-radius: 50%;
+    background: #4a3a20; margin: -7px 0 0 -7px;
+  }
+  .bulb.on { background: #ffd98a; box-shadow: 0 0 10px 3px rgba(255, 200, 90, 0.85); }
+  .title {
+    position: absolute; left: 0; right: 0; top: 84px; text-align: center; white-space: nowrap;
+    font-family: "Bebas Neue"; font-size: 52px; letter-spacing: 4px; color: #ffe9b8;
+  }
+  .sub {
+    position: absolute; left: 0; right: 0; top: 168px; text-align: center; white-space: nowrap;
+    font-family: "Bebas Neue"; font-size: 22px; letter-spacing: 7px; color: #9ad1ff;
+  }
+</style>
+<div class="board" id="board"></div>
+<div class="title" id="title">FESTIVAL NIGHT</div>
+<div class="sub">LANTERNS &middot; MUSIC &middot; STARS</div>
+<script>
+  // 30 bulbs around the border, laid out once (pure function of constants).
+  const board = document.getElementById("board");
+  const bulbs = [];
+  const W = 384, H = 256, M = 22; // margin of the bulb ring
+  const perimPts = [];
+  for (let i = 0; i < 11; i++) perimPts.push([M + (i * (W - 2 * M)) / 10, M]);            // top
+  for (let i = 1; i < 5; i++) perimPts.push([W - M, M + (i * (H - 2 * M)) / 4]);          // right
+  for (let i = 10; i >= 0; i--) perimPts.push([M + (i * (W - 2 * M)) / 10, H - M]);       // bottom
+  for (let i = 3; i >= 1; i--) perimPts.push([M, M + (i * (H - 2 * M)) / 4]);             // left
+  for (const [x, y] of perimPts) {
+    const el = document.createElement("div");
+    el.className = "bulb";
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    board.appendChild(el);
+    bulbs.push(el);
+  }
+  const title = document.getElementById("title");
+  const FRAMES = 24;
+  function seek(f) {
+    const t = ((f % FRAMES) + FRAMES) % FRAMES;
+    // Chase: every 3rd bulb lit, pattern advancing one bulb per frame.
+    bulbs.forEach((el, i) => el.classList.toggle("on", (i + t) % 3 === 0));
+    // Title glow breathes over the 2s loop.
+    const pulse = 0.5 - 0.5 * Math.cos((2 * Math.PI * t) / FRAMES);
+    title.style.textShadow = `0 0 ${8 + 18 * pulse}px rgba(255, 190, 80, ${0.55 + 0.45 * pulse})`;
+  }
+  seek(0);
+  window.__film = { fps: 12, frames: FRAMES, seek };
+</script>

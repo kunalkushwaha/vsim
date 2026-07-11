@@ -4,7 +4,7 @@
 // authors the document; the compiler and renderer never see the model.
 import { spawn } from "node:child_process";
 import { CHARACTERS, CHARACTER_IDS, parseFilm3D, type Film3DDoc } from "./schema.js";
-import { SURFACE_NAMES, CUTOUT_NAMES } from "./surfaces.js";
+import { SURFACE_NAMES, CUTOUT_NAMES, SCREEN_NAMES } from "./surfaces.js";
 import { extractJson, parseReviewReply, type ReviewStill } from "./review.js";
 import { parseCreature, type CreatureDoc } from "./creature.js";
 import { parseSurface, SURFACE_FONT, type SurfaceDoc } from "./surface-gen.js";
@@ -33,7 +33,8 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
     { "kind": "pond", "id", "x", "z", "radius": 0.8..4 },     // still water ringed by shore stones
     { "kind": "lantern", "id", "x", "z" },                    // glowing post light — pools warm light (great at dusk/night)
     { "kind": "sign", "id", "x", "z", "art": one of ${JSON.stringify([...SURFACE_NAMES])}, "angle": yaw degrees },  // a wooden board with real painted artwork
-    { "kind": "cutout", "id", "x", "z", "art": one of ${JSON.stringify([...CUTOUT_NAMES])}, "height": 0.5..4, "angle": yaw }  // an extruded silhouette, like stage scenery
+    { "kind": "cutout", "id", "x", "z", "art": one of ${JSON.stringify([...CUTOUT_NAMES])}, "height": 0.5..4, "angle": yaw },  // an extruded silhouette, like stage scenery
+    { "kind": "screen", "id", "x", "z", "art": one of ${JSON.stringify([...SCREEN_NAMES])}, "angle": yaw }  // an ANIMATED kiosk panel — its artwork plays on a loop (eye-catching at dusk/night)
   ],
   "actors": [                                                // ≤3
     { "id", "character": one of the list below, "x", "z", "facing": [x, z] (optional point to face) }

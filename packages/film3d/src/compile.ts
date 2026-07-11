@@ -76,7 +76,7 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
   });
   applySet(b, look);
 
-  for (const p of doc.props) await placeProp(b, look, p, DUR);
+  for (const p of doc.props) await placeProp(b, look, p, DUR, fps);
 
   // --- actors: place rigs, then walk the beat list tracking (x, z, heading) --------------
   const states = new Map<string, ActorState>();
