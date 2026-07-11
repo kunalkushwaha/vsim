@@ -584,3 +584,4 @@ export async function loadSurface(name: string): Promise<{ width: number; height
   const png = PNG.sync.read(Buffer.from(await readFile(resolve(surfacesDir, name, "art.png"))));
   return { width: png.width, height: png.height, data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.length) };
 }
+export { svgToMesh, parsePathD, earClip, type SvgMesh } from "./svg.js";

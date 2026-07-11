@@ -370,6 +370,47 @@ export class SceneBuilder {
   }
 
   /**
+   * A textured quad standing upright (facing +z), pivot at its bottom-center: the primitive
+   * behind surface-pack props (signs, posters, screens). `texture` is inline RGBA (e.g. from
+   * `loadSurface()`); width/height are world units. Double-sided via `back: true` (adds a
+   * mirrored quad so the board reads from behind).
+   */
+  texturedQuad(
+    id: string,
+    opts: TransformInput & {
+      texture: { width: number; height: number; data: Uint8Array };
+      width: number;
+      height: number;
+      back?: boolean;
+      roughness?: number;
+    },
+  ): this {
+    const w = opts.width / 2, h = opts.height;
+    // Front/back sit ±e apart — coplanar faces z-fight and the mirrored back can win.
+    const e = 0.002;
+    const positions = [-w, 0, e, w, 0, e, w, h, e, -w, h, e];
+    const normals = [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1];
+    const uvs = [0, 1, 1, 1, 1, 0, 0, 0]; // texture row 0 = top
+    const indices = [0, 1, 2, 0, 2, 3];
+    if (opts.back) {
+      positions.push(-w, 0, -e, w, 0, -e, w, h, -e, -w, h, -e);
+      normals.push(0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1);
+      uvs.push(1, 1, 0, 1, 0, 0, 1, 0); // mirrored so text isn't backwards from behind
+      indices.push(4, 6, 5, 4, 7, 6);
+    }
+    if (!this.doc.materials!.some((m) => m.id === "prop_surface")) {
+      this.material("prop_surface", { color: [1, 1, 1], roughness: opts.roughness ?? 0.85 });
+    }
+    this.node(id, opts, {
+      mesh: {
+        geometry: { kind: "mesh", data: { positions, normals, uvs, indices, texture: opts.texture } },
+        materialId: "prop_surface",
+      },
+    });
+    return this;
+  }
+
+  /**
    * Add a rigged character from a loaded rig (see `loadGltfRig`). Creates a group node `id` you can
    * position/animate (move it to make the character walk across the scene), the joint hierarchy, the
    * skin, the clips, and a skinned mesh node `${id}__mesh`. The mesh vertices are returned by
