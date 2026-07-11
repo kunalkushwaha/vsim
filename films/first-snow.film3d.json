@@ -1,0 +1,297 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "First Snow Over the Village",
+  "set": "snow",
+  "weather": "snowfall",
+  "props": [
+    {
+      "kind": "tree",
+      "id": "tree1",
+      "x": -10,
+      "z": -9,
+      "height": 4,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree2",
+      "x": -7,
+      "z": -10.5,
+      "height": 5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree3",
+      "x": 8,
+      "z": -9,
+      "height": 4,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "tree4",
+      "x": 10.5,
+      "z": -11,
+      "height": 3.5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree5",
+      "x": -3.5,
+      "z": -11,
+      "height": 4.5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "building",
+      "id": "well1",
+      "x": 0,
+      "z": -2,
+      "variant": "well",
+      "angle": 0
+    },
+    {
+      "kind": "building",
+      "id": "windmill1",
+      "x": -7,
+      "z": -4,
+      "variant": "windmill",
+      "angle": 20
+    },
+    {
+      "kind": "building",
+      "id": "tavern1",
+      "x": 6,
+      "z": -3,
+      "variant": "tavern",
+      "angle": -30
+    },
+    {
+      "kind": "clutter",
+      "id": "barrel1",
+      "x": 4.5,
+      "z": -1.5,
+      "variant": "barrel",
+      "angle": 0
+    },
+    {
+      "kind": "clutter",
+      "id": "barrel2",
+      "x": 5.5,
+      "z": -1,
+      "variant": "barrel",
+      "angle": 15
+    },
+    {
+      "kind": "clutter",
+      "id": "crate1",
+      "x": 5,
+      "z": -2.2,
+      "variant": "crate",
+      "angle": 0
+    },
+    {
+      "kind": "rock",
+      "id": "rock1",
+      "x": -2,
+      "z": -3,
+      "radius": 0.5
+    },
+    {
+      "kind": "rock",
+      "id": "rock2",
+      "x": 2,
+      "z": -2.5,
+      "radius": 0.4
+    },
+    {
+      "kind": "log",
+      "id": "log1",
+      "x": -1,
+      "z": 0.5,
+      "length": 1.5,
+      "angle": 80
+    },
+    {
+      "kind": "stump",
+      "id": "stump1",
+      "x": 1.5,
+      "z": 1,
+      "radius": 0.3
+    }
+  ],
+  "actors": [
+    {
+      "id": "deer1",
+      "character": "deer",
+      "x": -6,
+      "z": 2,
+      "facing": [
+        0,
+        -2
+      ]
+    },
+    {
+      "id": "rabbit1",
+      "character": "rabbit",
+      "x": 6,
+      "z": 2,
+      "facing": [
+        0,
+        -2
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "beat1",
+      "start": 0,
+      "end": 7,
+      "caption": "Snow drifts down as the village grows quiet.",
+      "narration": "The first snow settles over the village as dusk deepens.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "deer1",
+          "to": [
+            -1,
+            -1
+          ],
+          "at": 0,
+          "dur": 6,
+          "gait": "walk"
+        },
+        {
+          "do": "move",
+          "actor": "rabbit1",
+          "to": [
+            1,
+            -1
+          ],
+          "at": 0.5,
+          "dur": 6,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "deer1",
+          "to": [
+            0,
+            -2
+          ],
+          "at": 6,
+          "dur": 1
+        },
+        {
+          "do": "face",
+          "actor": "rabbit1",
+          "to": [
+            0,
+            -2
+          ],
+          "at": 6.5,
+          "dur": 0.5
+        }
+      ]
+    },
+    {
+      "id": "beat2",
+      "start": 7,
+      "end": 14,
+      "caption": "They shelter together, small and still.",
+      "narration": "A deer and a hare tuck in against the old well, waiting out the flurries.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "deer1",
+          "clip": "idle",
+          "at": 0,
+          "dur": 6
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 0.3,
+          "dur": 5.5
+        },
+        {
+          "do": "face",
+          "actor": "rabbit1",
+          "to": [
+            -1,
+            -1
+          ],
+          "at": 4.5,
+          "dur": 1
+        }
+      ]
+    },
+    {
+      "id": "beat3",
+      "start": 14,
+      "end": 20,
+      "caption": "The mill turns on, patient in the falling snow.",
+      "narration": "Behind them the windmill turns slowly on, steady against the pale sky.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "deer1",
+          "clip": "idle",
+          "at": 0,
+          "dur": 5
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 0,
+          "dur": 5
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 7,
+      "shot": "follow",
+      "target": "deer1",
+      "distance": 8,
+      "height": 2.5,
+      "angle": 15,
+      "sweep": 90
+    },
+    {
+      "at": 7,
+      "dur": 7,
+      "shot": "close",
+      "target": [
+        0,
+        0.9,
+        -1
+      ],
+      "distance": 5.5,
+      "height": 2,
+      "angle": 10,
+      "sweep": 90
+    },
+    {
+      "at": 14,
+      "dur": 6,
+      "shot": "orbit",
+      "target": [
+        0,
+        1,
+        -2.5
+      ],
+      "distance": 10,
+      "height": 3.2,
+      "angle": 0,
+      "sweep": 65
+    }
+  ]
+}
