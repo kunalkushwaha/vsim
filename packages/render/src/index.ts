@@ -84,8 +84,11 @@ export async function renderToVideo(input: unknown, opts: RenderOptions): Promis
     ...(audio ? ["-i", audio] : []),
     "-c:v", "libx264", "-pix_fmt", "yuv420p",
     "-crf", String(opts.crf ?? 18), "-preset", "medium",
+    // apad + -shortest: pad audio with silence to the piped video's full length — bare
+    // -shortest stops at the audio end and closes our pipe mid-write (EPIPE at the last
+    // frames) whenever the narration runs shorter than the film.
     ...(audio
-      ? ["-c:a", "aac", "-b:a", "192k", ...(gain !== 1 ? ["-filter:a", `volume=${gain}`] : []), "-shortest"]
+      ? ["-c:a", "aac", "-b:a", "192k", "-af", `${gain !== 1 ? `volume=${gain},` : ""}apad`, "-shortest"]
       : []),
     "-movflags", "+faststart",
     opts.output,

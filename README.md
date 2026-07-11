@@ -189,6 +189,8 @@ the schema validates everything, so the model can't hand back a film that doesn'
 |:---:|:---:|:---:|
 | ![The Last Flowers of Autumn](docs/media/lantern-path.gif) | ![Dawn Truce in the Snow](docs/media/snowy-dawn.gif) | ![path-traced firelight master](docs/media/firelight-master.gif) |
 | **Night, dressed** — a rabbit follows lantern light past a starlit pond ([`lantern-path`](films/lantern-path.film3d.json)) | **The animal cast** — deer, rabbit, and bear share a snowy dawn ([`snowy-dawn`](films/snowy-dawn.film3d.json)) | **Photoreal master** — the same screenplay, path-traced by Cycles: GI firelight, fog, sky, sparks ([how](docs/plan-film3d.md)) |
+| ![The Knight Returns Home](docs/media/village-dusk.gif) | ![animated marquee screen at night](docs/media/marquee-night.png) | ![Cycles master of the festival sign](docs/media/festival-master.png) |
+| **A whole village from one prompt** — the director staged the tavern, well, windmill, hut, and clutter itself ([`village-dusk`](films/village-dusk.film3d.json)) | **Screens that play** — an HTML marquee baked to a frame sequence, looping in-world on the `screen` prop | **AI artwork, path-traced** — the `vsim surface`-designed welcome board under Cycles lantern light ([`festival-night`](films/festival-night.film3d.json)) |
 
 The pipeline behind those: the cast mixes **professional CC0 packs** (KayKit's knight,
 barbarian, mage, rogue — faces, outfits, dozens of clips like `Spellcasting` and `Cheer`),
@@ -206,7 +208,13 @@ exactly that way). Even the ARTWORK is AI-made: `vsim surface -p "a rustic welco
 board…"` designs a self-contained HTML artifact under a strict determinism lint, bakes it
 with a pinned headless Chromium, reviews its own proof, and registers it — films then
 stage it as a `sign` prop, or extrude committed SVGs as `cutout` scenery
-([the surface pack](docs/plan-surface-pack.md)).
+([the surface pack](docs/plan-surface-pack.md)). Surfaces can even **animate**: an HTML
+page implementing the recorder's film contract bakes to a committed frame sequence, and
+the `screen` prop plays it in-world on a kiosk — a marquee with chasing bulbs, looping
+deterministically via a `texture.frame` track. And the sets got an architecture upgrade:
+`building` (hut, tavern, windmill, well, tower) and `clutter` (barrels, crates, tents)
+props stage real CC0 KayKit models, bundled as self-contained GLBs — so one prompt can
+now raise a whole village.
 
 ## vsim Studio — the visual editor
 

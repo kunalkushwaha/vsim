@@ -1,0 +1,353 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "The Knight Returns Home",
+  "set": "meadow",
+  "props": [
+    {
+      "kind": "tree",
+      "id": "tree1",
+      "x": -13,
+      "z": -6,
+      "height": 4,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree2",
+      "x": 12,
+      "z": -7,
+      "height": 4,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "tree3",
+      "x": 5,
+      "z": -12,
+      "height": 3,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree4",
+      "x": -8,
+      "z": -9,
+      "height": 3,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "rock",
+      "id": "rock1",
+      "x": -3,
+      "z": 3,
+      "radius": 0.4
+    },
+    {
+      "kind": "rock",
+      "id": "rock2",
+      "x": 5,
+      "z": 4,
+      "radius": 0.5
+    },
+    {
+      "kind": "building",
+      "id": "tavern1",
+      "x": -5,
+      "z": -3,
+      "variant": "tavern",
+      "angle": 200
+    },
+    {
+      "kind": "building",
+      "id": "well1",
+      "x": -2,
+      "z": 0,
+      "variant": "well",
+      "angle": 0
+    },
+    {
+      "kind": "building",
+      "id": "windmill1",
+      "x": 4,
+      "z": -10,
+      "variant": "windmill",
+      "angle": 30
+    },
+    {
+      "kind": "building",
+      "id": "hut1",
+      "x": 9,
+      "z": 1,
+      "variant": "hut",
+      "angle": 160
+    },
+    {
+      "kind": "clutter",
+      "id": "barrel1",
+      "x": -4,
+      "z": -1,
+      "variant": "barrel",
+      "angle": 0
+    },
+    {
+      "kind": "clutter",
+      "id": "crate1",
+      "x": -6,
+      "z": -1.5,
+      "variant": "crate",
+      "angle": 20
+    },
+    {
+      "kind": "clutter",
+      "id": "sack1",
+      "x": -5.5,
+      "z": -2.5,
+      "variant": "sack",
+      "angle": 0
+    },
+    {
+      "kind": "flowers",
+      "id": "flowers1",
+      "x": 1,
+      "z": 2,
+      "radius": 1
+    },
+    {
+      "kind": "bush",
+      "id": "bush1",
+      "x": -9,
+      "z": 2,
+      "radius": 0.6
+    },
+    {
+      "kind": "lantern",
+      "id": "lantern1",
+      "x": 0,
+      "z": 1
+    }
+  ],
+  "actors": [
+    {
+      "id": "knight1",
+      "character": "knight",
+      "x": -11,
+      "z": 3,
+      "facing": [
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "dog1",
+      "character": "dog",
+      "x": -12,
+      "z": 3.5,
+      "facing": [
+        -4,
+        1.5
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "beat1",
+      "start": 0,
+      "end": 8,
+      "caption": "A knight crosses into the village square as the light turns gold.",
+      "narration": "As the sun dips low, a knight returns home through the quiet village square.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "knight1",
+          "to": [
+            -1.5,
+            0.8
+          ],
+          "at": 0,
+          "dur": 6.5,
+          "gait": "walk"
+        },
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            -2.5,
+            1.2
+          ],
+          "at": 0.5,
+          "dur": 6.5,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "knight1",
+          "to": [
+            -2,
+            0
+          ],
+          "at": 6.5,
+          "dur": 1
+        }
+      ]
+    },
+    {
+      "id": "beat2",
+      "start": 8,
+      "end": 16,
+      "caption": "He lingers by the old well, in no hurry now that the day is done.",
+      "narration": "He pauses by the old well, in no hurry now that the day's work is done.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "knight1",
+          "clip": "Idle",
+          "at": 0,
+          "dur": 3
+        },
+        {
+          "do": "play",
+          "actor": "knight1",
+          "clip": "Interact",
+          "at": 3,
+          "dur": 2
+        },
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            -1,
+            1
+          ],
+          "at": 0,
+          "dur": 2,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "knight1",
+          "to": [
+            -5,
+            -3
+          ],
+          "at": 5,
+          "dur": 1.5
+        }
+      ]
+    },
+    {
+      "id": "beat3",
+      "start": 16,
+      "end": 24,
+      "caption": "Past the tavern's barrels he goes, the windmill turning on the hill beyond.",
+      "narration": "Past the tavern's barrels he walks on, the windmill turning lazily on the hill beyond.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "knight1",
+          "to": [
+            8,
+            2
+          ],
+          "at": 0,
+          "dur": 7,
+          "gait": "walk"
+        },
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            7,
+            2.3
+          ],
+          "at": 0.5,
+          "dur": 7,
+          "gait": "walk"
+        }
+      ]
+    },
+    {
+      "id": "beat4",
+      "start": 24,
+      "end": 32,
+      "caption": "At his door at last, he turns for one look at the village in gold light.",
+      "narration": "At last he reaches his door, and looks back once at the golden village before going in.",
+      "actions": [
+        {
+          "do": "face",
+          "actor": "knight1",
+          "to": [
+            -2,
+            0
+          ],
+          "at": 0,
+          "dur": 1.5
+        },
+        {
+          "do": "play",
+          "actor": "knight1",
+          "clip": "Idle",
+          "at": 1.5,
+          "dur": 3
+        },
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            8.5,
+            2.3
+          ],
+          "at": 0,
+          "dur": 2,
+          "gait": "walk"
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 8,
+      "shot": "follow",
+      "target": "knight1",
+      "distance": 9,
+      "height": 3.2,
+      "angle": 0,
+      "sweep": 90
+    },
+    {
+      "at": 8,
+      "dur": 8,
+      "shot": "close",
+      "target": "knight1",
+      "distance": 5,
+      "height": 1.7,
+      "angle": 25,
+      "sweep": 45
+    },
+    {
+      "at": 16,
+      "dur": 8,
+      "shot": "wide",
+      "target": [
+        3,
+        1,
+        1
+      ],
+      "distance": 13,
+      "height": 5,
+      "angle": 90,
+      "sweep": 60
+    },
+    {
+      "at": 24,
+      "dur": 8,
+      "shot": "orbit",
+      "target": "knight1",
+      "distance": 9,
+      "height": 3.2,
+      "angle": 150,
+      "sweep": 55
+    }
+  ]
+}
