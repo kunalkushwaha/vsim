@@ -61,13 +61,18 @@ function bakeFrame(frame: number) {
       positions.push(wp[0], wp[1], wp[2]); normals.push(wn[0], wn[1], wn[2]);
     }
     const mat = n.material;
+    // Animated textures play in the master too: each baked frame picks the track-selected
+    // sequence frame with the software engine's exact semantics (floor + lerp-drift epsilon,
+    // clamped to the sequence).
+    const seq = md.textureFrames;
+    const tex = seq?.length
+      ? seq[Math.min(seq.length - 1, Math.max(0, Math.floor((n.textureFrame ?? 0) + 1e-6)))]
+      : md.texture;
     meshes.push({
       name: n.id, positions, normals, indices: md.indices, uvs: md.uvs ?? null,
       color: mat?.color ?? [0.8, 0.8, 0.8], roughness: mat?.roughness ?? 0.8, metalness: mat?.metalness ?? 0,
       emissive: mat?.emissive ?? [0, 0, 0], skin: skinned,
-      // texture.frame tracks are a software-engine channel; the bake uses the static base
-      // texture (falling back to the sequence's first frame).
-      texture: enc(md.texture ?? md.textureFrames?.[0]), normalMap: enc(md.normalMap), metallicRoughnessMap: enc(md.metallicRoughnessMap),
+      texture: enc(tex), normalMap: enc(md.normalMap), metallicRoughnessMap: enc(md.metallicRoughnessMap),
       occlusionMap: enc(md.occlusionMap), emissiveMap: enc(md.emissiveMap),
     });
   }
