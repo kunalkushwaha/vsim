@@ -1,0 +1,30 @@
+<!-- Surface source: a vintage meadow-festival poster (384x512). Baked → art.png. -->
+<!doctype html><meta charset="utf-8">
+<style>
+  @font-face { font-family: Bebas; src: url("../../../motion/fonts/BebasNeue-Regular.ttf"); }
+  html, body { margin: 0; width: 384px; height: 512px; overflow: hidden; }
+  body { background: linear-gradient(180deg, #f5e9c8 0 62%, #dbc998 100%); }
+  .sun { position: absolute; left: 50%; top: 176px; width: 150px; height: 150px; margin-left: -75px;
+         border-radius: 50%; background: radial-gradient(circle at 45% 40%, #f2b544, #d98a2b 80%); }
+  .ray { position: absolute; left: 50%; top: 251px; width: 4px; height: 118px; margin-left: -2px;
+         background: #d98a2b; transform-origin: 50% 0; opacity: .85; }
+  .hills { position: absolute; bottom: 96px; width: 100%; height: 130px; overflow: hidden; }
+  .hills i { position: absolute; border-radius: 50%; }
+  .h1 { left: -80px; bottom: -110px; width: 340px; height: 190px; background: #6d8f4e; }
+  .h2 { right: -90px; bottom: -130px; width: 380px; height: 210px; background: #57783d; }
+  header { position: absolute; top: 24px; width: 100%; text-align: center;
+           font: 64px/0.95 Bebas, sans-serif; letter-spacing: 4px; color: #4a3216; }
+  header em { display: block; font-style: normal; font-size: 30px; letter-spacing: 12px; color: #8a5f2a; }
+  footer { position: absolute; bottom: 18px; width: 100%; text-align: center;
+           font: 34px/1.15 Bebas, sans-serif; letter-spacing: 5px; color: #4a3216; }
+  footer small { display: block; font-size: 20px; letter-spacing: 8px; color: #8a5f2a; }
+  .band { position: absolute; bottom: 78px; width: 100%; height: 10px; background: #b3452e; }
+</style>
+<header>MEADOW<em>FESTIVAL</em></header>
+<div class="ray" style="transform:rotate(-60deg)"></div><div class="ray" style="transform:rotate(-30deg)"></div>
+<div class="ray"></div>
+<div class="ray" style="transform:rotate(30deg)"></div><div class="ray" style="transform:rotate(60deg)"></div>
+<div class="sun"></div>
+<div class="hills"><i class="h1"></i><i class="h2"></i></div>
+<div class="band"></div>
+<footer>AT GOLDEN HOUR<small>MUSIC · LANTERNS · FIRESIDE TALES</small></footer>

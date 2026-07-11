@@ -1,0 +1,22 @@
+{
+  "surfaces": [
+    {
+      "name": "festival-poster",
+      "size": [
+        384,
+        512
+      ],
+      "license": "generated (vsim, MIT)",
+      "prompt": "hand-written proof — a vintage meadow-festival poster"
+    },
+    {
+      "name": "trail-sign",
+      "size": [
+        512,
+        384
+      ],
+      "license": "generated (vsim, MIT)",
+      "prompt": "hand-written proof — a painted wooden trail sign pointing to the pond"
+    }
+  ]
+}

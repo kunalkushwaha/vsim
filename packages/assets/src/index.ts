@@ -555,3 +555,32 @@ function pad(buf: Buffer, fill: number): Buffer {
   const rem = buf.length % 4;
   return rem === 0 ? buf : Buffer.concat([buf, Buffer.alloc(4 - rem, fill)]);
 }
+
+// ---- The surface library: HTML/CSS artifacts baked to committed textures ------------------
+// (docs/plan-surface-pack.md). Films consume ONLY the committed art.png bytes; source.html
+// is the regeneration recipe (scripts/bake-surfaces.mjs).
+
+const surfacesDir = fileURLToPath(new URL("../surfaces/", import.meta.url));
+
+export interface SurfaceMeta {
+  name: string;
+  /** [width, height] in pixels. */
+  size: [number, number];
+  license: string;
+  prompt?: string;
+}
+
+/** List the bundled surfaces (baked HTML artifacts) from the manifest. */
+export async function listSurfaces(): Promise<SurfaceMeta[]> {
+  const raw = JSON.parse(await readFile(resolve(surfacesDir, "manifest.json"), "utf8"));
+  return raw.surfaces as SurfaceMeta[];
+}
+
+/** Load a surface's committed bake as RGBA — ready for `kind:"mesh"` geometry `data.texture`. */
+export async function loadSurface(name: string): Promise<{ width: number; height: number; data: Uint8Array }> {
+  const metas = await listSurfaces();
+  const meta = metas.find((s) => s.name === name);
+  if (!meta) throw new Error(`unknown surface "${name}" (available: ${metas.map((s) => s.name).join(", ")})`);
+  const png = PNG.sync.read(Buffer.from(await readFile(resolve(surfacesDir, name, "art.png"))));
+  return { width: png.width, height: png.height, data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.length) };
+}
