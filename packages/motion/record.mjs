@@ -140,3 +140,27 @@ if (process.argv[1] && resolve(process.argv[1]) === new URL(import.meta.url).pat
     process.exit(1);
   });
 }
+
+/**
+ * Capture ONE still of an arbitrary self-contained HTML page — the surface baker
+ * (docs/plan-surface-pack.md). Same pinned Chromium + determinism flags as recordFrames;
+ * no `window.__film` contract, just fonts-ready then a screenshot of the viewport.
+ * @param {string} pagePath
+ * @param {{width?: number, height?: number, scale?: number}} [opts]
+ * @returns {Promise<Buffer>} PNG bytes
+ */
+export async function captureStill(pagePath, opts) {
+  const { width = 512, height = 512, scale = 1 } = opts ?? {};
+  const browser = await chromium.launch({
+    executablePath: chromePath(),
+    args: ["--allow-file-access-from-files", "--force-color-profile=srgb", "--disable-lcd-text", "--font-render-hinting=none"],
+  });
+  try {
+    const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale });
+    await page.goto(pathToFileURL(resolve(pagePath)).href);
+    await page.evaluate(() => (document.fonts ? document.fonts.ready.then(() => true) : true));
+    return await page.screenshot({ type: "png", animations: "disabled" });
+  } finally {
+    await browser.close();
+  }
+}
