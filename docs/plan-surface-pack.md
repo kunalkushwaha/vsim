@@ -1,13 +1,17 @@
 # Plan — the surface pack: HTML → textures, SVG → geometry, AI-authored
 
-**STATUS: SHIPPED (S1–S5, PRs #53–#57; animated textures v2 shipped after).** captureStill
-baker + surface library + loadSurface (S1); svgToMesh + texturedQuad (S2); sign/cutout film
-props with codegen'd art tables (S3); `vsim surface` generate→look→revise + the first
-AI-designed surface, woodland-welcome-board (S4). **Animated textures v2**: `textureFrames[]`
+**STATUS: SHIPPED (S1–S5, PRs #53–#57; v2 #59; v2.1 #60).** captureStill baker + surface
+library + loadSurface (S1); svgToMesh + texturedQuad (S2); sign/cutout film props with
+codegen'd art tables (S3); `vsim surface` generate→look→revise + the first AI-designed
+surface, woodland-welcome-board (S4). **Animated textures v2 (PR #59)**: `textureFrames[]`
 on mesh data + a `"texture.frame"` track (floored with a lerp-drift epsilon, clamped to the
 sequence) selects the sampled frame in the software engine; `texturedQuad(id, { frames })`
 authors it. engine-three and the Cycles bake are static-preview consumers: they show the base
-`texture`, falling back to `textureFrames[0]`.
+`texture`, falling back to `textureFrames[0]`. **Screens v2.1 (PR #60)**: surface type
+`"anim"` — source.html implements the recorder's `window.__film = { fps, frames, seek }`
+contract, baked to a committed `frames/` sequence (art.png = frame 0); `loadSurfaceFrames()`
++ the film3d `screen` prop play it on a kiosk with a looping step-eased track (exact integer
+holds at any doc fps). Showcase: `festival-marquee` (24 frames @ 12 fps, chasing bulbs).
 
 *Goal: let the AI design **surface detail** (signs, posters, screens, patterns) in the two
 visual languages it is genuinely fluent in — HTML/CSS and SVG — and bake those artifacts
