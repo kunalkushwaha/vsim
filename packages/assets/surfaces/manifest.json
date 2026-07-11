@@ -33,6 +33,18 @@
       "prompt": "hand-written proof — a gold star cutout"
     },
     {
+      "name": "tavern-window-nightglow",
+      "type": "anim",
+      "size": [
+        512,
+        640
+      ],
+      "license": "generated (vsim, MIT)",
+      "fps": 12,
+      "frames": 36,
+      "prompt": "A cozy tavern window seen at night: warm candlelight flickering behind bottle-glass panes, a hanging 'OPEN' sign gently swaying, fireflies drifting past outside"
+    },
+    {
       "name": "trail-sign",
       "type": "html",
       "size": [

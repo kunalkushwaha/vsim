@@ -1,0 +1,12 @@
+{
+  "name": "tavern-window-nightglow",
+  "size": [
+    512,
+    640
+  ],
+  "type": "anim",
+  "fps": 12,
+  "frames": 36,
+  "license": "generated (vsim, MIT)",
+  "prompt": "A cozy tavern window seen at night: warm candlelight flickering behind bottle-glass panes, a hanging 'OPEN' sign gently swaying, fireflies drifting past outside"
+}

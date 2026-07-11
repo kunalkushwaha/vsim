@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir, copyFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir, copyFile, rm } from "node:fs/promises";
 import { resolve, extname, dirname, join, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseDocument, type PhysicsAdapter, type SceneDocument } from "@vsim/core";
@@ -28,6 +28,7 @@ interface Args {
   still?: string;
   frame: number;
   workers?: number;
+  anim?: boolean;
   audio?: string;
   font?: string;
   name?: string;
@@ -52,6 +53,7 @@ function parseArgs(argv: string[]): Args {
     else if (t === "--template") a.template = argv[++i]!;
     else if (t === "--render") a.render = argv[++i]!;
     else if (t === "--review") a.review = Number(argv[++i]);
+    else if (t === "--anim") a.anim = true;
     else if (!t!.startsWith("-")) a.file = t;
   }
   return a;
@@ -374,17 +376,17 @@ async function runCreature(args: Args): Promise<void> {
  */
 async function runSurface(args: Args): Promise<void> {
   if (!args.prompt) {
-    console.log('Usage: vsim surface --prompt "<artwork description>"');
+    console.log('Usage: vsim surface --prompt "<artwork description>" [--anim]');
     process.exit(1);
   }
   const { generateSurface, reviewSurface } = await import("@vsim/film3d");
   // @ts-expect-error — untyped .mjs tool module (the same pinned Chromium as the 2D recorder)
-  const { captureStill } = await import("@vsim/motion/record.mjs");
+  const { captureStill, recordFrames } = await import("@vsim/motion/record.mjs");
   const { spawn } = await import("node:child_process");
 
-  console.log(`✎ designing a surface for "${args.prompt}" …`);
-  let { doc, attempts } = await generateSurface(args.prompt, {});
-  console.log(`✓ SurfaceDoc "${doc.name}" ${doc.size[0]}x${doc.size[1]} — attempt ${attempts}`);
+  console.log(`✎ designing ${args.anim ? "an ANIMATED" : "a"} surface for "${args.prompt}" …`);
+  let { doc, attempts } = await generateSurface(args.prompt, { anim: args.anim });
+  console.log(`✓ SurfaceDoc "${doc.name}" ${doc.size[0]}x${doc.size[1]}${doc.anim ? ` — ${doc.anim.frames} frames @ ${doc.anim.fps} fps` : ""} — attempt ${attempts}`);
 
   // Never clobber an existing surface (the model could pick a curated name like
   // "trail-sign"): take the first free -2/-3… suffix instead.
@@ -396,16 +398,46 @@ async function runSurface(args: Args): Promise<void> {
   doc = { ...doc, name };
   const dir = resolve("packages/assets/surfaces", name);
   await mkdir(dir, { recursive: true });
-  const bake = async () => {
+  const bake = async (): Promise<string[]> => {
     await writeFile(join(dir, "source.html"), doc.html);
-    await writeFile(join(dir, "surface.json"), JSON.stringify({ name: doc.name, size: doc.size, license: "generated (vsim, MIT)", prompt: args.prompt }, null, 2) + "\n");
-    const png: Buffer = await captureStill(join(dir, "source.html"), { width: doc.size[0], height: doc.size[1] });
-    await writeFile(join(dir, "art.png"), png);
+    await writeFile(join(dir, "surface.json"), JSON.stringify({
+      name: doc.name, size: doc.size,
+      ...(doc.anim ? { type: "anim", fps: doc.anim.fps, frames: doc.anim.frames } : {}),
+      license: "generated (vsim, MIT)", prompt: args.prompt,
+    }, null, 2) + "\n");
+    if (!doc.anim) {
+      const png: Buffer = await captureStill(join(dir, "source.html"), { width: doc.size[0], height: doc.size[1] });
+      await writeFile(join(dir, "art.png"), png);
+      return [join(dir, "art.png")];
+    }
+    // Animated: bake the whole loop; the page's own __film contract must agree with the doc.
+    // Clear stale frames first — a revision with fewer frames must not leave orphans behind.
+    await rm(join(dir, "frames"), { recursive: true, force: true });
+    await mkdir(join(dir, "frames"), { recursive: true });
+    let count = 0;
+    const meta = await recordFrames(join(dir, "source.html"), { width: doc.size[0], height: doc.size[1], from: 0, to: doc.anim.frames - 1 }, {
+      onFrame: async (png: Buffer, f: number) => {
+        await writeFile(join(dir, "frames", `f_${String(f).padStart(3, "0")}.png`), png);
+        if (f === 0) await writeFile(join(dir, "art.png"), png);
+        count++;
+      },
+    });
+    // meta.frames must match too: a page declaring MORE frames than anim would otherwise
+    // bake a silent slice of the loop (count alone can't catch it — the recorder clamps).
+    if (count !== doc.anim.frames || meta.fps !== doc.anim.fps || meta.frames !== doc.anim.frames) {
+      throw new Error(`the page's window.__film (${meta.fps} fps, ${meta.frames} frames, baked ${count}) disagrees with anim (${doc.anim.fps} fps, ${doc.anim.frames} frames)`);
+    }
+    // The designer reviews three spaced frames of its own loop.
+    const picks = [0, Math.floor(doc.anim.frames / 3), Math.floor((2 * doc.anim.frames) / 3)];
+    return picks.map((f) => join(dir, "frames", `f_${String(f).padStart(3, "0")}.png`));
   };
-  await bake();
+  const proofs = await bake();
   console.log("✎ reviewing the proof …");
-  const review = await reviewSurface(doc, join(dir, "art.png"), {});
-  if (review.revised) {
+  const review = await reviewSurface(doc, proofs.length === 1 ? proofs[0]! : proofs, {});
+  if (review.revised && !!review.doc.anim !== !!doc.anim) {
+    // A revision may change the ART, not the MODE: --anim must ship an animated asset.
+    console.log("✎ the revision changed animated↔static — keeping the original proof");
+  } else if (review.revised) {
     // A revision may change the ART, not the identity: files already live under `name`,
     // and the manifest/codegen key off it — a renamed revision would break registration.
     doc = { ...review.doc, name };
@@ -420,7 +452,7 @@ async function runSurface(args: Args): Promise<void> {
     let err = ""; p.stderr.on("data", (d) => (err += d));
     p.on("close", (c) => (c === 0 ? res() : rej(new Error(`bake-surfaces failed: ${err.slice(-300)}`))));
   });
-  console.log(`✓ registered: surfaces/${doc.name} — stageable as { "kind": "sign", "art": "${doc.name}" }`);
+  console.log(`✓ registered: surfaces/${doc.name} — stageable as { "kind": "${doc.anim ? "screen" : "sign"}", "art": "${doc.name}" }`);
 }
 
 async function main(): Promise<void> {

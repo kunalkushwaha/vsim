@@ -3,7 +3,7 @@
 // once by the motion recorder's pinned Chromium; films consume ONLY the committed art.png
 // (Chromium rasterization is not cross-platform byte-stable — the PNG is the asset, the
 // HTML is its regeneration recipe). See docs/plan-surface-pack.md.
-import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
+import { readdir, readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { captureStill, recordFrames } from "../packages/motion/record.mjs";
 
@@ -16,16 +16,19 @@ for (const dir of (await readdir(root, { withFileTypes: true })).filter((d) => d
   if (meta.type === "anim") {
     // Animated surface: source.html implements the recorder's film contract
     // (window.__film = { fps, frames, seek }); every frame is a committed asset.
+    await rm(join(base, "frames"), { recursive: true, force: true }); // no stale-frame orphans
     await mkdir(join(base, "frames"), { recursive: true });
     let count = 0;
-    await recordFrames(join(base, "source.html"), { width, height, from: 0, to: meta.frames - 1 }, {
+    const rec = await recordFrames(join(base, "source.html"), { width, height, from: 0, to: meta.frames - 1 }, {
       onFrame: async (png, f) => {
         await writeFile(join(base, "frames", `f_${String(f).padStart(3, "0")}.png`), png);
         if (f === 0) await writeFile(join(base, "art.png"), png); // static fallback bake
         count++;
       },
     });
-    if (count !== meta.frames) throw new Error(`${meta.name}: baked ${count} frames, surface.json declares ${meta.frames}`);
+    // rec.frames must match too: a page declaring MORE frames than the manifest would
+    // otherwise bake a silent slice of its loop (the recorder clamps the range).
+    if (count !== meta.frames || rec.frames !== meta.frames) throw new Error(`${meta.name}: page declares ${rec.frames}, baked ${count}; surface.json declares ${meta.frames}`);
     console.log(`✓ ${meta.name} (anim — ${count} frames @ ${meta.fps} fps, ${width}x${height})`);
   } else if (meta.type !== "svg") {
     const png = await captureStill(join(base, "source.html"), { width, height });
