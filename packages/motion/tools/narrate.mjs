@@ -12,7 +12,8 @@
 // lines[{at, dur, text}] } — the film imports track.json and drives the puppet's mouth from
 // envelope[frame]: deterministic lip-sync with no runtime audio analysis.
 //
-// Engines: `espeak` (espeak-ng, offline, deterministic — the in-repo default) or
+// Engines: `espeak` (espeak-ng if present, else classic espeak — offline, deterministic, the
+// in-repo default) or
 // `elevenlabs` (needs ELEVENLABS_API_KEY + network; same WAV/envelope contract, so swapping
 // engines upgrades the voice without touching the film).
 import { execFileSync } from "node:child_process";
@@ -23,6 +24,22 @@ const RATE = 22050;
 
 /** @param {string} cmd @param {string[]} args */
 const run = (cmd, args) => execFileSync(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
+
+/** Prefer espeak-ng; fall back to classic espeak (same -v/-p/-s/-w flags). Memoized. */
+let _espeakBin;
+function espeakBin() {
+  if (_espeakBin) return _espeakBin;
+  for (const bin of ["espeak-ng", "espeak"]) {
+    try {
+      execFileSync(bin, ["--version"], { stdio: "ignore" });
+      return (_espeakBin = bin);
+    } catch (e) {
+      if (e.code === "ENOENT") continue; // not installed — try the next candidate
+      return (_espeakBin = bin); // present, just unhappy with --version
+    }
+  }
+  throw new Error("no speech engine found: install espeak-ng (apt install espeak-ng) or espeak");
+}
 
 /** Decode any audio file to raw mono s16le PCM at RATE via ffmpeg. @param {string} file */
 function decodePcm(file) {
@@ -37,14 +54,14 @@ function decodePcm(file) {
 /** @param {{text: string}} line @param {any} cfg @param {string} tmp @returns {string} wav path */
 function synthEspeak(line, cfg, tmp, i) {
   const out = join(tmp, `line_${i}.wav`);
-  run("espeak-ng", ["-v", cfg?.voice ?? "en+f4", "-p", String(cfg?.pitch ?? 75), "-s", String(cfg?.speed ?? 155), "-w", out, line.text]);
+  run(espeakBin(), ["-v", cfg?.voice ?? "en+f4", "-p", String(cfg?.pitch ?? 75), "-s", String(cfg?.speed ?? 155), "-w", out, line.text]);
   return out;
 }
 
 /** @param {{text: string}} line @param {any} cfg @param {string} tmp */
 async function synthElevenLabs(line, cfg, tmp, i) {
-  const key = process.env.ELEVENLABS_API_KEY;
-  if (!key) throw new Error("elevenlabs engine needs ELEVENLABS_API_KEY");
+  const key = process.env.ELEVENLABS_API_KEY ?? process.env.ELEVEN_LABS_API_KEY;
+  if (!key) throw new Error("elevenlabs engine needs ELEVENLABS_API_KEY (or ELEVEN_LABS_API_KEY)");
   const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${cfg.voiceId}`, {
     method: "POST",
     headers: { "xi-api-key": key, "content-type": "application/json" },
@@ -68,9 +85,15 @@ function writeWav(pcm, path) {
 }
 
 export async function narrate(scriptPath, outDir) {
-  const spec = JSON.parse(readFileSync(scriptPath, "utf8"));
+  return narrateSpec(JSON.parse(readFileSync(scriptPath, "utf8")), outDir);
+}
+
+/** Same pipeline as narrate(), but from an already-parsed spec — so a caller can build the spec
+ *  in memory (e.g. derive lines from a screenplay's captions) instead of reading a file.
+ *  @param {any} spec @param {string} outDir */
+export async function narrateSpec(spec, outDir) {
   const fps = spec.fps ?? 30;
-  const engine = spec.engine ?? "espeak";
+  const engine = process.env.NARRATE_ENGINE ?? spec.engine ?? "espeak";
   mkdirSync(outDir, { recursive: true });
   const tmp = join(outDir, ".narrate-tmp");
   mkdirSync(tmp, { recursive: true });
