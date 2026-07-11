@@ -8,7 +8,7 @@ import { scene, type SceneBuilder, type Vec3 } from "@vsim/authoring";
 import { loadCharacter } from "@vsim/assets";
 import type { SceneDocument } from "@vsim/core";
 import { CHARACTERS, type Film3DDoc, type Film3DShot } from "./schema.js";
-import { SET_LOOKS, applySet, placeProp, weather } from "./sets.js";
+import { SET_LOOKS, applySet, placeProp, weather, applyTransition } from "./sets.js";
 
 export const FILM3D_WIDTH = 960;
 export const FILM3D_HEIGHT = 540;
@@ -76,6 +76,7 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
   });
   applySet(b, look);
   if (doc.weather) weather(b, doc.weather);
+  if (doc.transition) applyTransition(b, look, SET_LOOKS[doc.transition.to], F(doc.transition.start), F(doc.transition.end));
 
   for (const p of doc.props) await placeProp(b, look, p, DUR, fps);
 

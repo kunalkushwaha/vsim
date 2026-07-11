@@ -119,7 +119,7 @@ export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", 
 export function applySet(b: SceneBuilder, look: SetLook): void {
   b.sky(look.sky.top, look.sky.bottom, { sun: look.sky.sun, ambient: look.sky.ambient });
   if (look.fog) b.fog(look.fog.color, look.fog.near, look.fog.far);
-  for (const l of look.lights) b.light(l);
+  look.lights.forEach((l, i) => b.light(l, `__set_light_${i}`));
   b.material("__set_ground", { color: look.ground, roughness: 0.95 });
   b.mesh("__set_earth", { geometry: { kind: "plane", size: [70, 70] }, material: "__set_ground" });
   if (look.grass) {
@@ -390,6 +390,47 @@ export function weather(b: SceneBuilder, kind: "snowfall" | "rain" | "fireflies"
     // Pre-warm one full lifetime: births stagger from startFrame, so starting at 0 would
     // leave the first ~lifeFrames with an empty lower sky (snow that hasn't fallen yet).
     startFrame: -p.lifeFrames });
+}
+
+/**
+ * In-film time-of-day: lerp the LOOK (sky gradient + derived ambient, fog, background) from
+ * the film's set to another set's over a frame window. Discrete set lights stay put — the
+ * sky-derived hemisphere follows the gradient, which carries most of the mood.
+ */
+export function applyTransition(b: SceneBuilder, from: SetLook, to: SetLook, startFrame: number, endFrame: number): void {
+  const span = (path: string, a: number[] | number | undefined, z: number[] | number | undefined) => {
+    if (a === undefined || z === undefined) return;
+    b.animateEnv(path, [{ frame: startFrame, value: a as never }, { frame: endFrame, value: z as never }]);
+  };
+  span("sky.top", from.sky.top, to.sky.top);
+  span("sky.bottom", from.sky.bottom, to.sky.bottom);
+  span("sky.ambient", from.sky.ambient ?? 0, to.sky.ambient ?? 0);
+  span("background", from.background, to.background);
+  // The sun disc fades with the look: size+glow lerp to the target's (or to 0 when the
+  // target set is sunless — a full golden disc in a night sky broke the illusion). A
+  // sunless FROM set can't grow a disc (env tracks only modify an existing sun).
+  if (from.sky.sun) {
+    span("sky.sun.size", from.sky.sun.size ?? 0.045, to.sky.sun?.size ?? 0);
+    span("sky.sun.glow", from.sky.sun.glow ?? 0.4, to.sky.sun?.glow ?? 0);
+    if (from.sky.sun.color && to.sky.sun?.color) span("sky.sun.color", from.sky.sun.color, to.sky.sun.color);
+  }
+  if (from.fog && to.fog) {
+    span("fog.color", from.fog.color, to.fog.color);
+    span("fog.near", from.fog.near, to.fog.near);
+    span("fog.far", from.fog.far, to.fog.far);
+  }
+  // The set's discrete lights dim/brighten too: each from-light lerps to the intensity of
+  // the target's next unclaimed light of the SAME type (unmatched → 0, i.e. it goes out).
+  const pool = [...to.lights];
+  from.lights.forEach((l, i) => {
+    const j = pool.findIndex((c) => c && c.type === l.type);
+    const target = j >= 0 ? (pool[j]!.intensity ?? 0) : 0;
+    if (j >= 0) pool[j] = undefined as never;
+    b.animate(`__set_light_${i}`, "light.intensity", [
+      { frame: startFrame, value: l.intensity ?? 0 },
+      { frame: endFrame, value: target },
+    ]);
+  });
 }
 
 /** Place ANY Film3DProp — the single dispatch the compiler (and tests) call. */
