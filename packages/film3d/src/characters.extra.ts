@@ -12,7 +12,6 @@ export const EXTRA_CHARACTERS = {
     scale: 1,
     runAt: 3.8,
     eye: 0.65,
-    tint: [0.5, 0.52, 0.55] as const,
   },
   barnowl: {
     clips: ["walk", "run", "idle"],
