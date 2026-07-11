@@ -1,6 +1,18 @@
 {
   "surfaces": [
     {
+      "name": "festival-marquee",
+      "type": "anim",
+      "size": [
+        384,
+        256
+      ],
+      "license": "generated (vsim, MIT)",
+      "fps": 12,
+      "frames": 24,
+      "prompt": "hand-written proof — an animated fairground marquee with chasing bulbs and a pulsing title"
+    },
+    {
       "name": "festival-poster",
       "type": "html",
       "size": [

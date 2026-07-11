@@ -372,9 +372,10 @@ describe("surface props (sign + cutout)", () => {
   it("keeps the generated tables in sync with the surfaces manifest", async () => {
     const { listSurfaces } = await import("@vsim/assets");
     const metas = await listSurfaces();
-    const { SURFACE_NAMES, CUTOUT_NAMES } = await import("./surfaces.js");
-    expect([...SURFACE_NAMES].sort()).toEqual(metas.filter((m) => m.type !== "svg").map((m) => m.name).sort());
+    const { SURFACE_NAMES, CUTOUT_NAMES, SCREEN_NAMES } = await import("./surfaces.js");
+    expect([...SURFACE_NAMES].sort()).toEqual(metas.filter((m) => (m.type ?? "html") === "html").map((m) => m.name).sort());
     expect([...CUTOUT_NAMES].sort()).toEqual(metas.filter((m) => m.type === "svg").map((m) => m.name).sort());
+    expect([...SCREEN_NAMES].sort()).toEqual(metas.filter((m) => m.type === "anim").map((m) => m.name).sort());
   });
 
   it("compiles a sign (textured board + posts) and a cutout (extruded meshes)", async () => {
@@ -386,6 +387,29 @@ describe("surface props (sign + cutout)", () => {
     const board = sceneDoc.nodes.find((n) => n.id === "s1__board") as { mesh?: { geometry: { data?: { texture?: { width: number } } } } };
     expect(board.mesh?.geometry.data?.texture?.width).toBe(512); // the trail-sign bake
     new SceneRuntime(sceneDoc).computeFrameState(30);
+  });
+
+  it("compiles a screen — an animated panel with a looping texture.frame track", async () => {
+    const sceneDoc = await film3dToScene({
+      ...DOC,
+      props: [{ kind: "screen", id: "tv1", x: 0, z: -3, art: "festival-marquee", angle: 10 }],
+      beats: [{ id: "b1", start: 0, end: 6 }],
+    });
+    const panel = sceneDoc.nodes.find((n) => n.id === "tv1__panel") as { mesh?: { geometry: { data?: { textureFrames?: unknown[] } } } };
+    expect(panel.mesh?.geometry.data?.textureFrames?.length).toBe(24); // the marquee sequence
+    const track = sceneDoc.animation.find((t) => t.target.nodeId === "tv1__panel" && t.target.path === "texture.frame")!;
+    expect(track).toBeDefined();
+    // Step-eased integer holds looping the 24-frame sequence at 12 fps in a 30 fps film.
+    expect(track.keyframes.every((k) => Number.isInteger(k.value as number) && k.easing === "step")).toBe(true);
+    const rt = new SceneRuntime(sceneDoc);
+    // At film frame 60 (2s = one full loop at 12 fps) the sequence has wrapped to frame 0.
+    const panelAt = (f: number) => rt.computeFrameState(f).nodes.find((n) => n.id === "tv1__panel")!.textureFrame;
+    expect(panelAt(0)).toBe(0);
+    expect(panelAt(5)).toBe(2); // 5 film frames / 2.5 = surface frame 2
+    expect(panelAt(60)).toBe(0); // wrapped
+    // Unknown art is rejected by the schema.
+    const bad = parseFilm3D({ ...DOC, props: [{ kind: "screen", id: "tv1", x: 0, z: 0, art: "trail-sign" }] });
+    expect(bad.errors!.join("\n")).toMatch(/art/);
   });
 });
 

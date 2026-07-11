@@ -564,11 +564,18 @@ const surfacesDir = fileURLToPath(new URL("../surfaces/", import.meta.url));
 
 export interface SurfaceMeta {
   name: string;
-  /** "html" bakes to art.png; "svg" is consumed as geometry (svgToMesh). */
-  type?: "html" | "svg";
+  /**
+   * "html" bakes to art.png; "svg" is consumed as geometry (svgToMesh); "anim" bakes a
+   * frames/ sequence via the recorder's film contract (art.png = frame 0).
+   */
+  type?: "html" | "svg" | "anim";
   /** [width, height] in pixels. */
   size: [number, number];
   license: string;
+  /** Playback rate of an "anim" surface's frame sequence. */
+  fps?: number;
+  /** Frame count of an "anim" surface's sequence. */
+  frames?: number;
   prompt?: string;
 }
 
@@ -585,5 +592,18 @@ export async function loadSurface(name: string): Promise<{ width: number; height
   if (!meta) throw new Error(`unknown surface "${name}" (available: ${metas.map((s) => s.name).join(", ")})`);
   const png = PNG.sync.read(Buffer.from(await readFile(resolve(surfacesDir, name, "art.png"))));
   return { width: png.width, height: png.height, data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.length) };
+}
+/** Load an "anim" surface's committed frame sequence — ready for mesh `data.textureFrames`. */
+export async function loadSurfaceFrames(name: string): Promise<{ width: number; height: number; fps: number; frames: { width: number; height: number; data: Uint8Array }[] }> {
+  const metas = await listSurfaces();
+  const meta = metas.find((s) => s.name === name);
+  if (!meta) throw new Error(`unknown surface "${name}" (available: ${metas.map((s) => s.name).join(", ")})`);
+  if (meta.type !== "anim") throw new Error(`surface "${name}" is not animated (type: ${meta.type ?? "html"}) — use loadSurface()`);
+  const frames = [];
+  for (let f = 0; f < meta.frames!; f++) {
+    const png = PNG.sync.read(Buffer.from(await readFile(resolve(surfacesDir, name, "frames", `f_${String(f).padStart(3, "0")}.png`))));
+    frames.push({ width: png.width, height: png.height, data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.length) });
+  }
+  return { width: frames[0]!.width, height: frames[0]!.height, fps: meta.fps!, frames };
 }
 export { svgToMesh, parsePathD, earClip, type SvgMesh } from "./svg.js";
