@@ -379,6 +379,8 @@ export class SceneBuilder {
     id: string,
     opts: TransformInput & {
       texture: { width: number; height: number; data: Uint8Array };
+      /** Optional frame sequence (animated texture): drive it with animate(id, "texture.frame", …). */
+      frames?: { width: number; height: number; data: Uint8Array }[];
       width: number;
       height: number;
       back?: boolean;
@@ -403,7 +405,7 @@ export class SceneBuilder {
     this.material(`${id}__surface`, { color: [1, 1, 1], roughness: opts.roughness ?? 0.85 });
     this.node(id, opts, {
       mesh: {
-        geometry: { kind: "mesh", data: { positions, normals, uvs, indices, texture: opts.texture } },
+        geometry: { kind: "mesh", data: { positions, normals, uvs, indices, texture: opts.texture, ...(opts.frames ? { textureFrames: opts.frames } : {}) } },
         materialId: `${id}__surface`,
       },
     });
