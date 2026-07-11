@@ -178,14 +178,15 @@ Schema (all numbers bounded; violations are rejected with readable errors):
   "legs": { "front_y", "back_y",      // y of front/back leg pairs (near spine ends)
             "sx": half-stance-width, "top": shoulder z, "knee": z, "r_u", "r_l" },  // radii
   "legsBackR"?: thicker haunches radius,
-  "parts": [ { "bone", "kind": "cube"|"sphere"|"cyl", "loc": [x,y,z], "scale": [x,y,z] } ],  // 4..24
+  "parts": [ { "bone", "kind": "cube"|"sphere"|"cyl", "loc": [x,y,z], "scale": [x,y,z], "color"?: [r,g,b] } ],  // 4..24
   "gaits": { "walk": [swing, curl], "run": [swing, curl] },   // radians; curl is negative
   "scale": world scale (≤1.6), "runAt": u/s, "eye": aim height after scale, "tint": [r,g,b] flat color
 }
 
 Craft rules:
 - SILHOUETTE FIRST: the animal must read from 8 units away. Exaggerate the one or two features that say the species (neck, ears, horns, hump, tail).
-- Give it a FACE: a muzzle/beak part on the head, plus small dark parts won't show (flat tint) — shape the head so it reads.
+- Give it a FACE: a muzzle/beak part on the head — shape the head so it reads.
+- COLOR the species: give 2-5 parts a "color" that says the animal (white facial disc, dark mane, red crest); parts without one — and the legs — wear "tint" as the base coat. Two or three colors beat ten.
 - Parts sit ON bones that exist; leg meshes are automatic from "legs". Keep body parts overlapping by ~30%.
 - Proportions: legs.top is the body height; body parts straddle it. Tail flows off the hips. Bones: hips at the rear (-y), head at the front (+y).
 - Gaits: heavier animal → smaller swing (0.25) and slower runAt; light/quick → bigger swing (0.5+).`;

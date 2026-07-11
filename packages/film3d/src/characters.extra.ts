@@ -23,6 +23,5 @@ export const EXTRA_CHARACTERS = {
     scale: 0.8,
     runAt: 1.2,
     eye: 0.6,
-    tint: [0.75, 0.6, 0.4] as const,
   },
 } as const;

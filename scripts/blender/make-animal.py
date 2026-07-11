@@ -129,20 +129,55 @@ for s, sx in (("L", L["sx"]), ("R", -L["sx"])):
         ("back_u" + s, "cyl", (sx, L["back_y"], mid_u), (back_r, back_r, half_u)),
         ("back_l" + s, "cyl", (sx, L["back_y"], mid_l), (L["r_l"], L["r_l"], half_l)),
     ]
+# Per-part colors (CreatureDoc `color`) bake to a 1-row PALETTE texture: every part's UVs
+# collapse onto its color's texel, so the GLB colors through the ordinary texture path and
+# no renderer changes are needed. Colorless parts and the legs wear the base coat (tint).
+part_colors = [tuple(p[4]) if len(p) > 4 else None for p in parts]
+use_palette = any(c is not None for c in part_colors)
+base_color = tuple(cfg.get("base_color", (0.75, 0.6, 0.45)))
+palette = []
+def texel_of(color):
+    c = tuple(color) if color else base_color
+    if c not in palette: palette.append(c)
+    return palette.index(c)
+
 objs = []
-for bn, kind, loc, scl in parts:
+for entry, color in zip(parts, part_colors):
+    bn, kind, loc, scl = entry[0], entry[1], entry[2], entry[3]
     if kind == "cube": bpy.ops.mesh.primitive_cube_add(size=2, location=loc)
     elif kind == "sphere": bpy.ops.mesh.primitive_uv_sphere_add(radius=1, location=loc, segments=16, ring_count=8)
     else: bpy.ops.mesh.primitive_cylinder_add(radius=1, depth=2, location=loc, vertices=10)
     o = bpy.context.object; o.scale = scl
     bpy.ops.object.transform_apply(scale=True)
     o.vertex_groups.new(name=bn).add([v.index for v in o.data.vertices], 1.0, 'REPLACE')
+    if use_palette:
+        idx = texel_of(color)
+        # Overwrite the primitive's auto-generated layer (calc_uvs) — a second layer would
+        # export as TEXCOORD_1, and engines sample TEXCOORD_0.
+        uv = o.data.uv_layers[0] if o.data.uv_layers else o.data.uv_layers.new(name="UVMap")
+        # UV u is filled after the palette size is known; stash the texel index for now.
+        for lo in o.data.loops: uv.data[lo.index].uv = (idx, 0.5)
     objs.append(o)
 bpy.ops.object.select_all(action='DESELECT')
 for o in objs: o.select_set(True)
 bpy.context.view_layer.objects.active = objs[0]
 bpy.ops.object.join()
 body = bpy.context.object; body.name = "body"
+if use_palette:
+    n = len(palette)
+    for d in body.data.uv_layers.active.data:  # texel index → texel center in [0,1]
+        d.uv = ((d.uv[0] + 0.5) / n, 0.5)
+    img = bpy.data.images.new("palette", width=n, height=1, alpha=False)
+    px = []
+    for c in palette: px += [c[0], c[1], c[2], 1.0]
+    img.pixels[:] = px
+    img.pack()
+    mat = bpy.data.materials.new("palette"); mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    tex = mat.node_tree.nodes.new("ShaderNodeTexImage")
+    tex.image = img; tex.interpolation = 'Closest'
+    mat.node_tree.links.new(bsdf.inputs["Base Color"], tex.outputs["Color"])
+    body.data.materials.append(mat)
 body.modifiers.new("subsurf", "SUBSURF").levels = 1
 body.parent = arm
 body.modifiers.new("arm", "ARMATURE").object = arm
