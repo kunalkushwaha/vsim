@@ -32,7 +32,14 @@ export const CreatureDocSchema = z
     }),
     legsBackR: z.number().min(0.015).max(0.16).optional(),
     parts: z
-      .array(z.object({ bone: z.string(), kind: z.enum(["cube", "sphere", "cyl"]), loc: vec3, scale: z.tuple([dim, dim, dim]) }))
+      .array(z.object({
+        bone: z.string(),
+        kind: z.enum(["cube", "sphere", "cyl"]),
+        loc: vec3,
+        scale: z.tuple([dim, dim, dim]),
+        /** Optional part color — becomes a palette texel; parts without one (and the legs) wear `tint`. */
+        color: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1), z.number().min(0).max(1)]).optional(),
+      }))
       .min(4)
       .max(24),
     /** (upper-leg swing, lower-leg curl) in radians per gait. */
@@ -79,7 +86,10 @@ export function creatureGeometry(doc: CreatureDoc): Record<string, unknown> {
     bones: doc.bones.map((b) => (b.parent ? [b.name, b.head, b.tail, b.parent] : [b.name, b.head, b.tail])),
     legs: doc.legs,
     ...(doc.legsBackR !== undefined ? { legs_back_r: doc.legsBackR } : {}),
-    parts: doc.parts.map((p) => [p.bone, p.kind, p.loc, p.scale]),
+    parts: doc.parts.map((p) => (p.color ? [p.bone, p.kind, p.loc, p.scale, p.color] : [p.bone, p.kind, p.loc, p.scale])),
     gaits: doc.gaits,
+    // The base coat: legs and colorless parts wear it; with any part colors present,
+    // make-animal.py bakes a palette texture instead of leaving the mesh untextured.
+    base_color: doc.tint,
   };
 }

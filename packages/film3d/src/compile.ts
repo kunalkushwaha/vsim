@@ -89,7 +89,7 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
     const baseYaw = yawOf(info.faces[0], info.faces[1]);
     // Face the requested point (default: the origin); if the actor sits ON it, keep rig-forward.
     const yaw0 = Math.hypot(fdx, fdz) < 1e-6 ? 0 : yawOf(fdx, fdz) - baseYaw;
-    const tint = "tint" in info ? (info.tint as unknown as Vec3) : undefined;
+    const tint = "tint" in info && info.tint ? (info.tint as unknown as Vec3) : undefined;
     if (tint) b.material(`${a.id}__tint`, { color: tint, roughness: 0.5 });
     b.character(a.id, rig, {
       clip: info.idle.clip,

@@ -342,6 +342,18 @@ describe("CreatureDoc", () => {
     expect(geo.bones[0]).toEqual(["hips", [0, -0.3, 0.6], [0, 0, 0.62]]); // rootless = 3-tuple
     expect(geo.bones[1]![3]).toBe("hips");
     expect(geo.parts[0]).toEqual(["hips", "cube", [0, -0.15, 0.6], [0.13, 0.18, 0.13]]);
+    expect((geo as { base_color?: number[] }).base_color).toEqual(WOLF.tint); // legs + colorless parts wear the tint
+  });
+
+  it("carries per-part colors into the generator table (palette texels)", () => {
+    const colored = { ...WOLF, parts: [...WOLF.parts.slice(0, -1), { ...WOLF.parts[WOLF.parts.length - 1]!, color: [0.9, 0.9, 0.85] }] };
+    const res = parseCreature(colored);
+    expect(res.errors).toBeUndefined();
+    const geo = creatureGeometry(res.doc!) as { parts: unknown[][] };
+    expect(geo.parts[geo.parts.length - 1]![4]).toEqual([0.9, 0.9, 0.85]); // colored = 5-tuple
+    expect(geo.parts[0]!.length).toBe(4); // colorless parts stay 4-tuples
+    // Out-of-range colors are rejected.
+    expect(parseCreature({ ...colored, parts: [{ ...colored.parts[0]!, color: [2, 0, 0] }, ...colored.parts.slice(1)] }).errors!.join("\n")).toMatch(/color/);
   });
 
   it("rejects missing torso bones, orphan bones, and bad legs with readable errors", () => {

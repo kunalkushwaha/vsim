@@ -321,7 +321,7 @@ async function runCreature(args: Args): Promise<void> {
         .light({ type: "hemisphere", intensity: 0.5, skyColor: [0.5, 0.52, 0.6], groundColor: [0.12, 0.12, 0.14] })
         .light({ type: "directional", intensity: 1.1, color: [1, 0.98, 0.94], direction: [-0.5, -0.8, -0.4] })
         .mesh("ground", { geometry: { kind: "plane", size: [20, 20] }, material: "floor" })
-        .character("c", rig, { clip: "walk", loop: true, material: "tint", scale: [doc.scale, doc.scale, doc.scale] })
+        .character("c", rig, { clip: "walk", loop: true, material: doc.parts.some((p: { color?: unknown }) => p.color) ? undefined : "tint", scale: [doc.scale, doc.scale, doc.scale] })
         .camera({ position: [Math.sin(a) * d, doc.eye * 0.9 + 0.4, Math.cos(a) * d], lookAt: [0, doc.eye * 0.6, 0], fov: 40 })
         .build();
       const path = join(dir, `round-${round}-a${angle}.png`);
@@ -360,7 +360,10 @@ async function runCreature(args: Args): Promise<void> {
   const extraPath = resolve("packages/film3d/src/characters.extra.ts");
   let extra = await readFile(extraPath, "utf8");
   if (!extra.includes(`  ${doc.id}: {`)) {
-    const entry = `  ${doc.id}: {\n    clips: ["walk", "run", "idle"],\n    idle: { clip: "idle" },\n    walk: { clip: "walk" },\n    run: { clip: "run" },\n    faces: [0, -1] as const,\n    scale: ${doc.scale},\n    runAt: ${doc.runAt},\n    eye: ${doc.eye},\n    tint: [${doc.tint.join(", ")}] as const,\n  },\n`;
+    // Palette-colored creatures carry their colors in the glb texture — a cast tint would
+    // flatten them (the fox keeps its tint ON PURPOSE: its sample texture reads gray).
+    const tintLine = doc.parts.some((p: { color?: unknown }) => p.color) ? "" : `\n    tint: [${doc.tint.join(", ")}] as const,`;
+    const entry = `  ${doc.id}: {\n    clips: ["walk", "run", "idle"],\n    idle: { clip: "idle" },\n    walk: { clip: "walk" },\n    run: { clip: "run" },\n    faces: [0, -1] as const,\n    scale: ${doc.scale},\n    runAt: ${doc.runAt},\n    eye: ${doc.eye},${tintLine}\n  },\n`;
     extra = extra.replace("} as const;", entry + "} as const;");
     await writeFile(extraPath, extra);
   }
