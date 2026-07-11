@@ -365,11 +365,60 @@ async function runCreature(args: Args): Promise<void> {
   console.log(`✓ registered: library/${doc.id}.glb + manifest + cast table ("${doc.id}" is now castable)`);
 }
 
+
+/**
+ * AI surface designer: prompt → SurfaceDoc (self-contained HTML artifact, strictly linted)
+ * → deterministic bake → the designer reviews its own PNG → registration via the bake
+ * script (art.png + manifest + the generated film3d art tables). The committed source.html
+ * regenerates the committed art.png forever; films consume only the PNG bytes.
+ */
+async function runSurface(args: Args): Promise<void> {
+  if (!args.prompt) {
+    console.log('Usage: vsim surface --prompt "<artwork description>"');
+    process.exit(1);
+  }
+  const { generateSurface, reviewSurface } = await import("@vsim/film3d");
+  // @ts-expect-error — untyped .mjs tool module (the same pinned Chromium as the 2D recorder)
+  const { captureStill } = await import("@vsim/motion/record.mjs");
+  const { spawn } = await import("node:child_process");
+
+  console.log(`✎ designing a surface for "${args.prompt}" …`);
+  let { doc, attempts } = await generateSurface(args.prompt, {});
+  console.log(`✓ SurfaceDoc "${doc.name}" ${doc.size[0]}x${doc.size[1]} — attempt ${attempts}`);
+
+  const dir = resolve("packages/assets/surfaces", doc.name);
+  await mkdir(dir, { recursive: true });
+  const bake = async () => {
+    await writeFile(join(dir, "source.html"), doc.html);
+    await writeFile(join(dir, "surface.json"), JSON.stringify({ name: doc.name, size: doc.size, license: "generated (vsim, MIT)", prompt: args.prompt }, null, 2) + "\n");
+    const png: Buffer = await captureStill(join(dir, "source.html"), { width: doc.size[0], height: doc.size[1] });
+    await writeFile(join(dir, "art.png"), png);
+  };
+  await bake();
+  console.log("✎ reviewing the proof …");
+  const review = await reviewSurface(doc, join(dir, "art.png"), {});
+  if (review.revised) {
+    doc = review.doc;
+    await bake();
+    console.log(`✓ revised after review → "${doc.name}"`);
+  } else {
+    console.log("✓ the designer kept the proof");
+  }
+  // Registration: the bake script owns the manifest + generated art tables.
+  await new Promise<void>((res, rej) => {
+    const p = spawn("node", [resolve("scripts/bake-surfaces.mjs")], { stdio: ["ignore", "ignore", "pipe"] });
+    let err = ""; p.stderr.on("data", (d) => (err += d));
+    p.on("close", (c) => (c === 0 ? res() : rej(new Error(`bake-surfaces failed: ${err.slice(-300)}`))));
+  });
+  console.log(`✓ registered: surfaces/${doc.name} — stageable as { "kind": "sign", "art": "${doc.name}" }`);
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (args.cmd === "edit") return runEdit(args);
   if (args.cmd === "film") return runFilm(args);
   if (args.cmd === "creature") return runCreature(args);
+  if (args.cmd === "surface") return runSurface(args);
   if (args.cmd === "render" && args.file) return runRender(args);
   console.log(
     "Usage:\n" +

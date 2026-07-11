@@ -10,3 +10,5 @@ export { isFilm3D, film3dToScene } from "./load.js";
 export { pickReviewStills, parseReviewReply, type ReviewStill } from "./review.js";
 export { CreatureDocSchema, parseCreature, creatureGeometry, type CreatureDoc } from "./creature.js";
 export { generateCreature, reviewCreature } from "./generate.js";
+export { SurfaceDocSchema, parseSurface, checkSurfaceHtml, SURFACE_FONT, type SurfaceDoc } from "./surface-gen.js";
+export { generateSurface, reviewSurface } from "./generate.js";
