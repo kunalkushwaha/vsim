@@ -1,0 +1,303 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "Embers Outside the Tavern",
+  "set": "night",
+  "props": [
+    {
+      "kind": "building",
+      "id": "tavern1",
+      "x": -4,
+      "z": -5,
+      "variant": "tavern",
+      "angle": 40
+    },
+    {
+      "kind": "screen",
+      "id": "window1",
+      "x": -3.6,
+      "z": -4.7,
+      "art": "tavern-window-nightglow",
+      "angle": 40
+    },
+    {
+      "kind": "lantern",
+      "id": "doorlantern",
+      "x": -2.5,
+      "z": -4
+    },
+    {
+      "kind": "campfire",
+      "id": "fire1",
+      "x": 1,
+      "z": -1
+    },
+    {
+      "kind": "log",
+      "id": "bench1",
+      "x": 1.5,
+      "z": -2,
+      "length": 1.2,
+      "angle": 30
+    },
+    {
+      "kind": "flowers",
+      "id": "flowers1",
+      "x": 3.5,
+      "z": 0.5,
+      "radius": 1.2
+    },
+    {
+      "kind": "bush",
+      "id": "bush1",
+      "x": 4,
+      "z": -1.5,
+      "radius": 0.6
+    },
+    {
+      "kind": "rock",
+      "id": "rock1",
+      "x": 0.6,
+      "z": -2.3,
+      "radius": 0.3
+    },
+    {
+      "kind": "rock",
+      "id": "rock2",
+      "x": -0.8,
+      "z": -1.2,
+      "radius": 0.35
+    },
+    {
+      "kind": "tree",
+      "id": "tree1",
+      "x": -7,
+      "z": -8,
+      "height": 4,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree2",
+      "x": 6,
+      "z": -9,
+      "height": 3.5,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "tree3",
+      "x": -2,
+      "z": -9,
+      "height": 5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "tree4",
+      "x": 9,
+      "z": -6,
+      "height": 3,
+      "variant": "conifer"
+    },
+    {
+      "kind": "clutter",
+      "id": "barrel1",
+      "x": -5,
+      "z": -4.5,
+      "variant": "barrel",
+      "angle": 0
+    },
+    {
+      "kind": "clutter",
+      "id": "crate1",
+      "x": -3,
+      "z": -6,
+      "variant": "crate",
+      "angle": 20
+    },
+    {
+      "kind": "clutter",
+      "id": "sack1",
+      "x": -5.5,
+      "z": -3.5,
+      "variant": "sack",
+      "angle": 10
+    }
+  ],
+  "actors": [
+    {
+      "id": "rogue1",
+      "character": "rogue",
+      "x": 0.3,
+      "z": -1.6,
+      "facing": [
+        1,
+        -1
+      ]
+    },
+    {
+      "id": "dog1",
+      "character": "dog",
+      "x": 2.3,
+      "z": -1.3,
+      "facing": [
+        0.3,
+        -1.6
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "beat1",
+      "start": 0,
+      "end": 7,
+      "caption": "By the fire's glow, the rogue and her dog settle in for the night.",
+      "narration": "Beneath a quiet moon, two travelers rest where the tavern's warmth still reaches.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "rogue1",
+          "clip": "Sit_Floor_Idle",
+          "at": 0,
+          "dur": 6.5
+        },
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            1.7,
+            -1.4
+          ],
+          "at": 0.2,
+          "dur": 1.5,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "dog1",
+          "to": [
+            0.3,
+            -1.6
+          ],
+          "at": 2,
+          "dur": 1
+        }
+      ]
+    },
+    {
+      "id": "beat2",
+      "start": 7,
+      "end": 14,
+      "caption": "Fireflies drift over the flowers as the tavern window glows warm behind them.",
+      "narration": "Fireflies drift over the flowers while the tavern window glows warm behind them.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "rogue1",
+          "clip": "Interact",
+          "at": 0.5,
+          "dur": 3
+        },
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            1.9,
+            -1.6
+          ],
+          "at": 1,
+          "dur": 1,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "dog1",
+          "to": [
+            1,
+            -1
+          ],
+          "at": 2.5,
+          "dur": 1
+        }
+      ]
+    },
+    {
+      "id": "beat3",
+      "start": 14,
+      "end": 20,
+      "caption": "The adventure ends quietly, embers glowing as they drift to sleep.",
+      "narration": "One more day survived — the fire dims, and sleep finally comes.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "rogue1",
+          "clip": "Lie_Down",
+          "at": 0.5,
+          "dur": 4
+        },
+        {
+          "do": "move",
+          "actor": "dog1",
+          "to": [
+            1.9,
+            -0.7
+          ],
+          "at": 0.5,
+          "dur": 1.5,
+          "gait": "walk"
+        },
+        {
+          "do": "face",
+          "actor": "dog1",
+          "to": [
+            0.3,
+            -1.6
+          ],
+          "at": 2.5,
+          "dur": 1
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 7,
+      "shot": "wide",
+      "target": [
+        1,
+        0.5,
+        -1.5
+      ],
+      "distance": 9,
+      "height": 3,
+      "angle": 20,
+      "sweep": 90
+    },
+    {
+      "at": 7,
+      "dur": 7,
+      "shot": "close",
+      "target": "rogue1",
+      "distance": 5,
+      "height": 1.6,
+      "angle": -15,
+      "sweep": 60
+    },
+    {
+      "at": 14,
+      "dur": 6,
+      "shot": "orbit",
+      "target": [
+        0.9,
+        0.3,
+        -1.3
+      ],
+      "distance": 5.5,
+      "height": 2.3,
+      "angle": 25,
+      "sweep": 80
+    }
+  ]
+}
