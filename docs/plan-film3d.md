@@ -86,7 +86,9 @@ child nodes). The director's prompt now tells the model to dress sets like locat
   footage refreshed).
 - **Autumn set** — a sixth look (amber canopy, low honey sun, tan grass) gives the
   `leaves` weather a home; the broadleaf under-canopy now shades the set's own leaf
-  tone instead of hardcoded green (#95; `amber-afternoon` showcase).
+  tone instead of hardcoded green (#95; `amber-afternoon` showcase #96, README GIF #97).
+- **Red squirrel** — a new palette species via the CreatureDoc pipeline (russet coat,
+  cream muzzle, bushy over-back tail), castable as `redsquirrel` (#98).
 
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).
