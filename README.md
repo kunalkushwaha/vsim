@@ -229,7 +229,8 @@ props stage real CC0 KayKit models, bundled as self-contained GLBs — so one pr
 now raise a whole village. And the sky joined the vocabulary: one `weather` field stages
 deterministic snowfall, rain, fireflies, or falling leaves across the whole film
 ([`first-snow`](films/first-snow.film3d.json) — the director's own call, the windmill
-turning through steady snow). Even TIME moves now: a `transition` field lerps the whole
+turning through steady snow; the leaves get their own **autumn** set — amber canopy,
+low honey sun, tan grass). Even TIME moves now: a `transition` field lerps the whole
 look — sky gradient, sun disc, fog, every set light — to another set's over a window, so
 the sun can set mid-film:
 
