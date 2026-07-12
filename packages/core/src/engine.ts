@@ -62,6 +62,8 @@ export interface FrameState {
   style: "realistic" | "manga";
   /** Output tone mapping — "aces" rolls off HDR highlights filmically. */
   tone: "none" | "aces";
+  /** Opt-in glow around bright pixels (MetaSchema.bloom). */
+  bloom?: { threshold: number; strength: number; radius: number };
   nodes: ResolvedNode[];
   lights: ResolvedLight[];
   camera: ResolvedCamera;

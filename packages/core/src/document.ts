@@ -21,6 +21,14 @@ export const MetaSchema = z.object({
   style: z.enum(["realistic", "manga"]).default("realistic"),
   /** Tone mapping applied at output: "none" (raw clamp) or "aces" (filmic rolloff for HDR highlights). */
   tone: z.enum(["none", "aces"]).default("none"),
+  /** Opt-in glow: linear-space pixels brighter than `threshold` bleed into a gaussian halo.
+   * Software-renderer post effect — GPU preview (engine-three) and Cycles masters ignore it. */
+  bloom: z.object({
+    threshold: z.number().min(0).default(0.9),
+    strength: z.number().min(0).max(4).default(0.6),
+    /** Blur radius in OUTPUT pixels. */
+    radius: z.number().int().min(2).max(16).default(6),
+  }).optional(),
 });
 
 export const AssetSchema = z.object({
