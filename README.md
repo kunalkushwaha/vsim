@@ -241,6 +241,18 @@ the sun can set mid-film:
   <code>"transition": { "to": "dusk", "start": 8, "end": 18 }</code> plus fireflies as the light goes.</sub>
 </p>
 
+And it runs the other way: a sunless night can grow a dawn. The transition seeds a
+zero-size sun disc and swings the light's direction (a `light.direction` track) from the
+moon's angle to the day sun's, so night→meadow is a real sunrise:
+
+<p align="center">
+  <img src="docs/media/daybreak.gif" width="640" alt="A barn owl walks home past a sleeping wolf as deep night brightens into a hazy golden meadow morning — the sun disc growing from nothing while long dawn shadows sweep the grass" />
+  <br/>
+  <sub><strong>"Daybreak Glide"</strong> — the director staged the sunrise from one prompt
+  (<a href="films/daybreak.film3d.json"><code>daybreak.film3d.json</code></a>):
+  <code>"transition": { "to": "meadow", "start": 6, "end": 18 }</code>, a barn owl and a wolf under a wind bed.</sub>
+</p>
+
 ## vsim Studio — the visual editor
 
 The first slice of the **visual editor** (surface 2). A browser app on top of the same engine:

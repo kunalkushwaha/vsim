@@ -68,6 +68,19 @@ child nodes). The director's prompt now tells the model to dress sets like locat
 - **Ambience** — one field synthesizes a seeded, deterministic ffmpeg noise bed (rain /
   wind / fire) for the film's duration and mixes it under the narration (#84).
 
+**v3.2 — the sun moves (PRs #88–#91).** Transitions became symmetric and cheaper:
+- **Bloom scratch reuse** — the glow pass stops reallocating its three full-frame
+  buffers every frame; output stays byte-identical (#88).
+- **Lights fade in** — target-set lights with no same-type counterpart are placed dark
+  and rise over the window (a transition to studio keeps its second rim light), and the
+  Cycles directional floor lets exact zero stay black (#89).
+- **Sunrise** — a `light.direction` track channel swings matched directionals to the
+  target's angle, and a sunless set transitioning to a sunny one seeds a zero-size disc
+  for the sky.sun spans to grow — night→meadow is a real dawn, in both engines (#90).
+- `daybreak` showcase: the AI directed the sunrise from one prompt (night set, meadow
+  transition 6–18s, owl + wolf, wind bed), self-corrected a too-tight wolf closeup in an
+  extra dailies round on the final cut (#91).
+
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).
 This plan applies the same shape to the real 3D engine.
