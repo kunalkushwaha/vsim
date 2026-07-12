@@ -497,6 +497,7 @@ export class SceneRuntime {
     const particles: ResolvedParticle[] = [];
     for (const ps of this.doc.particles) evaluateParticles(ps, frame, this.doc.meta.fps, particles);
 
+    const toneMix = env.get("tone.mix");
     return {
       frame,
       time: frame / this.doc.meta.fps,
@@ -507,6 +508,7 @@ export class SceneRuntime {
       fog,
       style: this.doc.meta.style,
       tone: this.doc.meta.tone,
+      ...(typeof toneMix === "number" ? { toneMix: Math.min(1, Math.max(0, toneMix)) } : {}),
       bloom: this.doc.meta.bloom,
       nodes,
       lights,

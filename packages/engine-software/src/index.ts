@@ -694,7 +694,7 @@ export class SoftwareEngine implements Engine {
     const bloom = state.bloom
       ? { buf: this.hi.bloomBuffer(state.bloom.threshold, state.bloom.radius, this.region?.y0 ?? 0, this.region?.y1 ?? Infinity), strength: state.bloom.strength }
       : undefined;
-    this.hi.resolveTo(this.fb, state.tone === "aces", this.region?.y0 ?? 0, this.region?.y1 ?? Infinity, bloom); // linear box-filter → gamma-encoded output
+    this.hi.resolveTo(this.fb, state.toneMix ?? (state.tone === "aces" ? 1 : 0), this.region?.y0 ?? 0, this.region?.y1 ?? Infinity, bloom); // linear box-filter → gamma-encoded output
 
     if (state.overlays.length) compositeOverlays(this.fb, state.overlays, this.width, this.height); // screen-space text
   }

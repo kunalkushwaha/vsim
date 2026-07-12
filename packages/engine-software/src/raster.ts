@@ -484,7 +484,8 @@ export class LinearBuffer {
    * With `aces` the averaged linear value passes through the ACES filmic fit first, rolling
    * HDR highlights off smoothly instead of clipping at 1.
    */
-  resolveTo(fb: Framebuffer, aces = false, bandY0 = 0, bandY1 = Infinity, bloom?: { buf: Float32Array; strength: number }): void {
+  /** `tone`: 0 = linear, 1 = full ACES, in between = linear blend of the two (pre-gamma). */
+  resolveTo(fb: Framebuffer, tone = 0, bandY0 = 0, bandY1 = Infinity, bloom?: { buf: Float32Array; strength: number }): void {
     const { width, supersample: ss, rgb } = this;
     const inv = 1 / (ss * ss);
     const { width: ow, height: oh, color } = fb;
@@ -508,14 +509,18 @@ export class LinearBuffer {
           b += bloom.buf[bi + 2]! * bloom.strength;
         }
         const pi = (oy * ow + ox) * 4;
-        if (aces) {
+        if (tone >= 1) {
           color[pi] = encodeGamma(acesFit(r));
           color[pi + 1] = encodeGamma(acesFit(g));
           color[pi + 2] = encodeGamma(acesFit(b));
-        } else {
+        } else if (tone <= 0) {
           color[pi] = encodeGamma(r);
           color[pi + 1] = encodeGamma(g);
           color[pi + 2] = encodeGamma(b);
+        } else {
+          color[pi] = encodeGamma(r + (acesFit(r) - r) * tone);
+          color[pi + 1] = encodeGamma(g + (acesFit(g) - g) * tone);
+          color[pi + 2] = encodeGamma(b + (acesFit(b) - b) * tone);
         }
         color[pi + 3] = 255;
       }

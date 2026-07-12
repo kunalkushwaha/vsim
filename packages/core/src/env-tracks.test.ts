@@ -38,6 +38,23 @@ describe("environment tracks", () => {
     expect(doc.environment!.sky!.type === "gradient" && doc.environment!.sky!.top).toEqual([0.2, 0.4, 0.9]);
   });
 
+  it("lerps a tone.mix track into state.toneMix, clamped to [0, 1]", () => {
+    const d = parseDocument({
+      meta: { durationFrames: 60, width: 8, height: 8, background: [0, 0, 0] },
+      nodes: [{ id: "cam", position: [0, 1, 3] }],
+      camera: { nodeId: "cam", lookAt: [0, 0, 0], fov: 60 },
+      animation: [
+        { target: { environment: true, path: "tone.mix" }, keyframes: [{ frame: 0, value: -0.5 }, { frame: 60, value: 1.5 }] },
+      ],
+    });
+    const rt = new SceneRuntime(d);
+    expect(rt.computeFrameState(0).toneMix).toBe(0); // clamped from -0.5
+    expect(rt.computeFrameState(30).toneMix).toBeCloseTo(0.5, 5);
+    expect(rt.computeFrameState(60).toneMix).toBe(1); // clamped from 1.5
+    // Absent track → the field is absent, engines fall back to meta.tone.
+    expect(new SceneRuntime(doc).computeFrameState(0).toneMix).toBeUndefined();
+  });
+
   it("lerps a light.direction track and keeps the resolved direction unit-length", () => {
     const d = parseDocument({
       meta: { durationFrames: 60, width: 8, height: 8, background: [0, 0, 0] },

@@ -426,6 +426,11 @@ export function applyTransition(b: SceneBuilder, from: SetLook, to: SetLook, sta
     span("fog.near", from.fog.near, to.fog.near);
     span("fog.far", from.fog.far, to.fog.far);
   }
+  // Tone crossfades too: meta.tone is binary, so when only one end is ACES the mix track
+  // blends the tonemaps across the window (software renderer; the GPU preview stays static).
+  const fromMix = from.tone === "aces" ? 1 : 0;
+  const toMix = to.tone === "aces" ? 1 : 0;
+  if (fromMix !== toMix) span("tone.mix", fromMix, toMix);
   // The set's discrete lights dim/brighten too: each from-light lerps to the intensity of
   // the target's next unclaimed light of the SAME type (unmatched → 0, i.e. it goes out).
   const pool = [...to.lights];
