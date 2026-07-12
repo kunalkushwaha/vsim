@@ -511,6 +511,23 @@ describe("surface props (sign + cutout)", () => {
     expect(at(90)).toContain(0.35);
   });
 
+  it("stages the autumn set: amber palette, falling leaves, and a transition into it", async () => {
+    // Autumn compiles like any set — warm ground, a sun disc, leaves weather welcome.
+    const sceneDoc = await film3dToScene({ ...DOC, set: "autumn", props: [{ kind: "tree", id: "t1", x: -3, z: -4, height: 3, variant: "broadleaf" }], weather: "leaves" });
+    const envSky = (sceneDoc.environment as { sky?: { sun?: { size?: number } } }).sky;
+    expect(envSky?.sun?.size).toBeCloseTo(0.05, 5);
+    const ground = sceneDoc.materials.find((m) => m.id === "__set_ground") as { color?: number[] };
+    expect(ground.color![0]).toBeGreaterThan(ground.color![2]! * 2); // warm russet, not green
+    expect((sceneDoc as unknown as { particles: { id: string }[] }).particles.some((p) => p.id === "__weather")).toBe(true);
+    new SceneRuntime(sceneDoc).computeFrameState(10);
+    // meadow→autumn transitions like any pair: both linear (no tone.mix), sky lerps to amber.
+    const trans = await film3dToScene({ ...DOC, props: [], transition: { to: "autumn", start: 1, end: 3 } });
+    const envTracks = trans.animation.filter((t) => (t.target as { environment?: boolean }).environment);
+    expect(envTracks.some((t) => t.target.path === "tone.mix")).toBe(false);
+    const bottom = envTracks.find((t) => t.target.path === "sky.bottom")!;
+    expect(bottom.keyframes[1]!.value).toEqual([0.95, 0.76, 0.5]);
+  });
+
   it("compiles weather into a seeded stage-wide particle system", async () => {
     const sceneDoc = await film3dToScene({ ...DOC, props: [], weather: "snowfall" });
     const p = (sceneDoc as unknown as { particles: { id: string; count: number; loop: boolean }[] }).particles.find((x) => x.id === "__weather")!;
