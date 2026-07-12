@@ -34,6 +34,35 @@ describe("bloom", () => {
     expect(px(on, 32, 32)).toBeGreaterThan(200);
   });
 
+  it("reuses scratch buffers across frames without leaking stale glow", () => {
+    // The square slides off-screen on frame 1 — the frame-0 halo must not survive the
+    // reused bright buffer, and re-rendering frame 0 must be byte-identical.
+    const doc = parseDocument({
+      meta: { durationFrames: 2, width: 64, height: 64, background: [0, 0, 0], bloom: { threshold: 0.5, strength: 1, radius: 5 } },
+      materials: [{ id: "hot", color: [0, 0, 0], emissive: [4, 3, 1] }],
+      nodes: [
+        { id: "sq", mesh: { geometry: { kind: "plane", size: [1, 1] }, materialId: "hot" }, rotation: [Math.PI / 2, 0, 0] },
+        { id: "cam", position: [0, 0, 4] },
+        { id: "amb", light: { type: "ambient", intensity: 0.05 } },
+      ],
+      animation: [{ target: { nodeId: "sq", path: "position" }, keyframes: [{ frame: 0, value: [0, 0, 0] }, { frame: 1, value: [100, 0, 0] }] }],
+      camera: { nodeId: "cam", lookAt: [0, 0, 0], fov: 40 },
+    });
+    const eng = new SoftwareEngine(64, 64, { supersample: 2, shadows: false });
+    eng.init(doc);
+    const rt = new SceneRuntime(doc);
+    eng.renderFrame(rt.computeFrameState(0));
+    const first = Uint8ClampedArray.from(eng.readPixels());
+    expect(px(first, 32, 16)).toBeGreaterThan(30); // halo present on frame 0
+    eng.renderFrame(rt.computeFrameState(1));
+    const gone = eng.readPixels();
+    expect(px(gone, 32, 16)).toBeLessThan(10); // no stale halo once the square left
+    expect(px(gone, 32, 32)).toBeLessThan(10);
+    // Same engine (same scratch buffers), fresh runtime — the clock is forward-only.
+    eng.renderFrame(new SceneRuntime(doc).computeFrameState(0));
+    expect(Buffer.from(eng.readPixels()).equals(Buffer.from(first))).toBe(true);
+  });
+
   it("banded render with bloom stitches byte-identically to full-frame", () => {
     const doc = mk(true);
     const full = new SoftwareEngine(64, 64, { supersample: 2, shadows: false });

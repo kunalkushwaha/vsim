@@ -232,6 +232,12 @@ export class LinearBuffer {
    * rendering (R5.3) restricts each engine to its band (+margin for the outline pass). */
   rasterY0 = 0;
   rasterY1: number;
+  // Bloom scratch space, reused across frames (bloomBuffer runs once per frame per band).
+  private bloomBright?: Float32Array;
+  private bloomH?: Float32Array;
+  private bloomOut?: Float32Array;
+  private bloomW?: Float64Array;
+  private bloomWRadius = -1;
 
   constructor(outWidth: number, outHeight: number, supersample = 1) {
     this.supersample = supersample;
@@ -530,12 +536,27 @@ export class LinearBuffer {
     const y0 = Math.max(0, bandY0), y1 = Math.min(oh, bandY1);
     const by0 = Math.max(0, y0 - radius), by1 = Math.min(oh, y1 + radius);
     // Gaussian weights, sigma = radius/2 — fixed math, identical on every run.
-    const w = new Float64Array(radius + 1);
-    let wsum = 0;
-    for (let i = 0; i <= radius; i++) { w[i] = Math.exp((-i * i) / (2 * (radius / 2) * (radius / 2))); wsum += i === 0 ? w[i]! : 2 * w[i]!; }
-    for (let i = 0; i <= radius; i++) w[i]! /= wsum;
+    if (this.bloomWRadius !== radius) {
+      const wnew = new Float64Array(radius + 1);
+      let wsum = 0;
+      for (let i = 0; i <= radius; i++) { wnew[i] = Math.exp((-i * i) / (2 * (radius / 2) * (radius / 2))); wsum += i === 0 ? wnew[i]! : 2 * wnew[i]!; }
+      for (let i = 0; i <= radius; i++) wnew[i]! /= wsum;
+      this.bloomW = wnew;
+      this.bloomWRadius = radius;
+    }
+    const w = this.bloomW!;
 
-    const bright = new Float32Array(ow * oh * 3);
+    const n = ow * oh * 3;
+    if (!this.bloomBright || this.bloomBright.length !== n) {
+      this.bloomBright = new Float32Array(n);
+      this.bloomH = new Float32Array(n);
+      this.bloomOut = new Float32Array(n);
+    }
+    // bright is written sparsely (only pixels above threshold) and read assuming zeros
+    // elsewhere — zero the rows this call touches before reuse. hbuf/out are fully
+    // overwritten in every row later passes read, so they need no clearing.
+    const bright = this.bloomBright;
+    bright.fill(0, by0 * ow * 3, by1 * ow * 3);
     for (let oy = by0; oy < by1; oy++) {
       for (let ox = 0; ox < ow; ox++) {
         let r = 0, g = 0, b = 0;
@@ -553,7 +574,7 @@ export class LinearBuffer {
       }
     }
     // Horizontal pass over the extended rows (edge-clamped)…
-    const hbuf = new Float32Array(ow * oh * 3);
+    const hbuf = this.bloomH!;
     for (let oy = by0; oy < by1; oy++) {
       for (let ox = 0; ox < ow; ox++) {
         let r = 0, g = 0, b = 0;
@@ -568,7 +589,7 @@ export class LinearBuffer {
       }
     }
     // …vertical pass over the band rows only (reads the extended h-blurred rows).
-    const out = new Float32Array(ow * oh * 3);
+    const out = this.bloomOut!;
     for (let oy = y0; oy < y1; oy++) {
       for (let ox = 0; ox < ow; ox++) {
         let r = 0, g = 0, b = 0;
