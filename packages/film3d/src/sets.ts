@@ -29,7 +29,7 @@ export interface SetLook {
   bloom: [Vec3, Vec3, Vec3];
 }
 
-export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", SetLook> = {
+export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio" | "autumn", SetLook> = {
   // Golden hour (from examples/06-fox): warm low sun ahead of camera, evening haze.
   meadow: {
     background: [0.9, 0.78, 0.62],
@@ -101,6 +101,24 @@ export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", 
     stone: [0.55, 0.58, 0.64],
     water: [0.52, 0.62, 0.74],
     bloom: [[0.7, 0.36, 0.36], [0.74, 0.64, 0.4], [0.85, 0.85, 0.9]],
+  },
+  // Late-October afternoon: amber canopy, hazy warm sky, a low honey-colored sun raking
+  // long shadows over tan grass. The natural stage for the `leaves` weather.
+  autumn: {
+    background: [0.87, 0.72, 0.5],
+    sky: { top: [0.55, 0.58, 0.72], bottom: [0.95, 0.76, 0.5], sun: { size: 0.05, glow: 0.45, color: [1, 0.78, 0.45] } },
+    fog: { color: [0.9, 0.76, 0.55], near: 8, far: 32 },
+    lights: [
+      { type: "hemisphere", intensity: 0.55, skyColor: [0.66, 0.6, 0.62], groundColor: [0.45, 0.34, 0.18] },
+      { type: "directional", intensity: 1.15, color: [1.0, 0.72, 0.42], direction: [-0.25, -0.35, 0.9] },
+    ],
+    ground: [0.42, 0.32, 0.15],
+    grass: { color: [0.55, 0.42, 0.18], colorDark: [0.42, 0.3, 0.13], count: 820, height: 0.28 },
+    trunk: [0.34, 0.22, 0.12],
+    leaf: [0.62, 0.32, 0.1],
+    stone: [0.52, 0.48, 0.44],
+    water: [0.24, 0.3, 0.32],
+    bloom: [[0.85, 0.42, 0.16], [0.9, 0.7, 0.25], [0.66, 0.2, 0.14]],
   },
   // Neutral three-point studio — a dark stage for product/character turntables.
   studio: {

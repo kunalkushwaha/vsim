@@ -21,10 +21,10 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
 {
   "title": string (≤60 chars),
   "fps": 30,
-  "set": "meadow" | "dusk" | "night" | "snow" | "studio",
-  "weather"?: "snowfall" | "rain" | "fireflies" | "leaves",   // ambient stage particles — pick what the mood earns (snowfall on snow, fireflies at dusk/night)
+  "set": "meadow" | "dusk" | "night" | "snow" | "studio" | "autumn",
+  "weather"?: "snowfall" | "rain" | "fireflies" | "leaves",   // ambient stage particles — pick what the mood earns (snowfall on snow, fireflies at dusk/night, leaves on autumn)
   "transition"?: { "to": another set, "start": sec, "end": sec },  // the sky itself changes during the film — sunset (meadow→dusk), nightfall (dusk→night), sunrise (night→meadow: the sun grows from nothing and swings to its day angle)
-  "ambience"?: "rain" | "wind" | "fire",   // a soft procedural sound bed under the narration — match it to the scene (rain with rain, fire by a campfire, wind over snow)   // meadow = golden hour; dusk pairs with a campfire prop (lit fire, ACES); night = blue moonlight; snow = overcast winter; studio = neutral stage
+  "ambience"?: "rain" | "wind" | "fire",   // a soft procedural sound bed under the narration — match it to the scene (rain with rain, fire by a campfire, wind over snow)   // meadow = golden hour; dusk pairs with a campfire prop (lit fire, ACES); night = blue moonlight; snow = overcast winter; studio = neutral stage; autumn = amber canopy + low honey sun
   "props": [                                                 // ≤24, scatter for depth: trees behind/around the action, rocks near it
     { "kind": "tree", "id", "x", "z", "height": 1..6, "variant": "conifer"|"broadleaf" },
     { "kind": "rock", "id", "x", "z", "radius": 0.1..1.5 },

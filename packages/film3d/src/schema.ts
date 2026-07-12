@@ -202,14 +202,14 @@ export const Film3DDocSchema = z
     fps: z.number().int().min(12).max(60).default(30),
     title: z.string().max(60),
     /** Art-directed look preset — sky, fog, lights, ground palette, tone mapping. */
-    set: z.enum(["meadow", "dusk", "night", "snow", "studio"]),
+    set: z.enum(["meadow", "dusk", "night", "snow", "studio", "autumn"]),
     /** Ambient particles across the whole stage and film (deterministic, seeded). */
     weather: z.enum(["snowfall", "rain", "fireflies", "leaves"]).optional(),
     /** Ambient sound bed under the narration — a seeded, deterministic procedural loop. */
     ambience: z.enum(["rain", "wind", "fire"]).optional(),
     /** In-film time-of-day: the sky/fog/background lerp to another set's look over [start, end] seconds. */
     transition: z.object({
-      to: z.enum(["meadow", "dusk", "night", "snow", "studio"]),
+      to: z.enum(["meadow", "dusk", "night", "snow", "studio", "autumn"]),
       start: z.number().min(0),
       end: z.number().positive(),
     }).optional(),
