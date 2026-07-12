@@ -56,6 +56,18 @@ child nodes). The director's prompt now tells the model to dress sets like locat
   `first-snow` (#73). The mux `-shortest` bug (short narration truncating renders with
   EPIPE) was found and fixed by the village film (#62).
 
+**v3.1 — cinematic polish (PRs #76–#84).** Time, light, and sound joined the vocabulary:
+- **Animated environment** — sky/fog/background are per-frame animation targets
+  (`animateEnv`, `light.intensity` channel); the screenplay `transition` field lerps the
+  whole look to another set's mid-film, sun disc and set lights included (#76;
+  `sunset-meadow` #77, `examples/26-sunset` #81).
+- **Rain falls in streaks** — velocity-stretched particles (`ParticlesSchema.streak`, #79;
+  `rainy-dusk` #80).
+- **Bloom** — opt-in glow around bright linear pixels, band-safe and byte-identical when
+  tiled; dusk/night sets opt in as `glow` (#82).
+- **Ambience** — one field synthesizes a seeded, deterministic ffmpeg noise bed (rain /
+  wind / fire) for the film's duration and mixes it under the narration (#84).
+
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).
 This plan applies the same shape to the real 3D engine.
