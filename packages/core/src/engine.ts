@@ -62,6 +62,9 @@ export interface FrameState {
   style: "realistic" | "manga";
   /** Output tone mapping — "aces" rolls off HDR highlights filmically. */
   tone: "none" | "aces";
+  /** Animated tone blend from a "tone.mix" environment track (0 = linear, 1 = ACES).
+   * Overrides `tone` when present — how a transition crossfades tonemaps (software renderer). */
+  toneMix?: number;
   /** Opt-in glow around bright pixels (MetaSchema.bloom). */
   bloom?: { threshold: number; strength: number; radius: number };
   nodes: ResolvedNode[];

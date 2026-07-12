@@ -452,7 +452,10 @@ describe("surface props (sign + cutout)", () => {
     const sceneDoc = await film3dToScene({ ...DOC, props: [], transition: { to: "night", start: 1, end: 3 } });
     const envTracks = sceneDoc.animation.filter((t) => (t.target as { environment?: boolean }).environment);
     const paths = envTracks.map((t) => t.target.path).sort();
-    expect(paths).toEqual(["background", "fog.color", "fog.far", "fog.near", "sky.ambient", "sky.bottom", "sky.sun.glow", "sky.sun.size", "sky.top"]);
+    expect(paths).toEqual(["background", "fog.color", "fog.far", "fog.near", "sky.ambient", "sky.bottom", "sky.sun.glow", "sky.sun.size", "sky.top", "tone.mix"]);
+    // Night is ACES and meadow is linear — the tonemaps crossfade over the window.
+    const tone = envTracks.find((t) => t.target.path === "tone.mix")!;
+    expect(tone.keyframes.map((k) => k.value)).toEqual([0, 1]);
     // The meadow sun disc fades out entirely (night is sunless).
     const sunSize = envTracks.find((t) => t.target.path === "sky.sun.size")!;
     expect(sunSize.keyframes[1]!.value).toBe(0);
