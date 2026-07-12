@@ -230,7 +230,15 @@ now raise a whole village. And the sky joined the vocabulary: one `weather` fiel
 deterministic snowfall, rain, fireflies, or falling leaves across the whole film
 ([`first-snow`](films/first-snow.film3d.json) — the director's own call, the windmill
 turning through steady snow; the leaves get their own **autumn** set — amber canopy,
-low honey sun, tan grass). Even TIME moves now: a `transition` field lerps the whole
+low honey sun, tan grass):
+
+<p align="center">
+  <img src="docs/media/amber-afternoon.gif" width="640" alt="A deer and a rabbit cross a tree-lined amber meadow as golden leaves drift down through warm afternoon haze" />
+  <br/>
+  <sub><strong>"Amber Afternoon at the Meadow's Edge"</strong> — the director's autumn
+  (<a href="films/amber-afternoon.film3d.json"><code>amber-afternoon.film3d.json</code></a>):
+  <code>"set": "autumn"</code>, <code>"weather": "leaves"</code>, a deer and a rabbit under a wind bed.</sub>
+</p> Even TIME moves now: a `transition` field lerps the whole
 look — sky gradient, sun disc, fog, every set light — to another set's over a window, so
 the sun can set mid-film:
 
