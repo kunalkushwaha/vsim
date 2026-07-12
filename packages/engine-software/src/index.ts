@@ -346,6 +346,13 @@ export class SoftwareEngine implements Engine {
   }
 
   init(doc: SceneDocument): void {
+    // Bloom reads `radius` output rows beyond the band, so the band must RASTERIZE that far
+    // too — widen the margin before the first frame (init always precedes renderFrame).
+    if (doc.meta.bloom && this.region) {
+      const margin = this.supersample * 2 + doc.meta.bloom.radius * this.supersample;
+      this.hi.rasterY0 = Math.max(0, this.region.y0 * this.supersample - margin);
+      this.hi.rasterY1 = Math.min(this.hi.height, this.region.y1 * this.supersample + margin);
+    }
     for (const node of doc.nodes) {
       if (node.mesh) this.meshes.set(node.id, tessellate(node.mesh.geometry));
     }
@@ -683,7 +690,11 @@ export class SoftwareEngine implements Engine {
 
     if (toon) this.hi.outline([0.04, 0.05, 0.08]); // manga: dark silhouette/edge lines
 
-    this.hi.resolveTo(this.fb, state.tone === "aces", this.region?.y0 ?? 0, this.region?.y1 ?? Infinity); // linear box-filter → gamma-encoded output
+    // Bloom: bright linear pixels bleed into a gaussian halo, added before tone mapping.
+    const bloom = state.bloom
+      ? { buf: this.hi.bloomBuffer(state.bloom.threshold, state.bloom.radius, this.region?.y0 ?? 0, this.region?.y1 ?? Infinity), strength: state.bloom.strength }
+      : undefined;
+    this.hi.resolveTo(this.fb, state.tone === "aces", this.region?.y0 ?? 0, this.region?.y1 ?? Infinity, bloom); // linear box-filter → gamma-encoded output
 
     if (state.overlays.length) compositeOverlays(this.fb, state.overlays, this.width, this.height); // screen-space text
   }

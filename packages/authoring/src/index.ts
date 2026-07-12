@@ -105,6 +105,8 @@ interface MetaInput {
   style?: "realistic" | "manga";
   /** Output tone mapping: "none" (default) or "aces" (filmic highlight rolloff). */
   tone?: "none" | "aces";
+  /** Opt-in glow around bright pixels (see MetaSchema.bloom). */
+  bloom?: { threshold?: number; strength?: number; radius?: number };
 }
 
 interface TransformInput {
@@ -191,6 +193,7 @@ export class SceneBuilder {
         background: meta.background ?? [0.05, 0.06, 0.09],
         style: meta.style ?? "realistic",
         tone: meta.tone ?? "none",
+        ...(meta.bloom ? { bloom: meta.bloom } : {}),
       },
       assets: [],
       materials: [],

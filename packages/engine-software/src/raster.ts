@@ -478,7 +478,7 @@ export class LinearBuffer {
    * With `aces` the averaged linear value passes through the ACES filmic fit first, rolling
    * HDR highlights off smoothly instead of clipping at 1.
    */
-  resolveTo(fb: Framebuffer, aces = false, bandY0 = 0, bandY1 = Infinity): void {
+  resolveTo(fb: Framebuffer, aces = false, bandY0 = 0, bandY1 = Infinity, bloom?: { buf: Float32Array; strength: number }): void {
     const { width, supersample: ss, rgb } = this;
     const inv = 1 / (ss * ss);
     const { width: ow, height: oh, color } = fb;
@@ -494,19 +494,95 @@ export class LinearBuffer {
             b += rgb[p + 2]!;
           }
         }
+        r *= inv; g *= inv; b *= inv;
+        if (bloom) {
+          const bi = (oy * ow + ox) * 3;
+          r += bloom.buf[bi]! * bloom.strength;
+          g += bloom.buf[bi + 1]! * bloom.strength;
+          b += bloom.buf[bi + 2]! * bloom.strength;
+        }
         const pi = (oy * ow + ox) * 4;
         if (aces) {
-          color[pi] = encodeGamma(acesFit(r * inv));
-          color[pi + 1] = encodeGamma(acesFit(g * inv));
-          color[pi + 2] = encodeGamma(acesFit(b * inv));
+          color[pi] = encodeGamma(acesFit(r));
+          color[pi + 1] = encodeGamma(acesFit(g));
+          color[pi + 2] = encodeGamma(acesFit(b));
         } else {
-          color[pi] = encodeGamma(r * inv);
-          color[pi + 1] = encodeGamma(g * inv);
-          color[pi + 2] = encodeGamma(b * inv);
+          color[pi] = encodeGamma(r);
+          color[pi + 1] = encodeGamma(g);
+          color[pi + 2] = encodeGamma(b);
         }
         color[pi + 3] = 255;
       }
     }
+  }
+
+  /**
+   * The glow buffer for `resolveTo` (linear space, output resolution): box-filter each output
+   * pixel, keep only the energy above `threshold`, and gaussian-blur it separably. Band-safe:
+   * bright rows are computed `radius` beyond the band (their hi-res rows are rasterized thanks
+   * to the engine's bloom margin), so a banded render blurs the exact same neighborhood as a
+   * full-frame one — stitching stays byte-identical.
+   */
+  bloomBuffer(threshold: number, radius: number, bandY0 = 0, bandY1 = Infinity): Float32Array {
+    const { width, height, supersample: ss, rgb } = this;
+    const inv = 1 / (ss * ss);
+    const ow = width / ss, oh = height / ss;
+    const y0 = Math.max(0, bandY0), y1 = Math.min(oh, bandY1);
+    const by0 = Math.max(0, y0 - radius), by1 = Math.min(oh, y1 + radius);
+    // Gaussian weights, sigma = radius/2 — fixed math, identical on every run.
+    const w = new Float64Array(radius + 1);
+    let wsum = 0;
+    for (let i = 0; i <= radius; i++) { w[i] = Math.exp((-i * i) / (2 * (radius / 2) * (radius / 2))); wsum += i === 0 ? w[i]! : 2 * w[i]!; }
+    for (let i = 0; i <= radius; i++) w[i]! /= wsum;
+
+    const bright = new Float32Array(ow * oh * 3);
+    for (let oy = by0; oy < by1; oy++) {
+      for (let ox = 0; ox < ow; ox++) {
+        let r = 0, g = 0, b = 0;
+        for (let sy = 0; sy < ss; sy++) {
+          let p = ((oy * ss + sy) * width + ox * ss) * 3;
+          for (let sx = 0; sx < ss; sx++, p += 3) { r += rgb[p]!; g += rgb[p + 1]!; b += rgb[p + 2]!; }
+        }
+        r *= inv; g *= inv; b *= inv;
+        const m = Math.max(r, g, b);
+        if (m > threshold) {
+          const k = (m - threshold) / m;
+          const bi = (oy * ow + ox) * 3;
+          bright[bi] = r * k; bright[bi + 1] = g * k; bright[bi + 2] = b * k;
+        }
+      }
+    }
+    // Horizontal pass over the extended rows (edge-clamped)…
+    const hbuf = new Float32Array(ow * oh * 3);
+    for (let oy = by0; oy < by1; oy++) {
+      for (let ox = 0; ox < ow; ox++) {
+        let r = 0, g = 0, b = 0;
+        for (let i = -radius; i <= radius; i++) {
+          const x = Math.min(ow - 1, Math.max(0, ox + i));
+          const bi = (oy * ow + x) * 3;
+          const wi = w[Math.abs(i)]!;
+          r += bright[bi]! * wi; g += bright[bi + 1]! * wi; b += bright[bi + 2]! * wi;
+        }
+        const hi2 = (oy * ow + ox) * 3;
+        hbuf[hi2] = r; hbuf[hi2 + 1] = g; hbuf[hi2 + 2] = b;
+      }
+    }
+    // …vertical pass over the band rows only (reads the extended h-blurred rows).
+    const out = new Float32Array(ow * oh * 3);
+    for (let oy = y0; oy < y1; oy++) {
+      for (let ox = 0; ox < ow; ox++) {
+        let r = 0, g = 0, b = 0;
+        for (let i = -radius; i <= radius; i++) {
+          const y = Math.min(oh - 1, Math.max(0, oy + i));
+          const bi = (y * ow + ox) * 3;
+          const wi = w[Math.abs(i)]!;
+          r += hbuf[bi]! * wi; g += hbuf[bi + 1]! * wi; b += hbuf[bi + 2]! * wi;
+        }
+        const oi = (oy * ow + ox) * 3;
+        out[oi] = r; out[oi + 1] = g; out[oi + 2] = b;
+      }
+    }
+    return out;
   }
 }
 

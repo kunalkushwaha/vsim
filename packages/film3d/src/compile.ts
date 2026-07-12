@@ -73,6 +73,7 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
     height: FILM3D_HEIGHT,
     background: look.background,
     ...(look.tone ? { tone: look.tone } : {}),
+    ...(look.glow ? { bloom: look.glow } : {}),
   });
   applySet(b, look);
   if (doc.weather) weather(b, doc.weather);

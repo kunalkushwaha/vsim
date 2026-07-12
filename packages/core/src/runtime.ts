@@ -501,6 +501,7 @@ export class SceneRuntime {
       fog,
       style: this.doc.meta.style,
       tone: this.doc.meta.tone,
+      bloom: this.doc.meta.bloom,
       nodes,
       lights,
       camera: this.resolveCamera(frame, computeWorld, cameraOverrides),

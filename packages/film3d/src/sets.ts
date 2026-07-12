@@ -11,6 +11,9 @@ import { loadSurface, loadSurfaceFrames, loadModel, svgToMesh } from "@vsim/asse
 export interface SetLook {
   background: Vec3;
   tone?: "aces";
+  /** Opt-in glow around bright pixels (fires, lanterns, windows) — see MetaSchema.bloom.
+   * (Named `glow` because `bloom` here is the FLOWER palette below.) */
+  glow?: { threshold?: number; strength?: number; radius?: number };
   sky: { top: Vec3; bottom: Vec3; sun?: { size?: number; glow?: number; color?: Vec3 }; ambient?: number };
   fog?: { color: Vec3; near: number; far: number };
   lights: Parameters<SceneBuilder["light"]>[0][];
@@ -49,6 +52,7 @@ export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", 
   dusk: {
     background: [0.05, 0.06, 0.12],
     tone: "aces",
+    glow: { threshold: 0.85, strength: 0.5, radius: 6 },
     sky: { top: [0.05, 0.07, 0.17], bottom: [0.34, 0.17, 0.12], ambient: 0.3 },
     fog: { color: [0.06, 0.07, 0.12], near: 9, far: 26 },
     lights: [
@@ -67,6 +71,7 @@ export const SET_LOOKS: Record<"meadow" | "dusk" | "night" | "snow" | "studio", 
   night: {
     background: [0.02, 0.03, 0.07],
     tone: "aces",
+    glow: { threshold: 0.8, strength: 0.55, radius: 6 },
     sky: { top: [0.02, 0.03, 0.09], bottom: [0.07, 0.09, 0.16], ambient: 0.25 },
     fog: { color: [0.03, 0.04, 0.08], near: 7, far: 22 },
     lights: [
