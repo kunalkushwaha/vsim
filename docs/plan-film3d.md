@@ -80,6 +80,10 @@ child nodes). The director's prompt now tells the model to dress sets like locat
 - `daybreak` showcase: the AI directed the sunrise from one prompt (night set, meadow
   transition 6–18s, owl + wolf, wind bed), self-corrected a too-tight wolf closeup in an
   extra dailies round on the final cut (#91).
+- **Tone crossfade** — a `tone.mix` environment track blends linear↔ACES per pixel, so a
+  transition into a toned set converges on the look that set was art-directed with; the
+  0/1 endpoints stay byte-identical to the static tonemaps (#93; `sunset-meadow`
+  footage refreshed).
 
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).
