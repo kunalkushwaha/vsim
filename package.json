@@ -43,6 +43,7 @@
     "example:crossfade": "tsx packages/cli/src/index.ts render examples/23-crossfade/scene.ts -o out/crossfade.mp4",
     "example:campfire": "tsx packages/cli/src/index.ts render examples/24-campfire/scene.ts -o out/campfire.mp4",
     "example:weather": "tsx packages/cli/src/index.ts render examples/25-weather/scene.ts -o out/weather.mp4",
+    "example:sunset": "tsx packages/cli/src/index.ts render examples/26-sunset/scene.ts -o out/sunset.mp4",
     "film:webreq": "node --env-file-if-exists=.env packages/motion/build-film.mjs packages/motion/films/web-request out/web-request.mp4",
     "film:queue": "node --env-file-if-exists=.env packages/motion/build-film.mjs packages/motion/films/message-queue out/message-queue.mp4",
     "film:pip": "node --env-file-if-exists=.env packages/motion/build-film.mjs packages/motion/films/pip-hello out/pip-hello.mp4",

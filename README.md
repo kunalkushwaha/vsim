@@ -80,7 +80,7 @@ And this one wasn't written by a person at all:
 | ![manga cel-shaded scene](docs/media/manga.gif) | ![hand-animated soccer kick](docs/media/soccer.gif) | ![vector text titles over 3D](docs/media/titles.png) |
 | **Manga mode** — cel-shading + ink outlines with one flag: `style: "manga"` ([`09-manga`](examples/09-manga)) | **Keyframe animation** — a hand-animated kick and a launched ball ([`08-soccer`](examples/08-soccer)) | **Text & titles** — true vector type composited over the 3D ([`20-titles`](examples/20-titles)) |
 
-There are **25 examples** in [`examples/`](./examples) — rigged glTF characters,
+There are **26 examples** in [`examples/`](./examples) — rigged glTF characters,
 MakeHuman humans with real skin textures, a VRM avatar, beat-synced audio, morph-target
 lip-sync, procedural parks, a trotting quadruped, and more:
 
