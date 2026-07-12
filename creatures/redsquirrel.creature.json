@@ -1,0 +1,347 @@
+{
+  "version": "creature-1",
+  "id": "redsquirrel",
+  "name": "Red Squirrel",
+  "description": "A compact russet-red squirrel with a cream belly and a huge bushy tail arched over its back",
+  "bones": [
+    {
+      "name": "hips",
+      "head": [
+        0,
+        -0.15,
+        0.16
+      ],
+      "tail": [
+        0,
+        -0.05,
+        0.18
+      ]
+    },
+    {
+      "name": "spine",
+      "head": [
+        0,
+        -0.05,
+        0.18
+      ],
+      "tail": [
+        0,
+        0.08,
+        0.19
+      ],
+      "parent": "hips"
+    },
+    {
+      "name": "neck",
+      "head": [
+        0,
+        0.08,
+        0.19
+      ],
+      "tail": [
+        0,
+        0.15,
+        0.22
+      ],
+      "parent": "spine"
+    },
+    {
+      "name": "head",
+      "head": [
+        0,
+        0.15,
+        0.22
+      ],
+      "tail": [
+        0,
+        0.22,
+        0.24
+      ],
+      "parent": "neck"
+    },
+    {
+      "name": "tail",
+      "head": [
+        0,
+        -0.16,
+        0.19
+      ],
+      "tail": [
+        0,
+        0.02,
+        0.36
+      ],
+      "parent": "hips"
+    }
+  ],
+  "legs": {
+    "front_y": 0.06,
+    "back_y": -0.12,
+    "sx": 0.06,
+    "top": 0.18,
+    "knee": 0.09,
+    "r_u": 0.035,
+    "r_l": 0.028
+  },
+  "legsBackR": 0.05,
+  "parts": [
+    {
+      "bone": "spine",
+      "kind": "sphere",
+      "loc": [
+        0,
+        -0.02,
+        0.18
+      ],
+      "scale": [
+        0.11,
+        0.16,
+        0.12
+      ]
+    },
+    {
+      "bone": "spine",
+      "kind": "sphere",
+      "loc": [
+        0,
+        -0.02,
+        0.1
+      ],
+      "scale": [
+        0.08,
+        0.13,
+        0.06
+      ],
+      "color": [
+        0.95,
+        0.9,
+        0.75
+      ]
+    },
+    {
+      "bone": "spine",
+      "kind": "sphere",
+      "loc": [
+        0,
+        0.06,
+        0.16
+      ],
+      "scale": [
+        0.07,
+        0.08,
+        0.07
+      ],
+      "color": [
+        0.95,
+        0.9,
+        0.75
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "sphere",
+      "loc": [
+        0,
+        0.17,
+        0.23
+      ],
+      "scale": [
+        0.075,
+        0.08,
+        0.075
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "cube",
+      "loc": [
+        0,
+        0.255,
+        0.205
+      ],
+      "scale": [
+        0.04,
+        0.05,
+        0.038
+      ],
+      "color": [
+        0.95,
+        0.9,
+        0.75
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "sphere",
+      "loc": [
+        0,
+        0.3,
+        0.2
+      ],
+      "scale": [
+        0.014,
+        0.014,
+        0.014
+      ],
+      "color": [
+        0.05,
+        0.05,
+        0.05
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "cube",
+      "loc": [
+        -0.055,
+        0.155,
+        0.31
+      ],
+      "scale": [
+        0.032,
+        0.024,
+        0.048
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "cube",
+      "loc": [
+        0.055,
+        0.155,
+        0.31
+      ],
+      "scale": [
+        0.032,
+        0.024,
+        0.048
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "sphere",
+      "loc": [
+        -0.05,
+        0.21,
+        0.24
+      ],
+      "scale": [
+        0.016,
+        0.016,
+        0.016
+      ],
+      "color": [
+        0.03,
+        0.03,
+        0.03
+      ]
+    },
+    {
+      "bone": "head",
+      "kind": "sphere",
+      "loc": [
+        0.05,
+        0.21,
+        0.24
+      ],
+      "scale": [
+        0.016,
+        0.016,
+        0.016
+      ],
+      "color": [
+        0.03,
+        0.03,
+        0.03
+      ]
+    },
+    {
+      "bone": "tail",
+      "kind": "sphere",
+      "loc": [
+        0,
+        -0.17,
+        0.22
+      ],
+      "scale": [
+        0.055,
+        0.065,
+        0.055
+      ]
+    },
+    {
+      "bone": "tail",
+      "kind": "sphere",
+      "loc": [
+        0,
+        -0.2,
+        0.3
+      ],
+      "scale": [
+        0.07,
+        0.075,
+        0.07
+      ]
+    },
+    {
+      "bone": "tail",
+      "kind": "sphere",
+      "loc": [
+        0,
+        -0.16,
+        0.38
+      ],
+      "scale": [
+        0.075,
+        0.075,
+        0.075
+      ]
+    },
+    {
+      "bone": "tail",
+      "kind": "sphere",
+      "loc": [
+        0,
+        -0.06,
+        0.4
+      ],
+      "scale": [
+        0.07,
+        0.065,
+        0.065
+      ]
+    },
+    {
+      "bone": "tail",
+      "kind": "sphere",
+      "loc": [
+        0,
+        0.02,
+        0.36
+      ],
+      "scale": [
+        0.06,
+        0.055,
+        0.055
+      ]
+    }
+  ],
+  "gaits": {
+    "walk": [
+      0.4,
+      -0.3
+    ],
+    "run": [
+      0.65,
+      -0.6
+    ]
+  },
+  "scale": 1,
+  "runAt": 3.5,
+  "eye": 0.22,
+  "tint": [
+    0.62,
+    0.28,
+    0.14
+  ]
+}
