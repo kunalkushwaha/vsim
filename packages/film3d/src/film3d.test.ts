@@ -464,9 +464,27 @@ describe("surface props (sign + cutout)", () => {
     const before = rt.computeFrameState(30).sky!.top[2];
     const after = rt.computeFrameState(90).sky!.top[2];
     expect(after).toBeLessThan(before);
+    // meadow→night matches light-for-light, so nothing needs to fade in from black.
+    expect(sceneDoc.nodes.some((n) => n.id.startsWith("__set_light_in_"))).toBe(false);
     // Same-set and inverted windows are rejected.
     expect(parseFilm3D({ ...DOC, transition: { to: "meadow", start: 0, end: 2 } }).errors!.join("\n")).toMatch(/differ/);
     expect(parseFilm3D({ ...DOC, transition: { to: "night", start: 3, end: 1 } }).errors!.join("\n")).toMatch(/after/);
+  });
+
+  it("fades in target-set lights that have no counterpart in the film's set", async () => {
+    // Studio has a second rim directional the meadow lacks — it must rise from black.
+    const sceneDoc = await film3dToScene({ ...DOC, props: [], transition: { to: "studio", start: 1, end: 3 } });
+    const rim = sceneDoc.nodes.find((n) => n.id === "__set_light_in_2") as { light?: { type: string; intensity?: number } };
+    expect(rim.light?.type).toBe("directional");
+    expect(rim.light?.intensity).toBe(0); // dark until the transition raises it
+    const track = sceneDoc.animation.find((t) => t.target.nodeId === "__set_light_in_2" && t.target.path === "light.intensity")!;
+    expect(track.keyframes.map((k) => k.value)).toEqual([0, 0.35]); // studio's rim intensity
+    expect(track.keyframes.map((k) => k.frame)).toEqual([30, 90]);
+    // The runtime actually raises it: dark at the start, at studio level by the end.
+    const rt = new SceneRuntime(sceneDoc);
+    const at = (f: number) => rt.computeFrameState(f).lights.filter((l) => l.type === "directional").map((l) => l.intensity ?? 0);
+    expect(Math.min(...at(30))).toBe(0);
+    expect(at(90)).toContain(0.35);
   });
 
   it("compiles weather into a seeded stage-wide particle system", async () => {

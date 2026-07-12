@@ -109,7 +109,9 @@ def build_and_render(data, out_png, samples):
     for l in data["lights"]:
         if l["type"] == "directional":
             # Floor 0.1, not 1.0: a dusk/night "moonlight" sun at intensity ~0.1 must stay faint.
-            d = bpy.data.lights.new("sun", 'SUN'); d.energy = max(0.1, l["intensity"] * 4.0); d.color = l["color"]
+            # Zero stays zero — transition lights placed dark (or faded out) must be black here too.
+            e = l["intensity"] * 4.0
+            d = bpy.data.lights.new("sun", 'SUN'); d.energy = 0.0 if e <= 0.0 else max(0.1, e); d.color = l["color"]
             o = bpy.data.objects.new("sun", d); scene.collection.objects.link(o)
             o.rotation_euler = mathutils.Vector(l["direction"]).to_track_quat('-Z', 'Y').to_euler()
         elif l["type"] == "point":

@@ -399,8 +399,9 @@ export function weather(b: SceneBuilder, kind: "snowfall" | "rain" | "fireflies"
 
 /**
  * In-film time-of-day: lerp the LOOK (sky gradient + derived ambient, fog, background) from
- * the film's set to another set's over a frame window. Discrete set lights stay put — the
- * sky-derived hemisphere follows the gradient, which carries most of the mood.
+ * the film's set to another set's over a frame window. Discrete set lights follow: each
+ * from-light lerps to its same-type counterpart in the target (unmatched from-lights go
+ * out; unmatched target lights are placed dark and fade in).
  */
 export function applyTransition(b: SceneBuilder, from: SetLook, to: SetLook, startFrame: number, endFrame: number): void {
   const span = (path: string, a: number[] | number | undefined, z: number[] | number | undefined) => {
@@ -434,6 +435,16 @@ export function applyTransition(b: SceneBuilder, from: SetLook, to: SetLook, sta
     b.animate(`__set_light_${i}`, "light.intensity", [
       { frame: startFrame, value: l.intensity ?? 0 },
       { frame: endFrame, value: target },
+    ]);
+  });
+  // Target lights with no same-type counterpart fade IN from black: placed dark, they
+  // rise to the target's level over the span (e.g. studio's second rim directional).
+  pool.forEach((l, j) => {
+    if (!l) return;
+    b.light({ ...l, intensity: 0 }, `__set_light_in_${j}`);
+    b.animate(`__set_light_in_${j}`, "light.intensity", [
+      { frame: startFrame, value: 0 },
+      { frame: endFrame, value: l.intensity ?? 0 },
     ]);
   });
 }
