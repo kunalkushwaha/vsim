@@ -23,4 +23,14 @@ export const EXTRA_CHARACTERS = {
     runAt: 1.2,
     eye: 0.6,
   },
+  redsquirrel: {
+    clips: ["walk", "run", "idle"],
+    idle: { clip: "idle" },
+    walk: { clip: "walk" },
+    run: { clip: "run" },
+    faces: [0, -1] as const,
+    scale: 1,
+    runAt: 3.5,
+    eye: 0.22,
+  },
 } as const;
