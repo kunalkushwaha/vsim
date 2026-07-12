@@ -687,7 +687,7 @@ export class SceneBuilder {
   particles(id: string, opts: {
     position?: Vec3; spread?: Vec3; count?: number; velocity?: Vec3; velocitySpread?: Vec3;
     gravity?: Vec3; lifeFrames?: number; startFrame?: number; loop?: boolean;
-    size?: number; color?: Vec3; opacity?: number; seed?: number;
+    size?: number; color?: Vec3; opacity?: number; seed?: number; streak?: number;
   } = {}): this {
     (this.doc as { particles?: unknown[] }).particles = (this.doc as { particles?: unknown[] }).particles ?? [];
     (this.doc as { particles?: unknown[] }).particles!.push({ id, ...opts });

@@ -347,6 +347,9 @@ export const ParticlesSchema = z.object({
   loop: z.boolean().default(true),
   /** Particle radius in world units. */
   size: z.number().positive().default(0.05),
+  /** Motion-stretch: draw each particle as a streak spanning this many SECONDS of its own
+   * velocity (rain/sparks read as lines, not dots). 0 = a round splat. */
+  streak: z.number().min(0).max(0.5).default(0),
   color: color.default([1, 1, 1]),
   opacity: z.number().min(0).max(1).default(1),
   seed: z.number().int().default(0),

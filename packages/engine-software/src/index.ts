@@ -654,7 +654,31 @@ export class SoftwareEngine implements Engine {
         });
       }
       items.sort((a, b) => b.w - a.w);
-      for (const it of items) this.hi.splat(it.x, it.y, it.r, it.z, it.p.color, it.p.opacity);
+      for (const it of items) {
+        // Motion-stretch: fast particles draw as a chain of splats along their screen-space
+        // travel over `streak` seconds (rain/sparks read as lines). Opacity is spread down
+        // so a streak deposits roughly the energy of one round splat.
+        const pt = it.p;
+        if (pt.streak && pt.velocity) {
+          const tail = mat4.transformPoint(viewProj, [
+            pt.position[0] - pt.velocity[0] * pt.streak,
+            pt.position[1] - pt.velocity[1] * pt.streak,
+            pt.position[2] - pt.velocity[2] * pt.streak,
+          ]);
+          if (tail[3] >= W_NEAR) {
+            const tx = ((tail[0] / tail[3]) * 0.5 + 0.5) * hiW;
+            const ty = (0.5 - (tail[1] / tail[3]) * 0.5) * hiH;
+            const steps = Math.max(2, Math.min(24, Math.ceil(Math.hypot(tx - it.x, ty - it.y) / Math.max(it.r, 0.5))));
+            const op = pt.opacity * Math.min(1, 3 / steps);
+            for (let s = 0; s < steps; s++) {
+              const f = s / (steps - 1);
+              this.hi.splat(it.x + (tx - it.x) * f, it.y + (ty - it.y) * f, it.r, it.z, pt.color, op);
+            }
+            continue;
+          }
+        }
+        this.hi.splat(it.x, it.y, it.r, it.z, pt.color, pt.opacity);
+      }
     }
 
     if (toon) this.hi.outline([0.04, 0.05, 0.08]); // manga: dark silhouette/edge lines
