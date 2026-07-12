@@ -42,6 +42,11 @@ describe("Film3DDoc schema", () => {
     expect(res.doc!.version).toBe("film3d-1");
   });
 
+  it("accepts an ambience bed and rejects unknown kinds", () => {
+    expect(parseFilm3D({ ...FILM, ambience: "rain" }).errors).toBeUndefined();
+    expect(parseFilm3D({ ...FILM, ambience: "thunder" }).errors!.join("\n")).toMatch(/ambience/);
+  });
+
   it("rejects non-contiguous beats", () => {
     const res = parseFilm3D({ ...FILM, beats: [{ ...FILM.beats[0], start: 1, end: 6 }] });
     expect(res.errors!.join("\n")).toMatch(/must start at 0s/);

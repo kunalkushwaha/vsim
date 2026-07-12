@@ -205,6 +205,8 @@ export const Film3DDocSchema = z
     set: z.enum(["meadow", "dusk", "night", "snow", "studio"]),
     /** Ambient particles across the whole stage and film (deterministic, seeded). */
     weather: z.enum(["snowfall", "rain", "fireflies", "leaves"]).optional(),
+    /** Ambient sound bed under the narration — a seeded, deterministic procedural loop. */
+    ambience: z.enum(["rain", "wind", "fire"]).optional(),
     /** In-film time-of-day: the sky/fog/background lerp to another set's look over [start, end] seconds. */
     transition: z.object({
       to: z.enum(["meadow", "dusk", "night", "snow", "studio"]),

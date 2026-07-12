@@ -227,7 +227,7 @@
       "start": 14,
       "end": 20,
       "caption": "The adventure ends quietly, embers glowing as they drift to sleep.",
-      "narration": "One more day survived — the fire dims, and sleep finally comes.",
+      "narration": "One more day survived \u2014 the fire dims, and sleep finally comes.",
       "actions": [
         {
           "do": "play",
@@ -299,5 +299,6 @@
       "angle": 25,
       "sweep": 80
     }
-  ]
+  ],
+  "ambience": "fire"
 }

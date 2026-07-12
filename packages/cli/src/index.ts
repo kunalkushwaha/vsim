@@ -90,6 +90,47 @@ async function buildFilm3DNarration(doc: Film3DDoc, name: string): Promise<strin
   return undefined;
 }
 
+/**
+ * A deterministic ambient bed: seeded ffmpeg noise sources shaped per kind (rain = hissy
+ * pink-noise patter, wind = low brown-noise swell, fire = gated crackle band). Same recipe +
+ * seed + duration ⇒ same bytes on one ffmpeg build — the espeak-narration determinism model.
+ */
+const AMBIENCE_RECIPES: Record<string, string> = {
+  rain: "anoisesrc=color=pink:seed=7:duration=%D,highpass=f=400,lowpass=f=9000,tremolo=f=0.3:d=0.25,volume=0.5",
+  wind: "anoisesrc=color=brown:seed=11:duration=%D,lowpass=f=500,tremolo=f=0.15:d=0.5,volume=0.9",
+  fire: "anoisesrc=color=pink:seed=13:duration=%D,highpass=f=1200,compand=attacks=0.002:decays=0.05:points=-70/-90|-30/-90|-18/-12|0/-3,lowpass=f=6000,volume=0.6",
+};
+
+/** Build the film's full audio: narration (if any) with the ambience bed (if any) mixed under it. */
+async function buildFilm3DAudio(doc: Film3DDoc, name: string): Promise<string | undefined> {
+  const narration = await buildFilm3DNarration(doc, name);
+  const kind = (doc as { ambience?: string }).ambience;
+  if (!kind) return narration;
+  const recipe = AMBIENCE_RECIPES[kind];
+  if (!recipe) return narration;
+  const { spawn } = await import("node:child_process");
+  const dir = resolve("out", "narration", name);
+  await mkdir(dir, { recursive: true });
+  const durationSec = doc.beats[doc.beats.length - 1]!.end;
+  const run = (args: string[]) => new Promise<void>((res, rej) => {
+    const p = spawn("ffmpeg", ["-y", "-loglevel", "error", ...args], { stdio: ["ignore", "ignore", "pipe"] });
+    let err = ""; p.stderr.on("data", (d) => (err += d));
+    p.on("close", (c) => (c === 0 ? res() : rej(new Error(`ffmpeg ambience failed: ${err.slice(-300)}`))));
+  });
+  const bed = join(dir, "ambience.wav");
+  try {
+    await run(["-filter_complex", recipe.replace("%D", String(durationSec)), "-ar", "44100", bed]);
+    if (!narration) return bed;
+    // Bed under the voice: -10 dB-ish, mixed to the LONGER stream so the bed spans the film.
+    const mixed = join(dir, "audio.wav");
+    await run(["-i", narration, "-i", bed, "-filter_complex", "[1]volume=0.35[b];[0][b]amix=inputs=2:duration=longest:normalize=0", mixed]);
+    return mixed;
+  } catch (e) {
+    console.warn(`⚠ ambience "${kind}" failed: ${(e as Error).message.split("\n")[0]}`);
+    return narration; // a missing bed softens the film, never fails the render
+  }
+}
+
 /** Load a scene document from a .ts/.js module (default/`scene`/`document` export) or .json. */
 async function loadScene(file: string): Promise<{ doc: SceneDocument; audio?: string; font?: string }> {
   const abs = resolve(file);
@@ -100,7 +141,7 @@ async function loadScene(file: string): Promise<{ doc: SceneDocument; audio?: st
     if (isFilm3D(raw)) {
       const res = parseFilm3D(raw);
       if (res.errors) throw new Error(`invalid Film3DDoc:\n  ${res.errors.join("\n  ")}`);
-      const audio = await buildFilm3DNarration(res.doc, basename(abs).replace(/\.film3d\.json$/, ""));
+      const audio = await buildFilm3DAudio(res.doc, basename(abs).replace(/\.film3d\.json$/, ""));
       return { doc: await compileFilm3D(res.doc), audio };
     }
     return { doc: parseDocument(raw) };
@@ -258,7 +299,7 @@ async function runFilm(args: Args): Promise<void> {
     const file = resolve("films", `${name}.film3d.json`);
     await writeFile(file, JSON.stringify(doc, null, 2));
     console.log(`✓ screenplay → ${file}`);
-    const audio = await buildFilm3DNarration(doc, name);
+    const audio = await buildFilm3DAudio(doc, name);
     await renderDoc(await compileFilm3D(doc), { ...args, output }, audio);
     return;
   }

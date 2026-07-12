@@ -302,5 +302,6 @@
       "angle": 10,
       "sweep": 40
     }
-  ]
+  ],
+  "ambience": "rain"
 }
