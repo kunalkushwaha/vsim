@@ -84,6 +84,9 @@ child nodes). The director's prompt now tells the model to dress sets like locat
   transition into a toned set converges on the look that set was art-directed with; the
   0/1 endpoints stay byte-identical to the static tonemaps (#93; `sunset-meadow`
   footage refreshed).
+- **Autumn set** — a sixth look (amber canopy, low honey sun, tan grass) gives the
+  `leaves` weather a home; the broadleaf under-canopy now shades the set's own leaf
+  tone instead of hardcoded green (#95; `amber-afternoon` showcase).
 
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).

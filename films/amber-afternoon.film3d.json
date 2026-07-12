@@ -1,0 +1,352 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "Amber Afternoon at the Meadow's Edge",
+  "set": "autumn",
+  "weather": "leaves",
+  "ambience": "wind",
+  "props": [
+    {
+      "kind": "tree",
+      "id": "t1",
+      "x": -8,
+      "z": -8,
+      "height": 4,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "t2",
+      "x": -4,
+      "z": -9,
+      "height": 5,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "t3",
+      "x": 0,
+      "z": -10,
+      "height": 4.5,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "t4",
+      "x": 4,
+      "z": -9,
+      "height": 5,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "t5",
+      "x": 8,
+      "z": -8,
+      "height": 4,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "t6",
+      "x": -10,
+      "z": -4,
+      "height": 3,
+      "variant": "conifer"
+    },
+    {
+      "kind": "rock",
+      "id": "r1",
+      "x": -2,
+      "z": -2.2,
+      "radius": 0.4
+    },
+    {
+      "kind": "rock",
+      "id": "r2",
+      "x": 3,
+      "z": -2.8,
+      "radius": 0.3
+    },
+    {
+      "kind": "log",
+      "id": "log1",
+      "x": 1.5,
+      "z": -1.8,
+      "length": 2,
+      "angle": 30
+    },
+    {
+      "kind": "stump",
+      "id": "st1",
+      "x": -3,
+      "z": -0.8,
+      "radius": 0.3
+    },
+    {
+      "kind": "flowers",
+      "id": "fl1",
+      "x": 5,
+      "z": -3,
+      "radius": 1.5
+    },
+    {
+      "kind": "bush",
+      "id": "b1",
+      "x": -6,
+      "z": -1.5,
+      "radius": 0.8
+    },
+    {
+      "kind": "bush",
+      "id": "b2",
+      "x": 6.5,
+      "z": -1.5,
+      "radius": 0.7
+    }
+  ],
+  "actors": [
+    {
+      "id": "deer1",
+      "character": "deer",
+      "x": -6,
+      "z": -2,
+      "facing": [
+        -1,
+        -1
+      ]
+    },
+    {
+      "id": "rabbit1",
+      "character": "rabbit",
+      "x": 5,
+      "z": -1,
+      "facing": [
+        1,
+        -1
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "b1",
+      "start": 0,
+      "end": 8,
+      "caption": "Two friends cross the meadow toward the last warm light.",
+      "narration": "As summer fades, a deer and a rabbit drift toward the same patch of golden light.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "deer1",
+          "to": [
+            -1,
+            -1
+          ],
+          "at": 0,
+          "dur": 5,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "deer1",
+          "clip": "idle",
+          "at": 5,
+          "dur": 3
+        },
+        {
+          "do": "move",
+          "actor": "rabbit1",
+          "to": [
+            1,
+            -1
+          ],
+          "at": 0,
+          "dur": 4,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 4,
+          "dur": 4
+        }
+      ]
+    },
+    {
+      "id": "b2",
+      "start": 8,
+      "end": 18,
+      "caption": "They pause together as amber leaves spiral down.",
+      "narration": "For a moment they simply stand together, sharing the season's final warmth.",
+      "actions": [
+        {
+          "do": "face",
+          "actor": "deer1",
+          "to": [
+            1,
+            -1
+          ],
+          "at": 0,
+          "dur": 1
+        },
+        {
+          "do": "face",
+          "actor": "rabbit1",
+          "to": [
+            -1,
+            -1
+          ],
+          "at": 0,
+          "dur": 1
+        },
+        {
+          "do": "play",
+          "actor": "deer1",
+          "clip": "idle",
+          "at": 1,
+          "dur": 9
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 1,
+          "dur": 9
+        }
+      ]
+    },
+    {
+      "id": "b3",
+      "start": 18,
+      "end": 28,
+      "caption": "The rabbit ambles toward the flowers, unhurried.",
+      "narration": "The rabbit wanders off to nose through a drift of fallen leaves.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "rabbit1",
+          "to": [
+            5,
+            -3
+          ],
+          "at": 0,
+          "dur": 4,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 4,
+          "dur": 6
+        },
+        {
+          "do": "face",
+          "actor": "deer1",
+          "to": [
+            5,
+            -3
+          ],
+          "at": 0,
+          "dur": 2
+        },
+        {
+          "do": "play",
+          "actor": "deer1",
+          "clip": "idle",
+          "at": 2,
+          "dur": 8
+        }
+      ]
+    },
+    {
+      "id": "b4",
+      "start": 28,
+      "end": 36,
+      "caption": "The rabbit hops back, and golden light lingers over the meadow's edge.",
+      "narration": "By evening the light will fade, but for now, autumn holds them still.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "rabbit1",
+          "to": [
+            0.5,
+            -1.4
+          ],
+          "at": 0,
+          "dur": 4,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 4,
+          "dur": 4
+        },
+        {
+          "do": "play",
+          "actor": "deer1",
+          "clip": "idle",
+          "at": 0,
+          "dur": 8
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 8,
+      "shot": "follow",
+      "target": "deer1",
+      "distance": 5.5,
+      "height": 2.6,
+      "angle": 0,
+      "sweep": 90
+    },
+    {
+      "at": 8,
+      "dur": 10,
+      "shot": "close",
+      "target": [
+        0,
+        1.4,
+        -1
+      ],
+      "distance": 5.2,
+      "height": 2.3,
+      "angle": 0,
+      "sweep": 30
+    },
+    {
+      "at": 18,
+      "dur": 10,
+      "shot": "wide",
+      "target": [
+        2,
+        0.6,
+        -2
+      ],
+      "distance": 10,
+      "height": 4.5,
+      "angle": 12,
+      "sweep": 90
+    },
+    {
+      "at": 28,
+      "dur": 8,
+      "shot": "orbit",
+      "target": [
+        -0.25,
+        0.8,
+        -1.2
+      ],
+      "distance": 5.5,
+      "height": 3,
+      "angle": 0,
+      "sweep": 70
+    }
+  ]
+}
