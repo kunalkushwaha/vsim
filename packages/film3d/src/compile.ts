@@ -209,8 +209,37 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
     const camId = `shot${i}`;
     const aim = actor ? { lookAtNodeId: `${actor}__aim` } : { lookAt: point };
 
-    if (s.shot === "orbit") {
-      b.addCamera(camId, { position: camPos(point, s.angle, dist, height), fov, ...aim });
+    // Where this shot's camera sits at any frame (before handheld drift).
+    const basePosAt = (f: number): Vec3 => {
+      if (s.shot === "orbit") {
+        const t = (f - startF) / Math.max(1, endF - startF);
+        return camPos(point, s.angle + t * s.sweep, dist, height);
+      }
+      if (s.shot === "follow" && actor) {
+        const p = states.get(actor)!.track.at(f);
+        return camPos([p.x, point[1], p.z], s.angle, dist, height);
+      }
+      return camPos(point, s.angle, dist, height);
+    };
+    // Handheld drift: two seeded sines per axis (slow sway + gentle tremor), a few cm of
+    // amplitude. Pure math baked into keyframes at compile time — deterministic, and the
+    // aim stays on the target so the drift reads as natural operator rock, not slippage.
+    const drift = (f: number): Vec3 => {
+      const w = (p: number) => Math.sin(f * 0.047 + p) * 0.7 + Math.sin(f * 0.19 + p * 3.1) * 0.3;
+      const seed = i * 7.31;
+      return [w(seed + 1.7) * 0.05, w(seed + 4.1) * 0.03, w(seed + 8.9) * 0.05];
+    };
+    const add = (a: Vec3, d: Vec3): Vec3 => [a[0] + d[0], a[1] + d[1], a[2] + d[2]];
+
+    b.addCamera(camId, { position: basePosAt(startF), fov, ...aim });
+    if (s.handheld) {
+      // Dense keys (every 3 frames, linearly interpolated) carry both the shot's own
+      // motion and the drift.
+      const keys: Key[] = [];
+      for (let f = startF; f <= endF; f += 3) keys.push({ frame: f, value: add(basePosAt(f), drift(f)) });
+      if ((endF - startF) % 3 !== 0) keys.push({ frame: endF, value: add(basePosAt(endF), drift(endF)) });
+      b.animate(`__cam_${camId}`, "position", keys);
+    } else if (s.shot === "orbit") {
       const keys: Key[] = [];
       const samples = 24;
       for (let k = 0; k <= samples; k++) {
@@ -219,7 +248,6 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
       }
       b.animate(`__cam_${camId}`, "position", keys);
     } else if (s.shot === "follow" && actor) {
-      b.addCamera(camId, { position: camPos(point, s.angle, dist, height), fov, ...aim });
       // Ride the actor's own track: a camera position key at every path key in range.
       const st = states.get(actor)!;
       const frames = [startF, ...st.track.keys.map((k) => k.frame).filter((f) => f > startF && f < endF), endF];
@@ -227,8 +255,6 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
         const p = st.track.at(f);
         return { frame: f, value: camPos([p.x, point[1], p.z], s.angle, dist, height) };
       }));
-    } else {
-      b.addCamera(camId, { position: camPos(point, s.angle, dist, height), fov, ...aim });
     }
     b.shot(camId, startF, shotEnd);
   });

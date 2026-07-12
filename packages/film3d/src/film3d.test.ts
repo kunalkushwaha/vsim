@@ -511,6 +511,27 @@ describe("surface props (sign + cutout)", () => {
     expect(at(90)).toContain(0.35);
   });
 
+  it("bakes deterministic handheld drift into a shot's camera keys", async () => {
+    const shot = { at: 0, dur: 4, shot: "wide" as const, target: [0, 0.6, 0] as [number, number, number], angle: 0, sweep: 90, handheld: true };
+    const still = await film3dToScene({ ...DOC, props: [], camera: [{ ...shot, handheld: false }] });
+    const hand = await film3dToScene({ ...DOC, props: [], camera: [shot] });
+    // A static wide has NO camera position track; handheld bakes a dense one.
+    const track = (d: typeof hand) => d.animation.find((t) => t.target.nodeId === "__cam_shot0" && t.target.path === "position");
+    expect(track(still)).toBeUndefined();
+    const keys = track(hand)!.keyframes;
+    expect(keys.length).toBeGreaterThan(30); // every 3 frames over the film
+    // The drift is bounded (a few cm around the base position) and actually moves.
+    const base = (still.nodes.find((n) => n.id === "__cam_shot0") as { position?: number[] }).position!;
+    const dists = keys.map((k) => Math.hypot(...(k.value as number[]).map((v, j) => v - base[j]!)));
+    expect(Math.max(...dists)).toBeLessThan(0.15);
+    expect(Math.max(...dists)).toBeGreaterThan(0.02);
+    const uniq = new Set(keys.map((k) => JSON.stringify(k.value)));
+    expect(uniq.size).toBeGreaterThan(keys.length / 2); // not a frozen offset
+    // Deterministic: an identical compile produces identical keys.
+    const again = await film3dToScene({ ...DOC, props: [], camera: [shot] });
+    expect(JSON.stringify(track(again)!.keyframes)).toBe(JSON.stringify(keys));
+  });
+
   it("stages the autumn set: amber palette, falling leaves, and a transition into it", async () => {
     // Autumn compiles like any set — warm ground, a sun disc, leaves weather welcome.
     const sceneDoc = await film3dToScene({ ...DOC, set: "autumn", props: [{ kind: "tree", id: "t1", x: -3, z: -4, height: 3, variant: "broadleaf" }], weather: "leaves" });

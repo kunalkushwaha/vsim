@@ -194,6 +194,8 @@ export const ShotSchema = z.object({
   /** Orbit only: degrees swept over the segment (default 90; negative = clockwise). */
   sweep: z.number().min(-360).max(360).default(90),
   fov: z.number().min(20).max(90).optional(),
+  /** Documentary feel: seeded sub-degree camera drift baked into the shot's keyframes. */
+  handheld: z.boolean().optional(),
 });
 
 export const Film3DDocSchema = z

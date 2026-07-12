@@ -55,7 +55,8 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
   ],
   "camera": [                                                // contiguous cuts from 0 covering the whole film
     { "at", "dur", "shot": "wide"|"close"|"follow"|"orbit", "target": actorId | [x,y,z],
-      "distance"?, "height"?, "angle": degrees around target (default 0), "sweep": orbit degrees (default 90), "fov"? }
+      "distance"?, "height"?, "angle": degrees around target (default 0), "sweep": orbit degrees (default 90), "fov"?,
+      "handheld"?: true }                                     // documentary feel: gentle deterministic camera drift — good for quiet held shots
   ]
 }
 
