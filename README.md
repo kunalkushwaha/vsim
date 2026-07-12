@@ -112,7 +112,8 @@ pnpm showreel         # renders all 24 reel scenes in parallel → out/showreel.
 - **Realistic software rendering**: per-pixel PBR (roughness/metalness + full texture-map
   set with normal mapping), 2× supersampling in linear light, PCF-filtered directional
   shadows and point-light cube shadows, mip-mapped trilinear texture sampling,
-  perspective-correct interpolation, sorted transparency, optional ACES tone mapping.
+  perspective-correct interpolation, sorted transparency, optional ACES tone mapping and
+  bloom (bright pixels bleed into a gaussian halo — band-safe, byte-identical when tiled).
 - **Atmosphere**: gradient sky with a visible sun disc + glow, sky-derived hemisphere
   ambient, linear distance fog, and closed-form deterministic particles.
 - **Animation**: keyframe tracks, glTF skeletal clips with layered crossfades
