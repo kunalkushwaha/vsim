@@ -64,7 +64,13 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
   const filmEndSec = doc.beats[doc.beats.length - 1]!.end;
   const DUR = Math.round(filmEndSec * fps);
   const F = (sec: number) => Math.max(0, Math.min(DUR, Math.round(sec * fps)));
-  const look = SET_LOOKS[doc.set];
+  let look = SET_LOOKS[doc.set];
+  // A sunless set transitioning to a sunny one seeds a zero-size disc so the transition's
+  // sky.sun.size/glow tracks have something to grow — a sunrise instead of no disc at all.
+  const toSun = doc.transition ? SET_LOOKS[doc.transition.to].sky.sun : undefined;
+  if (toSun && !look.sky.sun) {
+    look = { ...look, sky: { ...look.sky, sun: { size: 0, glow: 0, color: toSun.color } } };
+  }
 
   const b = scene({
     fps,

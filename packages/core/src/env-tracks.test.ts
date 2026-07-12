@@ -37,4 +37,26 @@ describe("environment tracks", () => {
     expect(rt.computeFrameState(60).sky!.top).toEqual([0.02, 0.03, 0.09]);
     expect(doc.environment!.sky!.type === "gradient" && doc.environment!.sky!.top).toEqual([0.2, 0.4, 0.9]);
   });
+
+  it("lerps a light.direction track and keeps the resolved direction unit-length", () => {
+    const d = parseDocument({
+      meta: { durationFrames: 60, width: 8, height: 8, background: [0, 0, 0] },
+      nodes: [
+        { id: "cam", position: [0, 1, 3] },
+        { id: "sun", light: { type: "directional", intensity: 1, direction: [0, -1, 0] } },
+      ],
+      camera: { nodeId: "cam", lookAt: [0, 0, 0], fov: 60 },
+      animation: [
+        { target: { nodeId: "sun", path: "light.direction" }, keyframes: [{ frame: 0, value: [0, -1, 0] }, { frame: 60, value: [1, 0, 0] }] },
+      ],
+    });
+    const rt = new SceneRuntime(d);
+    const sun = (f: number) => rt.computeFrameState(f).lights.find((l) => l.type === "directional")!;
+    expect(sun(0).direction).toEqual([0, -1, 0]);
+    const mid = sun(30).direction!; // raw lerp [0.5, -0.5, 0], normalized
+    expect(mid[0]).toBeCloseTo(Math.SQRT1_2, 5);
+    expect(mid[1]).toBeCloseTo(-Math.SQRT1_2, 5);
+    expect(Math.hypot(...mid)).toBeCloseTo(1, 10);
+    expect(sun(60).direction).toEqual([1, 0, 0]);
+  });
 });

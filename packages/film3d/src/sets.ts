@@ -413,8 +413,9 @@ export function applyTransition(b: SceneBuilder, from: SetLook, to: SetLook, sta
   span("sky.ambient", from.sky.ambient ?? 0, to.sky.ambient ?? 0);
   span("background", from.background, to.background);
   // The sun disc fades with the look: size+glow lerp to the target's (or to 0 when the
-  // target set is sunless — a full golden disc in a night sky broke the illusion). A
-  // sunless FROM set can't grow a disc (env tracks only modify an existing sun).
+  // target set is sunless — a full golden disc in a night sky broke the illusion). Env
+  // tracks only modify an existing sun, so for sunless FROM sets the film3d compiler
+  // seeds a zero-size disc before calling this (a sunrise needs something to grow).
   if (from.sky.sun) {
     span("sky.sun.size", from.sky.sun.size ?? 0.045, to.sky.sun?.size ?? 0);
     span("sky.sun.glow", from.sky.sun.glow ?? 0.4, to.sky.sun?.glow ?? 0);
@@ -430,12 +431,20 @@ export function applyTransition(b: SceneBuilder, from: SetLook, to: SetLook, sta
   const pool = [...to.lights];
   from.lights.forEach((l, i) => {
     const j = pool.findIndex((c) => c && c.type === l.type);
-    const target = j >= 0 ? (pool[j]!.intensity ?? 0) : 0;
+    const match = j >= 0 ? pool[j] : undefined;
     if (j >= 0) pool[j] = undefined as never;
     b.animate(`__set_light_${i}`, "light.intensity", [
       { frame: startFrame, value: l.intensity ?? 0 },
-      { frame: endFrame, value: target },
+      { frame: endFrame, value: match?.intensity ?? 0 },
     ]);
+    // Matched directionals also swing to the target's angle — this is what moves the sun
+    // (and its painted disc) across the sky during a sunrise/sunset transition.
+    if (l.type === "directional" && l.direction && match?.direction) {
+      b.animate(`__set_light_${i}`, "light.direction", [
+        { frame: startFrame, value: l.direction },
+        { frame: endFrame, value: match.direction },
+      ]);
+    }
   });
   // Target lights with no same-type counterpart fade IN from black: placed dark, they
   // rise to the target's level over the span (e.g. studio's second rim directional).

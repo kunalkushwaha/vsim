@@ -471,6 +471,27 @@ describe("surface props (sign + cutout)", () => {
     expect(parseFilm3D({ ...DOC, transition: { to: "night", start: 3, end: 1 } }).errors!.join("\n")).toMatch(/after/);
   });
 
+  it("grows a sunrise: sunless set seeds a zero disc and the sun swings to the target angle", async () => {
+    // Night is sunless; transitioning to meadow must seed a size-0 disc that the
+    // transition grows, and swing the directional to meadow's low-sun angle.
+    const sceneDoc = await film3dToScene({ ...DOC, set: "night", props: [], transition: { to: "meadow", start: 1, end: 3 } });
+    const sky = (sceneDoc.environment as { sky?: { sun?: { size?: number; glow?: number } } }).sky;
+    expect(sky?.sun?.size).toBe(0); // seeded dark — no disc before the window
+    const size = sceneDoc.animation.find((t) => (t.target as { environment?: boolean }).environment && t.target.path === "sky.sun.size")!;
+    expect(size.keyframes.map((k) => k.value)).toEqual([0, 0.045]); // grows to meadow's disc
+    const dir = sceneDoc.animation.find((t) => t.target.nodeId === "__set_light_1" && t.target.path === "light.direction")!;
+    expect(dir.keyframes[0]!.value).toEqual([-0.4, -1, -0.3]); // night's moon angle
+    expect(dir.keyframes[1]!.value).toEqual([-0.2, -0.3, 0.93]); // meadow's low sun
+    // The runtime delivers: no disc at the start, full disc + meadow angle at the end.
+    const rt = new SceneRuntime(sceneDoc);
+    expect(rt.computeFrameState(30).sky!.sun!.size).toBe(0);
+    const end = rt.computeFrameState(90);
+    expect(end.sky!.sun!.size).toBeCloseTo(0.045, 5);
+    const d = end.lights.find((l) => l.type === "directional")!.direction!;
+    const m = Math.hypot(-0.2, -0.3, 0.93);
+    expect(d[2]).toBeCloseTo(0.93 / m, 5);
+  });
+
   it("fades in target-set lights that have no counterpart in the film's set", async () => {
     // Studio has a second rim directional the meadow lacks — it must rise from black.
     const sceneDoc = await film3dToScene({ ...DOC, props: [], transition: { to: "studio", start: 1, end: 3 } });

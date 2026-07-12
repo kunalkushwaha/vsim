@@ -286,12 +286,15 @@ export class SceneRuntime {
     // copies of the doc's sky/fog below — the doc itself is never mutated.
     const env = new Map<string, number | Vec3>();
     const lightIntensityByNode = new Map<string, number>();
+    const lightDirectionByNode = new Map<string, Vec3>();
     for (const track of this.doc.animation) {
       const value = evaluateTrack(track, frame);
       if (track.target.environment) {
         env.set(track.target.path, Array.isArray(value) ? [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0] : value);
       } else if (track.target.nodeId && track.target.path === "light.intensity") {
         if (typeof value === "number") lightIntensityByNode.set(track.target.nodeId, value);
+      } else if (track.target.nodeId && track.target.path === "light.direction") {
+        if (Array.isArray(value)) lightDirectionByNode.set(track.target.nodeId, [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0]);
       } else if (track.target.nodeId && track.target.path === "texture.frame") {
         if (typeof value === "number") texFrameByNode.set(track.target.nodeId, value);
       } else if (track.target.nodeId && track.target.path.startsWith("morph.")) {
@@ -473,13 +476,16 @@ export class SceneRuntime {
       }
       nodes.push({ id: n.id, worldMatrix: world, mesh: n.mesh, light: n.light, material, skin, morphWeights: morphByNode.get(n.id), textureFrame: texFrameByNode.get(n.id) });
       if (n.light) {
+        // A "light.direction" track lerps the raw vector between keys; normalizing here keeps
+        // the resolved direction unit-length mid-lerp.
+        const dir = lightDirectionByNode.get(n.id) ?? n.light.direction;
         lights.push({
           type: n.light.type,
           color: n.light.color,
           intensity: lightIntensityByNode.get(n.id) ?? n.light.intensity,
           position: mat4.getTranslation(world),
-          direction: n.light.direction
-            ? v3.normalize(n.light.direction)
+          direction: dir
+            ? v3.normalize(dir)
             : v3.normalize(mat4.transformDir(world, [0, 0, -1])),
           skyColor: n.light.skyColor,
           groundColor: n.light.groundColor,
