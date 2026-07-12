@@ -71,3 +71,24 @@ describe("deterministic particles", () => {
     expect(late.opacity).toBeLessThan(0.5);
   });
 });
+
+describe("streak particles", () => {
+  it("emits velocity + streak only when configured", async () => {
+    const { parseDocument, SceneRuntime } = await import("./index.js");
+    const mk = (streak: number) => parseDocument({
+      meta: { durationFrames: 30, width: 8, height: 8 },
+      nodes: [{ id: "cam", position: [0, 0, 5] }],
+      camera: { nodeId: "cam", lookAt: [0, 0, 0], fov: 60 },
+      particles: [{ id: "p", count: 4, velocity: [0, -6, 0], gravity: [0, -2, 0], lifeFrames: 30, size: 0.05, seed: 3, ...(streak ? { streak } : {}) }],
+    });
+    const plain = new SceneRuntime(mk(0)).computeFrameState(15).particles;
+    expect(plain.every((p) => p.velocity === undefined && p.streak === undefined)).toBe(true);
+    const streaked = new SceneRuntime(mk(0.05)).computeFrameState(15).particles;
+    expect(streaked.length).toBeGreaterThan(0);
+    for (const p of streaked) {
+      expect(p.streak).toBe(0.05);
+      // Instantaneous velocity includes gravity·t: strictly faster downward than the initial mean ± spread(0.5 default… none set: velocitySpread default [0.5,0.5,0.5]).
+      expect(p.velocity![1]).toBeLessThan(0);
+    }
+  });
+});

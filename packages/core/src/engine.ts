@@ -76,6 +76,10 @@ export interface ResolvedParticle {
   size: number;
   color: Vec3;
   opacity: number;
+  /** Instantaneous velocity (world units/s) — engines stretch the splat along `velocity * streak`. */
+  velocity?: Vec3;
+  /** Motion-stretch window in seconds (0/absent = round splat). */
+  streak?: number;
 }
 
 /**

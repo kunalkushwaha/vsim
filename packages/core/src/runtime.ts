@@ -71,7 +71,17 @@ function evaluateParticles(ps: import("./document.js").Particles, frame: number,
     const pz = ps.position[2] + (hashN(ps.seed, k, 3) * 2 - 1) * ps.spread[2] + (ps.velocity[2] + (hashN(ps.seed, k, 6) * 2 - 1) * ps.velocitySpread[2]) * t + 0.5 * ps.gravity[2] * t * t;
     const lifeT = age / ps.lifeFrames;
     const fade = lifeT > 0.75 ? (1 - lifeT) / 0.25 : 1;
-    out.push({ position: [px, py, pz], size: ps.size, color: ps.color, opacity: ps.opacity * fade });
+    const resolved: ResolvedParticle = { position: [px, py, pz], size: ps.size, color: ps.color, opacity: ps.opacity * fade };
+    if (ps.streak > 0) {
+      // Closed-form instantaneous velocity: per-particle initial velocity + gravity·t.
+      resolved.velocity = [
+        ps.velocity[0] + (hashN(ps.seed, k, 4) * 2 - 1) * ps.velocitySpread[0] + ps.gravity[0] * t,
+        ps.velocity[1] + (hashN(ps.seed, k, 5) * 2 - 1) * ps.velocitySpread[1] + ps.gravity[1] * t,
+        ps.velocity[2] + (hashN(ps.seed, k, 6) * 2 - 1) * ps.velocitySpread[2] + ps.gravity[2] * t,
+      ];
+      resolved.streak = ps.streak;
+    }
+    out.push(resolved);
   }
 }
 
