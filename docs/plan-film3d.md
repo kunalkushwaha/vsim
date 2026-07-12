@@ -89,6 +89,9 @@ child nodes). The director's prompt now tells the model to dress sets like locat
   tone instead of hardcoded green (#95; `amber-afternoon` showcase #96, README GIF #97).
 - **Red squirrel** — a new palette species via the CreatureDoc pipeline (russet coat,
   cream muzzle, bushy over-back tail), castable as `redsquirrel` (#98).
+- **Handheld camera** — shot-level `handheld: true` bakes seeded two-sine drift (~5cm,
+  aim locked) into dense camera keys at compile time; works on every shot kind and
+  leaves non-handheld films byte-identical (#100).
 
 The 2D path proved the shape: `vsim film -p "<topic>"` asks the AI for a *validated
 document*, and a deterministic interpreter renders it (`packages/motion`, FilmDoc).
