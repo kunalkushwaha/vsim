@@ -1,0 +1,284 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "Golden Hour by the Campfire",
+  "set": "meadow",
+  "weather": "fireflies",
+  "transition": {
+    "to": "dusk",
+    "start": 8,
+    "end": 18
+  },
+  "props": [
+    {
+      "kind": "tree",
+      "id": "t1",
+      "x": -7,
+      "z": -7,
+      "height": 4,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t2",
+      "x": -4,
+      "z": -8,
+      "height": 3.5,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "tree",
+      "id": "t3",
+      "x": 5,
+      "z": -7,
+      "height": 4.5,
+      "variant": "conifer"
+    },
+    {
+      "kind": "tree",
+      "id": "t4",
+      "x": 8,
+      "z": -6,
+      "height": 3,
+      "variant": "broadleaf"
+    },
+    {
+      "kind": "rock",
+      "id": "r1",
+      "x": 2.5,
+      "z": 1.2,
+      "radius": 0.5
+    },
+    {
+      "kind": "rock",
+      "id": "r2",
+      "x": -3,
+      "z": -1,
+      "radius": 0.4
+    },
+    {
+      "kind": "campfire",
+      "id": "cf1",
+      "x": 0,
+      "z": 0
+    },
+    {
+      "kind": "log",
+      "id": "log1",
+      "x": -2,
+      "z": 1,
+      "length": 1.8,
+      "angle": 40
+    },
+    {
+      "kind": "bush",
+      "id": "b1",
+      "x": 3.5,
+      "z": -1.5,
+      "radius": 0.6
+    },
+    {
+      "kind": "flowers",
+      "id": "f1",
+      "x": -4.5,
+      "z": 1.8,
+      "radius": 1
+    },
+    {
+      "kind": "stump",
+      "id": "s1",
+      "x": 1.8,
+      "z": -1.8,
+      "radius": 0.3
+    },
+    {
+      "kind": "flowers",
+      "id": "f2",
+      "x": 4,
+      "z": 2,
+      "radius": 0.8
+    }
+  ],
+  "actors": [
+    {
+      "id": "fox1",
+      "character": "fox",
+      "x": -8,
+      "z": 3,
+      "facing": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "rabbit1",
+      "character": "rabbit",
+      "x": 1.2,
+      "z": -0.8,
+      "facing": [
+        0,
+        0
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "b1",
+      "start": 0,
+      "end": 7,
+      "caption": "A fox crosses the meadow as the last gold light spills low.",
+      "narration": "The last gold of afternoon spills across the meadow.",
+      "actions": [
+        {
+          "do": "move",
+          "actor": "fox1",
+          "to": [
+            -1.5,
+            0.8
+          ],
+          "at": 0,
+          "dur": 5,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "fox1",
+          "clip": "Survey",
+          "at": 5,
+          "dur": 2
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 0,
+          "dur": 7
+        }
+      ]
+    },
+    {
+      "id": "b2",
+      "start": 7,
+      "end": 14,
+      "caption": "Fox and rabbit settle side by side as the sun dips.",
+      "narration": "As the sun dips, the two settle into the fire's glow.",
+      "actions": [
+        {
+          "do": "face",
+          "actor": "fox1",
+          "to": [
+            1.2,
+            -0.8
+          ],
+          "at": 0,
+          "dur": 1
+        },
+        {
+          "do": "face",
+          "actor": "rabbit1",
+          "to": [
+            -1.5,
+            0.8
+          ],
+          "at": 0,
+          "dur": 1
+        },
+        {
+          "do": "move",
+          "actor": "rabbit1",
+          "to": [
+            -0.9,
+            0.4
+          ],
+          "at": 1,
+          "dur": 2.5,
+          "gait": "walk"
+        },
+        {
+          "do": "play",
+          "actor": "fox1",
+          "clip": "Survey",
+          "at": 3,
+          "dur": 4
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 3.5,
+          "dur": 3.5
+        }
+      ]
+    },
+    {
+      "id": "b3",
+      "start": 14,
+      "end": 20,
+      "caption": "Fireflies rise over the campfire as the meadow goes quiet.",
+      "narration": "Fireflies rise as dusk settles, and stillness takes the meadow.",
+      "actions": [
+        {
+          "do": "play",
+          "actor": "fox1",
+          "clip": "Survey",
+          "at": 0,
+          "dur": 6
+        },
+        {
+          "do": "play",
+          "actor": "rabbit1",
+          "clip": "idle",
+          "at": 0,
+          "dur": 6
+        }
+      ]
+    }
+  ],
+  "camera": [
+    {
+      "at": 0,
+      "dur": 7,
+      "shot": "wide",
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "distance": 10,
+      "height": 4,
+      "angle": 15,
+      "sweep": 90,
+      "fov": 45
+    },
+    {
+      "at": 7,
+      "dur": 7,
+      "shot": "close",
+      "target": [
+        -1.2,
+        0,
+        0.6
+      ],
+      "distance": 4.5,
+      "height": 1.6,
+      "angle": -15,
+      "sweep": 60,
+      "fov": 38
+    },
+    {
+      "at": 14,
+      "dur": 6,
+      "shot": "orbit",
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "distance": 6,
+      "height": 2.5,
+      "angle": 0,
+      "sweep": 70,
+      "fov": 40
+    }
+  ]
+}
