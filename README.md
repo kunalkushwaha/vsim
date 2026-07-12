@@ -177,6 +177,17 @@ a spoken `narration` line, and a shot list (wide/close/follow/orbit cuts). The
 the schema validates everything, so the model can't hand back a film that doesn't run.
 
 <p align="center">
+  <img src="docs/media/festival-eve.gif" width="640" alt="Dusk falls over a village festival square in one continuous film: the windmill turns, an animated marquee plays its bulb chase, fireflies rise as the sky fades from day to dusk, and lanterns bloom around a knight and a fox" />
+  <br/>
+  <sub><strong>"Dusk Falls on the Festival Square"</strong> — one prompt, and the director staged
+  <em>everything</em> (<a href="films/festival-eve.film3d.json"><code>festival-eve.film3d.json</code></a>):
+  the CC0 village with its <strong>turning windmill</strong>, an <strong>animated marquee screen</strong> baked from
+  AI-written HTML, a <strong>day→dusk transition</strong> mid-film, <strong>fireflies</strong> rising with the dark,
+  <strong>bloom</strong> on every lantern, and a <strong>wind ambience bed</strong> under the TTS narration. It watched
+  its own dailies three times and re-blocked a broken closer itself.</sub>
+</p>
+
+<p align="center">
   <img src="docs/media/watchfire.gif" width="640" alt="Watchfire: a knight keeps watch while a mage conjures light at a dusk campfire — an AI-written, self-reviewed, narrated 3D film" />
   <br/>
   <sub><strong>"Watchfire"</strong> — written, staged, and shot by the AI from one prompt
