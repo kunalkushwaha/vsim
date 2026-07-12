@@ -217,7 +217,17 @@ props stage real CC0 KayKit models, bundled as self-contained GLBs — so one pr
 now raise a whole village. And the sky joined the vocabulary: one `weather` field stages
 deterministic snowfall, rain, fireflies, or falling leaves across the whole film
 ([`first-snow`](films/first-snow.film3d.json) — the director's own call, the windmill
-turning through steady snow).
+turning through steady snow). Even TIME moves now: a `transition` field lerps the whole
+look — sky gradient, sun disc, fog, every set light — to another set's over a window, so
+the sun can set mid-film:
+
+<p align="center">
+  <img src="docs/media/sunset-meadow.gif" width="640" alt="Golden hour fading to firefly-lit dusk in one continuous shot: a fox and rabbit settle by a campfire as the sky, fog, and lighting transition from day to night" />
+  <br/>
+  <sub><strong>"Golden Hour by the Campfire"</strong> — the director staged the sunset itself
+  (<a href="films/sunset-meadow.film3d.json"><code>sunset-meadow.film3d.json</code></a>):
+  <code>"transition": { "to": "dusk", "start": 8, "end": 18 }</code> plus fireflies as the light goes.</sub>
+</p>
 
 ## vsim Studio — the visual editor
 
