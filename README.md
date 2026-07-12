@@ -7,8 +7,8 @@ audio — run one command, and get a **deterministic** MP4. The same scene plays
 browser, byte-for-byte identical to the export.
 
 ```bash
-npm i -D @vsim/cli @vsim/authoring
-npx vsim render scene.ts -o out.mp4          # add --workers 4 for multi-core
+git clone https://github.com/kunalkushwaha/vsim && cd vsim && pnpm install
+pnpm exec vsim render scene.ts -o out.mp4    # add --workers 4 for multi-core
 ```
 
 <table>
@@ -47,6 +47,17 @@ That's the whole loop: a `.ts` file in, a reproducible `.mp4` out — no GPU, no
 renderer, no cloud account. The default engine is a pure-TypeScript rasterizer with
 per-pixel PBR lighting, shadow maps, and supersampling, so it runs identically on your
 laptop, in CI, and in the browser.
+
+**Jump to:**
+[Show me](#show-me) ·
+[Why vsim?](#why-vsim) ·
+[What's in the box](#whats-in-the-box) ·
+[The AI authors, vsim renders](#the-ai-authors-vsim-renders) ·
+[vsim Studio](#vsim-studio--the-visual-editor) ·
+[Packages](#packages) ·
+[motion/](#motion--films-from-svg--css) ·
+[Docs](#docs) ·
+[Develop](#develop)
 
 ## Show me
 
@@ -87,7 +98,7 @@ lip-sync, procedural parks, a trotting quadruped, and more:
 ```bash
 pnpm install
 pnpm example:fox      # → out/fox.mp4 (any example works: cube, physics, crossfade, …)
-pnpm showreel         # renders all 24 reel scenes in parallel → out/showreel.mp4
+pnpm showreel         # renders the showreel scenes in parallel → out/showreel.mp4
 ```
 
 ## Why vsim?
@@ -138,7 +149,9 @@ it cannot emit an invalid one, and it never touches the render loop. It runs thr
 Anthropic SDK (`ANTHROPIC_API_KEY`) **or**, if no key is set, the `claude` CLI (a Claude
 Code login) — whichever you have.
 
-**Edit scenes in natural language** — prompts become schema-constrained edit operations,
+### Edit scenes in natural language
+
+Prompts become schema-constrained edit operations,
 grounded in the scene's existing objects:
 
 ```bash
@@ -157,7 +170,9 @@ await session.refine("now spin it twice as fast"); // "it" = the cube
 session.document; // the edited scene so far
 ```
 
-**Write whole 2D explainer films from a topic** — `vsim film -p "<topic>"` asks Claude for
+### Write whole 2D explainer films from a topic
+
+`vsim film -p "<topic>"` asks Claude for
 a **FilmDoc**: the screenplay as a zod-validated document (stage entities, beats, actions,
 camera), interpreted by the [motion/](#motion--films-from-svg--css) studio. The committed
 `filmdoc.json` re-renders byte-identically forever, no AI required. The CDN film
@@ -169,10 +184,13 @@ valid on Claude's first attempt.
 pnpm film:gen "how a CDN makes websites fast"   # → screenplay + out/<slug>.mp4
 ```
 
-**Direct 3D films from a story** — `vsim film -p "<story>" --template 3d` asks for a
+### Direct 3D films from a story
+
+`vsim film -p "<story>" --template 3d` asks for a
 **Film3DDoc** instead: a set preset, dressed props (trees, rocks, bushes, flowers, ponds,
 fallen logs, lanterns, a lit campfire), a cast, beats of `move`/`play`/`face` actions with
-a spoken `narration` line, and a shot list (wide/close/follow/orbit cuts). The
+a spoken `narration` line, and a shot list (wide/close/follow/orbit cuts, with an
+optional `handheld` drift for documentary feel). The
 `@vsim/film3d` compiler lowers it to a plain scene document and the engine renders it —
 the schema validates everything, so the model can't hand back a film that doesn't run.
 
@@ -204,33 +222,41 @@ the schema validates everything, so the model can't hand back a film that doesn'
 | ![The Knight Returns Home](docs/media/village-dusk.gif) | ![animated marquee screen at night](docs/media/marquee-night.png) | ![Cycles master of the festival sign](docs/media/festival-master.png) |
 | **A whole village from one prompt** — the director staged the tavern, well, windmill, hut, and clutter itself ([`village-dusk`](films/village-dusk.film3d.json)) | **Screens that play** — an HTML marquee baked to a frame sequence, looping in-world on the `screen` prop | **AI artwork, path-traced** — the `vsim surface`-designed welcome board under Cycles lantern light ([`festival-night`](films/festival-night.film3d.json)) |
 
-The pipeline behind those: the cast mixes **professional CC0 packs** (KayKit's knight,
-barbarian, mage, rogue — faces, outfits, dozens of clips like `Spellcasting` and `Cheer`),
-**generated animals** (fox, dog, deer, bear, rabbit, wolf — spec tables compiled headlessly
-by Blender, MIT), and MakeHuman humans with baked PBR skin. Beats carry **narration**
-(espeak-ng offline, ElevenLabs via env). The director **reviews its own dailies** — one
-rendered still per shot, two rounds by default, later rounds seeing the previous round's
-frames — and every revision is re-validated. `vsim render` accepts `*.film3d.json`
-directly; the same file renders a **path-traced master** via
-`apps/studio/cycles-render.mjs` (sky, sun, fog, and particles all translate). And the cast
-is **self-expanding**: `vsim creature -p "a gray wolf, lean and watchful"` designs a new
-species as a validated CreatureDoc, compiles it, reviews its own turntable, and registers
-it as castable ([`creatures/wolf.creature.json`](creatures/wolf.creature.json) was made
-exactly that way). Even the ARTWORK is AI-made: `vsim surface -p "a rustic welcome
-board…"` designs a self-contained HTML artifact under a strict determinism lint, bakes it
-with a pinned headless Chromium, reviews its own proof, and registers it — films then
-stage it as a `sign` prop, or extrude committed SVGs as `cutout` scenery
-([the surface pack](docs/plan-surface-pack.md)). Surfaces can even **animate**: an HTML
-page implementing the recorder's film contract bakes to a committed frame sequence, and
-the `screen` prop plays it in-world on a kiosk — a marquee with chasing bulbs, looping
-deterministically via a `texture.frame` track. And the sets got an architecture upgrade:
-`building` (hut, tavern, windmill, well, tower) and `clutter` (barrels, crates, tents)
-props stage real CC0 KayKit models, bundled as self-contained GLBs — so one prompt can
-now raise a whole village. And the sky joined the vocabulary: one `weather` field stages
-deterministic snowfall, rain, fireflies, or falling leaves across the whole film
-([`first-snow`](films/first-snow.film3d.json) — the director's own call, the windmill
-turning through steady snow; the leaves get their own **autumn** set — amber canopy,
-low honey sun, tan grass):
+### The pipeline behind those
+
+Capability by capability:
+
+- **The cast** mixes professional CC0 packs (KayKit's knight, barbarian, mage, rogue —
+  faces, outfits, dozens of clips like `Spellcasting` and `Cheer`), generated animals
+  (fox, dog, deer, bear, rabbit, wolf, barn owl, red squirrel — spec tables compiled
+  headlessly by Blender, MIT), and MakeHuman humans with baked PBR skin.
+- **Narration** rides the beats (espeak-ng offline; ElevenLabs via env), and one
+  `ambience` field mixes a seeded, deterministic sound bed — rain, wind, or fire —
+  under it.
+- **The director reviews its own dailies** — one rendered still per shot, two rounds by
+  default, later rounds seeing the previous round's frames — and every revision is
+  re-validated.
+- **Photoreal masters**: `vsim render` accepts `*.film3d.json` directly, and the same
+  file path-traces via `apps/studio/cycles-render.mjs` (sky, sun, fog, and particles all
+  translate).
+- **The cast is self-expanding**: `vsim creature -p "a gray wolf, lean and watchful"`
+  designs a new species as a validated CreatureDoc, compiles it, reviews its own
+  turntable, and registers it as castable
+  ([`creatures/wolf.creature.json`](creatures/wolf.creature.json) was made exactly that way).
+- **Even the artwork is AI-made**: `vsim surface -p "a rustic welcome board…"` designs a
+  self-contained HTML artifact under a strict determinism lint, bakes it with a pinned
+  headless Chromium, reviews its own proof, and registers it — films stage it as a `sign`
+  prop, or extrude committed SVGs as `cutout` scenery
+  ([the surface pack](docs/plan-surface-pack.md)).
+- **Surfaces can animate**: an HTML page implementing the recorder's film contract bakes
+  to a committed frame sequence, and the `screen` prop plays it in-world on a kiosk — a
+  marquee with chasing bulbs, looping deterministically via a `texture.frame` track.
+- **Whole villages**: `building` (hut, tavern, windmill, well, tower) and `clutter`
+  (barrels, crates, tents) props stage real CC0 KayKit models, bundled as self-contained
+  GLBs — one prompt can raise a village square.
+- **Weather**: one field stages deterministic snowfall, rain, fireflies, or falling
+  leaves across the whole film ([`first-snow`](films/first-snow.film3d.json)); the leaves
+  get their own **autumn** set — amber canopy, low honey sun, tan grass:
 
 <p align="center">
   <img src="docs/media/amber-afternoon.gif" width="640" alt="A deer and a rabbit cross a tree-lined amber meadow as golden leaves drift down through warm afternoon haze" />
@@ -238,9 +264,11 @@ low honey sun, tan grass):
   <sub><strong>"Amber Afternoon at the Meadow's Edge"</strong> — the director's autumn
   (<a href="films/amber-afternoon.film3d.json"><code>amber-afternoon.film3d.json</code></a>):
   <code>"set": "autumn"</code>, <code>"weather": "leaves"</code>, a deer and a rabbit under a wind bed.</sub>
-</p> Even TIME moves now: a `transition` field lerps the whole
-look — sky gradient, sun disc, fog, every set light — to another set's over a window, so
-the sun can set mid-film:
+</p>
+
+Even TIME moves now: a `transition` field lerps the whole
+look — sky gradient, sun disc, fog, every set light, even the tonemap — to another set's
+over a window, so the sun can set mid-film:
 
 <p align="center">
   <img src="docs/media/sunset-meadow.gif" width="640" alt="Golden hour fading to firefly-lit dusk in one continuous shot: a fox and rabbit settle by a campfire as the sky, fog, and lighting transition from day to night" />
@@ -335,6 +363,8 @@ Prefer the AI to write the screenplay? See
 - [Determinism guide](./docs/determinism.md)
 - [ADR 0001 — render backend & determinism](./docs/decisions/0001-render-backend-and-determinism.md)
 - [Guide: creating characters with Blender / MakeHuman](./docs/guides/blender-characters.md) — generate rigged, animated, **textured** glTF headlessly (incl. a realistic MakeHuman human with real skin) → `loadGltfRig`
+- [film3d design log](./docs/plan-film3d.md) — how the AI-directed 3D film system works, wave by wave
+- [Surface pack design log](./docs/plan-surface-pack.md) — AI-designed HTML/SVG artwork as deterministic scenery
 
 `pnpm docs:site` builds a static documentation site (landing page + the docs above) into
 `site/` — generated by the project's own tooling, no framework.
