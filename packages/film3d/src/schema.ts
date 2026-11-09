@@ -6,6 +6,8 @@
 import { z } from "zod";
 import { EXTRA_CHARACTERS } from "./characters.extra.js";
 import { SURFACE_NAMES, CUTOUT_NAMES, SCREEN_NAMES } from "./surfaces.js";
+import { ASSETKIT_BUILDINGS, ASSETKIT_FLOWERS } from "./assetkit.js";
+import { footprintHalf, flowerPatch, STAGE_HALF, MAX_FILM_FLOWER_MODELS } from "./assetkit-props.js";
 
 /**
  * The castable characters — a curated subset of `@vsim/assets`' bundled library, with the
@@ -111,13 +113,19 @@ const coord = z.number().min(-14).max(14);
  * pieces as `__<name>`), so a user id containing "__" could collide with a generated node. */
 const ID_RE = /^[a-zA-Z](?!.*__)[\w-]*$/;
 
+export const MEDIEVAL_BUILDINGS = ["hut", "tavern", "windmill", "well", "tower"] as const;
+
 export const PropSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("tree"), id: z.string(), x: coord, z: coord, height: z.number().min(1).max(6).default(3), variant: z.enum(["conifer", "broadleaf"]).default("conifer") }),
   z.object({ kind: z.literal("rock"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.1).max(1.5).default(0.4) }),
   z.object({ kind: z.literal("campfire"), id: z.string(), x: coord, z: coord }),
   // Set dressing (all deterministic geometry, colored from the set's palette):
   z.object({ kind: z.literal("bush"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.3).max(1.5).default(0.6) }),
-  z.object({ kind: z.literal("flowers"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.3).max(2).default(0.8) }),
+  z.object({ kind: z.literal("flowers"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.3).max(2).default(0.8),
+    /** Omit for procedural blossoms in the set's palette; an assetkit flower → a patch of real models. */
+    variant: z.enum(ASSETKIT_FLOWERS as unknown as [string, ...string[]]).optional(),
+    /** Storybook exaggeration of real-size flower models (ignored without `variant`). */
+    scale: z.number().min(0.5).max(3).default(1) }),
   z.object({ kind: z.literal("stump"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.15).max(0.5).default(0.25) }),
   z.object({ kind: z.literal("log"), id: z.string(), x: coord, z: coord, length: z.number().min(0.8).max(3).default(1.6), /** Yaw in degrees. */ angle: z.number().default(0) }),
   z.object({ kind: z.literal("pond"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.8).max(4).default(1.8) }),
@@ -127,8 +135,13 @@ export const PropSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("sign"), id: z.string(), x: coord, z: coord, art: z.enum(SURFACE_NAMES as unknown as [string, ...string[]]), /** Yaw in degrees. */ angle: z.number().default(0) }),
   z.object({ kind: z.literal("cutout"), id: z.string(), x: coord, z: coord, art: z.enum(CUTOUT_NAMES as unknown as [string, ...string[]]), height: z.number().min(0.5).max(4).default(1.5), depth: z.number().min(0).max(0.5).default(0.1), angle: z.number().default(0) }),
   z.object({ kind: z.literal("screen"), id: z.string(), x: coord, z: coord, art: z.enum(SCREEN_NAMES as unknown as [string, ...string[]]), /** Yaw in degrees. */ angle: z.number().default(0) }),
-  // Bundled CC0 model props (KayKit Medieval Hexagon; scripts/bundle-medieval.mjs):
-  z.object({ kind: z.literal("building"), id: z.string(), x: coord, z: coord, variant: z.enum(["hut", "tavern", "windmill", "well", "tower"]).default("hut"), angle: z.number().default(0) }),
+  // Bundled CC0 model props — KayKit Medieval Hexagon (toy-scale; scripts/bundle-medieval.mjs)
+  // and assetkit (real metres, 1 unit = 1 m; scripts/blender/assetkit, docs/plan-film3d-assetkit.md):
+  z.object({ kind: z.literal("building"), id: z.string(), x: coord, z: coord,
+    variant: z.enum([...MEDIEVAL_BUILDINGS, ...ASSETKIT_BUILDINGS] as unknown as [string, ...string[]]).default("hut"),
+    angle: z.number().default(0),
+    /** Uniform scale on top of the model's own size — e.g. shrink a haveli for a chibi cast. */
+    scale: z.number().min(0.25).max(2).default(1) }),
   z.object({ kind: z.literal("clutter"), id: z.string(), x: coord, z: coord, variant: z.enum(["barrel", "crate", "tent", "wheelbarrow", "sack"]).default("barrel"), angle: z.number().default(0) }),
 ]);
 
@@ -234,6 +247,26 @@ export const Film3DDocSchema = z
       if (!ID_RE.test(e.id)) ctx.addIssue({ code: "custom", message: `id "${e.id}" must match [a-zA-Z][\\w-]* and must not contain "__" (reserved for generated nodes)` });
     }
     for (const a of doc.actors) actorChar.set(a.id, a.character);
+    // assetkit models are real-size: keep a building's footprint on the stage, and the film's
+    // flower models under the triangle budget (docs/plan-film3d-assetkit.md).
+    let flowerModels = 0;
+    for (const p of doc.props) {
+      if (p.kind === "building" && (ASSETKIT_BUILDINGS as readonly string[]).includes(p.variant)) {
+        const [hx, hz] = footprintHalf(p.variant, p.angle, p.scale);
+        const over = Math.max(Math.abs(p.x) + hx, Math.abs(p.z) + hz) - STAGE_HALF;
+        if (over > 0.01) {
+          // Truncate toward the centre so the printed suggestion itself passes this check.
+          const inward = (v: number, h: number) => Math.sign(v) * Math.floor(Math.min(Math.abs(v), Math.max(0, STAGE_HALF - h)) * 10) / 10;
+          const fx = inward(p.x, hx), fz = inward(p.z, hz);
+          ctx.addIssue({ code: "custom", message: `building "${p.id}" (${p.variant}, ${(2 * hx).toFixed(1)}×${(2 * hz).toFixed(1)} units at scale ${p.scale}) runs ${over.toFixed(1)} units off the ±${STAGE_HALF} stage — ` +
+            (hx < STAGE_HALF && hz < STAGE_HALF ? `move it to x=${fx.toFixed(1)}, z=${fz.toFixed(1)}` : `lower its scale`) });
+        }
+      }
+      if (p.kind === "flowers" && p.variant) flowerModels += flowerPatch(p.variant, p.radius, p.scale).length;
+    }
+    if (flowerModels > MAX_FILM_FLOWER_MODELS) {
+      ctx.addIssue({ code: "custom", message: `the film's flower patches hold ${flowerModels} flower models — keep it ≤${MAX_FILM_FLOWER_MODELS} (fewer or smaller patches)` });
+    }
     if (doc.props.length + doc.actors.length === 0) {
       ctx.addIssue({ code: "custom", message: "the film needs at least one actor or prop" });
     }
