@@ -13,7 +13,7 @@ describe("character library", () => {
     expect(rig.joints.length).toBeGreaterThan(20); // full humanoid skeleton
     const clipIds = rig.clips.map((c) => c.id).sort();
     // the clip library: mocap walk + retargeted CMU mocap (scripts/blender/mocap/clips.json) + hand-keyed wave
-    expect(clipIds).toEqual(["idle", "pick_up", "run", "sit", "sit_down", "stand_up", "talk", "wait", "walk", "wave"]);
+    expect(clipIds).toEqual(["idle", "pick_up", "run", "sit", "sit_down", "sit_talk", "stand_up", "talk", "wait", "walk", "wave"]);
     // real skin: a base-color texture sampled over per-vertex UVs
     const verts = rig.mesh.positions.length / 3;
     expect(rig.mesh.uvs).toHaveLength(verts * 2);

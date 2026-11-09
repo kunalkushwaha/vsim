@@ -9,10 +9,16 @@ import { extractJson, parseReviewReply, type ReviewStill } from "./review.js";
 import { parseCreature, type CreatureDoc } from "./creature.js";
 import { parseSurface, SURFACE_FONT, type SurfaceDoc } from "./surface-gen.js";
 
+const WHO: Partial<Record<string, string>> = { suited: "a man in a suit" };
 const CHARACTER_NOTES = CHARACTER_IDS.map((id) => {
   const c = CHARACTERS[id];
-  return `- "${id}": clips ${JSON.stringify([...c.clips])}`;
-}).join("\n");
+  return `- "${id}"${WHO[id] ? ` (${WHO[id]})` : ""}: clips ${JSON.stringify([...c.clips])}`;
+}).join("\n") + `
+
+People ("suited") move with real motion capture. Their clips:
+- "idle" (attentive standing), "wait" (shifting weight, bored), "talk" (explaining with hand gestures — use it whenever a person speaks or narrates), "wave" (greeting), "pick_up" (crouch, pick something up, ~2.8s, plays once).
+- Sitting: "sit_down" (~1.4s, plays once) leaves them SEATED; while seated play only "sit", "sit_talk" (talking while seated) or "stand_up" (~1s, plays once). A seated person cannot move — "stand_up" first.
+- To sit on a bench: stand the person 0.32 units in front of the bench's x/z, "face" the same way the bench faces (angle 0 → toward +z), then "sit_down". Use bench "height" 0.4 for an adult.`;
 
 const INSTRUCTIONS = `You are the film director for vsim, a deterministic 3D animation engine. Turn the topic into a Film3DDoc — a short 3D film as pure JSON. Reply with ONLY the JSON object, no prose, no code fences.
 
@@ -35,6 +41,7 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
     { "kind": "log", "id", "x", "z", "length": 0.8..3, "angle": yaw degrees },  // fallen trunk — a natural bench/obstacle
     { "kind": "pond", "id", "x", "z", "radius": 0.8..4 },     // still water ringed by shore stones
     { "kind": "lantern", "id", "x", "z" },                    // glowing post light — pools warm light (great at dusk/night)
+    { "kind": "bench", "id", "x", "z", "length"?: 0.8..3, "height"?: 0.2..0.6, "angle": yaw },  // a park bench people can really sit on (front faces +z at angle 0)
     { "kind": "sign", "id", "x", "z", "art": one of ${JSON.stringify([...SURFACE_NAMES])}, "angle": yaw degrees },  // a wooden board with real painted artwork
     { "kind": "cutout", "id", "x", "z", "art": one of ${JSON.stringify([...CUTOUT_NAMES])}, "height": 0.5..4, "angle": yaw },  // an extruded silhouette, like stage scenery
     { "kind": "screen", "id", "x", "z", "art": one of ${JSON.stringify([...SCREEN_NAMES])}, "angle": yaw },  // an ANIMATED kiosk panel — its artwork plays on a loop (eye-catching at dusk/night)

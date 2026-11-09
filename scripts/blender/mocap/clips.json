@@ -1,14 +1,16 @@
 {
   "source": "CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu) — free for all uses; BVH by B. Hahne/cgspeed via github.com/una-dinosauria/cmu-mocap",
-  "note": "start/end are 120 fps BVH frames; step 4 samples 30 fps. loop: cyclic (end crossfades into start). travel: keep horizontal hip offset (sit/stand). search: loop start/end search radius (default 120); min: shortest loop (default 360 = 3 s). anchor: median (default) | max | none — hip height before ground contact. ground: lock (default — FK puts the lowest foot on the floor every frame) | free (run: keep flight).",
+  "note": "start/end are 120 fps BVH frames; step 4 samples 30 fps. loop: cyclic (end crossfades into start). travel: keep horizontal hip offset — start (zero at first frame) | end (zero at last). offset_from: inherit another clip's final hip offset. search: loop start/end search radius (default 120); min: shortest loop (default 360 = 3 s). anchor: median (default) | max | none — hip height before ground contact. ground: lock (default — FK puts the lowest foot on the floor every frame) | free (run: keep flight).",
   "clips": [
+    { "name": "walk",     "bvh": "07_01.bvh",  "start": 40,   "end": 172,  "loop": true, "blend": 4, "search": 24, "min": 110 },
     { "name": "run",      "bvh": "09_03.bvh",  "start": 25,   "end": 117,  "loop": true, "blend": 3, "search": 4, "min": 60, "ground": "free" },
     { "name": "idle",     "bvh": "18_08.bvh",  "start": 400,  "end": 1000, "loop": true, "blend": 10 },
     { "name": "wait",     "bvh": "40_10.bvh",  "start": 120,  "end": 540,  "loop": true, "blend": 8 },
     { "name": "talk",     "bvh": "18_08.bvh",  "start": 1260, "end": 1740, "loop": true, "blend": 8 },
-    { "name": "sit_down", "bvh": "143_18.bvh", "start": 84,   "end": 228,  "travel": true, "anchor": "none" },
-    { "name": "sit",      "bvh": "114_05.bvh", "start": 480,  "end": 960,  "loop": true, "blend": 8, "search": 360, "anchor": "none" },
-    { "name": "stand_up", "bvh": "143_18.bvh", "start": 300,  "end": 384,  "travel": true, "anchor": "none" },
+    { "name": "sit_down", "bvh": "143_18.bvh", "start": 84,   "end": 228,  "travel": "start", "anchor": "none" },
+    { "name": "sit",      "bvh": "143_18.bvh", "start": 232,  "end": 296,  "loop": true, "blend": 4, "search": 12, "min": 48, "anchor": "none", "offset_from": "sit_down" },
+    { "name": "stand_up", "bvh": "143_18.bvh", "start": 300,  "end": 384,  "travel": "end", "anchor": "none" },
+    { "name": "sit_talk", "compose": { "base": "sit", "upper": "talk" } },
     { "name": "pick_up",  "bvh": "26_09.bvh",  "start": 100,  "end": 440,  "anchor": "max" }
   ]
 }

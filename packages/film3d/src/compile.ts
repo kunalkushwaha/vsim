@@ -17,6 +17,8 @@ type Key = { frame: number; value: number | number[]; easing?: string };
 
 /** Yaw of a ground-plane direction under Y-rotation convention: R_y(θ)·(0,0,1) = (sinθ, cosθ). */
 const yawOf = (dx: number, dz: number): number => Math.atan2(dx, dz);
+/** Gait clip playback-rate clamp for stride matching. */
+export const GAIT_RATE = [0.6, 1.6] as const;
 
 /** The equivalent angle of `target` nearest to `prev` (so turns never spin the long way). */
 function unwrap(prev: number, target: number): number {
@@ -56,6 +58,8 @@ interface ActorState {
   track: Track;
   yawKeys: Key[];
   yaw: number;
+  /** The clip the actor settles into between actions — "sit" once seated, else the idle. */
+  rest: string;
 }
 
 /** Compile a validated Film3DDoc into a render-ready SceneDocument. */
@@ -111,7 +115,7 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
     });
     // Aim node at head height — cameras look at (and follow) this, not the actor's feet.
     b.group(`${a.id}__aim`, { parent: a.id, position: [0, info.eye, 0] });
-    states.set(a.id, { character: a.character, track: new Track(a.x, a.z), yawKeys: [{ frame: 0, value: yaw0 }], yaw: yaw0 });
+    states.set(a.id, { character: a.character, track: new Track(a.x, a.z), yawKeys: [{ frame: 0, value: yaw0 }], yaw: yaw0, rest: info.idle.clip });
   }
 
   // Absolute-time action list, sorted so each actor's state advances chronologically.
@@ -141,7 +145,11 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
       // Gait: explicit, or picked from travel speed; settle back to idle on arrival.
       const speed = dist / action.dur;
       const gait = action.gait ?? (speed > info.runAt * 0.7 ? "run" : "walk");
-      b.playClip(action.actor, info[gait].clip, { startFrame: startF, blendIn: 8, loop: true });
+      // Stride matching: play the gait at travel speed / its natural ground speed so planted feet
+      // don't skate (clamped — far outside the range a different gait is the honest fix).
+      const g = info[gait] as { clip: string; stride?: number };
+      const rate = g.stride ? Math.min(GAIT_RATE[1], Math.max(GAIT_RATE[0], speed / g.stride)) : undefined;
+      b.playClip(action.actor, g.clip, { startFrame: startF, blendIn: 8, loop: true, speed: rate });
       b.playClip(action.actor, info.idle.clip, { startFrame: endF, blendIn: 10, loop: true, speed: "speed" in info.idle ? info.idle.speed : undefined });
     } else if (action.do === "face") {
       const pos = st.track.at(startF);
@@ -151,9 +159,13 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
       st.yawKeys.push({ frame: startF, value: st.yaw }, { frame: F(sec + action.dur), value: target, easing: "easeInOut" });
       st.yaw = target;
     } else {
-      // play: run a named clip, then settle back to idle.
-      b.playClip(action.actor, action.clip, { startFrame: startF, blendIn: 8, loop: true });
-      b.playClip(action.actor, info.idle.clip, { startFrame: F(sec + action.dur), blendIn: 10, loop: true, speed: "speed" in info.idle ? info.idle.speed : undefined });
+      // play: a one-shot clip (sit_down, stand_up, pick_up) plays once and leaves the actor in its
+      // follow-up pose; any other clip loops for the action, then the actor settles to rest.
+      const once = "once" in info ? (info.once as Record<string, string>)[action.clip] : undefined;
+      b.playClip(action.actor, action.clip, { startFrame: startF, blendIn: 8, loop: !once });
+      if (once) st.rest = once === "idle" ? info.idle.clip : once;
+      const restIsIdle = st.rest === info.idle.clip;
+      b.playClip(action.actor, st.rest, { startFrame: F(sec + action.dur), blendIn: 10, loop: true, speed: restIsIdle && "speed" in info.idle ? info.idle.speed : undefined });
     }
   }
 

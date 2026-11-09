@@ -27,18 +27,29 @@ const ADVENTURER = {
   eye: 1.05,
 } as const;
 
+/**
+ * One-shot clips of the MakeHuman mocap library (scripts/blender/mocap/clips.json): each plays
+ * ONCE, then the actor settles into the named clip — sitting down leaves them seated ("sit")
+ * until they stand_up. Everything else loops for the action's duration.
+ */
+export const MAKEHUMAN_ONCE = { sit_down: "sit", stand_up: "idle", pick_up: "idle" } as const;
+/** Clips a seated actor may play (sit_talk: sitting legs, talking torso). */
+export const SEATED_CLIPS = ["sit", "sit_talk", "stand_up"] as const;
+
 export const CHARACTERS = {
   fox: {
     clips: ["Walk", "Run", "Survey"],
     idle: { clip: "Survey" },
-    walk: { clip: "Walk" },
-    run: { clip: "Run" },
+    /** stride: the clip's natural ground speed (units/s at film scale), measured by stride.ts — gait
+     *  clips play at travel speed / stride so feet don't skate. */
+    walk: { clip: "Walk", stride: 1.43 },
+    run: { clip: "Run", stride: 2.81 },
     /** World-axis the rig faces at rotation 0 (from the manifest). */
     faces: [0, 1] as const,
     /** Extra uniform scale on top of the manifest's normalization (a fox is small). */
     scale: 0.66,
     /** Comfortable travel speed in units/s per gait — used to pick walk vs run. */
-    runAt: 2.2,
+    runAt: 2.9,
     /** Camera aim height (world units, after scaling) — roughly the head. */
     eye: 0.65,
     /** Flat material override for untextured rigs (the fox/dog samples render gray otherwise). */
@@ -56,13 +67,14 @@ export const CHARACTERS = {
     tint: [0.62, 0.52, 0.4] as const,
   },
   suited: {
-    clips: ["walk", "run", "idle", "wave", "wait", "talk", "sit_down", "sit", "stand_up", "pick_up"],
+    clips: ["walk", "run", "idle", "wave", "wait", "talk", "sit_down", "sit", "stand_up", "sit_talk", "pick_up"],
     idle: { clip: "idle" },
-    walk: { clip: "walk" },
-    run: { clip: "run" },
+    once: MAKEHUMAN_ONCE,
+    walk: { clip: "walk", stride: 1.41 }, // CMU 07_01: 1.48 m/s by hip travel in the mocap
+    run: { clip: "run", stride: 3.5 },    // CMU 09_03: 3.55 m/s
     faces: [0, 1] as const,
     scale: 1,
-    runAt: 2.4,
+    runAt: 3.2,
     eye: 1.45,
   },
   deer: {
@@ -122,6 +134,8 @@ export const PropSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("log"), id: z.string(), x: coord, z: coord, length: z.number().min(0.8).max(3).default(1.6), /** Yaw in degrees. */ angle: z.number().default(0) }),
   z.object({ kind: z.literal("pond"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.8).max(4).default(1.8) }),
   z.object({ kind: z.literal("lantern"), id: z.string(), x: coord, z: coord }),
+  /** A park bench; seat surface at `height` (adults ≈0.4, a woman ≈0.33, a child ≈0.24); front faces +z at angle 0. */
+  z.object({ kind: z.literal("bench"), id: z.string(), x: coord, z: coord, length: z.number().min(0.8).max(3).default(1.6), height: z.number().min(0.2).max(0.6).default(0.4), angle: z.number().default(0) }),
   // Baked-artifact props (docs/plan-surface-pack.md): art names come from the surface
   // library's generated tables so validation stays synchronous.
   z.object({ kind: z.literal("sign"), id: z.string(), x: coord, z: coord, art: z.enum(SURFACE_NAMES as unknown as [string, ...string[]]), /** Yaw in degrees. */ angle: z.number().default(0) }),
@@ -239,6 +253,7 @@ export const Film3DDocSchema = z
     }
 
     let prevEnd = 0;
+    const timeline: { actor: string; char: CharacterId; t: number; a: z.infer<typeof Film3DActionSchema>; beat: string }[] = [];
     for (const b of doc.beats) {
       if (b.start !== prevEnd) ctx.addIssue({ code: "custom", message: `beat "${b.id}" must start at ${prevEnd}s (beats are contiguous)` });
       if (b.end <= b.start) ctx.addIssue({ code: "custom", message: `beat "${b.id}" must end after it starts` });
@@ -256,9 +271,28 @@ export const Film3DDocSchema = z
           }
         }
         const dur = a.do === "move" ? a.dur : (a.dur ?? 1);
+        timeline.push({ actor: a.actor, char, t: b.start + a.at, a, beat: b.id });
         if (b.start + a.at + dur > b.end + 2) {
           ctx.addIssue({ code: "custom", message: `beat "${b.id}": action ${a.do}@${a.actor} overruns the beat by >2s` });
         }
+      }
+    }
+    // Seated state: sit_down leaves an actor seated until stand_up — they can't walk off a chair.
+    const seated = new Map<string, number>();
+    for (const e of timeline.sort((p, q) => p.t - q.t)) {
+      if (!("once" in CHARACTERS[e.char])) continue;
+      const at = seated.get(e.actor);
+      if (e.a.do === "move" && at !== undefined)
+        ctx.addIssue({ code: "custom", message: `beat "${e.beat}": "${e.actor}" is seated (sit_down at ${at}s) — play "stand_up" before moving` });
+      if (e.a.do === "play" && at !== undefined && !SEATED_CLIPS.includes(e.a.clip as never) && e.a.clip !== "sit_down")
+        ctx.addIssue({ code: "custom", message: `beat "${e.beat}": "${e.actor}" is seated (sit_down at ${at}s) — while seated play ${SEATED_CLIPS.map((c) => `"${c}"`).join(", ")}; "${e.a.clip}" is a standing clip` });
+      if (e.a.do === "play" && e.a.clip === "sit_down") {
+        if (at !== undefined) ctx.addIssue({ code: "custom", message: `beat "${e.beat}": "${e.actor}" is already seated (sit_down at ${at}s)` });
+        seated.set(e.actor, e.t);
+      }
+      if (e.a.do === "play" && e.a.clip === "stand_up") {
+        if (at === undefined) ctx.addIssue({ code: "custom", message: `beat "${e.beat}": "${e.actor}" plays stand_up but isn't seated — sit_down first` });
+        seated.delete(e.actor);
       }
     }
     if (prevEnd > 90) ctx.addIssue({ code: "custom", message: `the film is ${prevEnd}s — keep it ≤90s` });

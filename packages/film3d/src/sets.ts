@@ -280,6 +280,31 @@ export function log(b: SceneBuilder, look: SetLook, id: string, x: number, z: nu
     .mesh(`${id}__branch`, { parent: id, geometry: { kind: "cylinder", radius: r * 0.35, height: 0.34, segments: 7 }, material: `${id}__bark`, position: [length * 0.22, 0.1, 0.06], rotation: [0.5, 0, 0.4] });
 }
 
+/**
+ * A park bench people can really sit on: slatted seat at `height` (seat surface), backrest
+ * behind, iron legs. Front faces +z at angle 0, so a seated actor faces +z too. Seated hips sit
+ * ~0.1 m above the seat — adults 0.40, a woman 0.33, a child 0.24 (docs/plan-human-motion.md).
+ */
+export function bench(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, length: number, height: number, angleDeg: number): void {
+  const yaw = (angleDeg * Math.PI) / 180;
+  const depth = 0.42, slat = 0.035;
+  b.group(id, { position: [x, 0, z], rotation: [0, yaw, 0] });
+  b.material(`${id}__wood`, { color: v3.scale(look.trunk, 1.25), roughness: 0.8 })
+    .material(`${id}__iron`, { color: [0.12, 0.12, 0.13], roughness: 0.5, metalness: 0.6 });
+  for (let i = 0; i < 4; i++) // seat slats, front to back
+    b.mesh(`${id}__seat${i}`, { parent: id, geometry: { kind: "box", size: [length, slat, depth / 4 - 0.012] }, material: `${id}__wood`,
+      position: [0, height - slat / 2, depth / 2 - (i + 0.5) * (depth / 4)] });
+  for (let i = 0; i < 3; i++) // backrest slats
+    b.mesh(`${id}__back${i}`, { parent: id, geometry: { kind: "box", size: [length, 0.08, slat] }, material: `${id}__wood`,
+      position: [0, height + 0.12 + i * 0.12, -depth / 2 - 0.02], rotation: [-0.18, 0, 0] });
+  for (const sx of [-1, 1]) {
+    const lx = sx * (length / 2 - 0.12);
+    b.mesh(`${id}__leg${sx > 0 ? "R" : "L"}f`, { parent: id, geometry: { kind: "box", size: [0.05, height, 0.05] }, material: `${id}__iron`, position: [lx, height / 2, depth / 2 - 0.05] })
+      .mesh(`${id}__leg${sx > 0 ? "R" : "L"}b`, { parent: id, geometry: { kind: "box", size: [0.05, height + 0.42, 0.05] }, material: `${id}__iron`, position: [lx, (height + 0.42) / 2, -depth / 2 - 0.03] })
+      .mesh(`${id}__arm${sx > 0 ? "R" : "L"}`, { parent: id, geometry: { kind: "box", size: [0.05, 0.04, depth + 0.04] }, material: `${id}__iron`, position: [lx, height + 0.2, 0] });
+  }
+}
+
 /** A still pond: a low water disc ringed by shore stones. */
 export function pond(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, radius: number): void {
   b.group(id, { position: [x, 0, z] });
@@ -493,6 +518,7 @@ export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, d
     case "log": return log(b, look, p.id, p.x, p.z, p.length, p.angle);
     case "pond": return pond(b, look, p.id, p.x, p.z, p.radius);
     case "lantern": return lantern(b, look, p.id, p.x, p.z);
+    case "bench": return bench(b, look, p.id, p.x, p.z, p.length, p.height, p.angle);
     case "sign": return sign(b, look, p.id, p.x, p.z, p.art, p.angle);
     case "cutout": return cutout(b, look, p.id, p.x, p.z, p.art, p.height, p.depth, p.angle);
     case "screen": return screen(b, look, p.id, p.x, p.z, p.art, p.angle, durationFrames, fps);

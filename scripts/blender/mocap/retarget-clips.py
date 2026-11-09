@@ -64,6 +64,7 @@ out = {"fps": FPS_OUT, "axes": "glTF y-up world", "rotation": "world delta from 
        "hip_rest_m": tgt_hip_rest, "clips": []}
 
 for spec in clips:
+    if spec.get("compose"): continue   # assembled from other clips by scripts/mocap-merge.mjs
     before = set(bpy.data.objects)
     bpy.ops.import_anim.bvh(filepath=os.path.join(BVH_DIR, spec["bvh"]), axis_forward='-Z', axis_up='Y',
                             use_fps_scale=False, global_scale=1.0)
@@ -155,12 +156,22 @@ for spec in clips:
         "bones": {b: [[round(v, 6) for v in (r[1][b].x, r[1][b].y, r[1][b].z, r[1][b].w)] for r in rows] for b in pairs},
         "hip_dy": [round(r[2], 5) for r in rows],
         # glTF axes (x, z): Blender (x, y) -> glTF (x, -y)
-        **({"hip_dxz": [[round(r[3].x - rows[0][3].x, 5), round(-(r[3].y - rows[0][3].y), 5)] for r in rows]} if spec.get("travel") else {}),
+        # travel: "start" zeroes the offset at the first frame (sit down: starts standing on the
+        # spot), "end" at the last (stand up: finishes standing on the spot).
+        **({"hip_dxz": [[round(r[3].x - z[3].x, 5), round(-(r[3].y - z[3].y), 5)] for z in [rows[-1] if spec["travel"] == "end" else rows[0]] for r in rows]} if spec.get("travel") else {}),
     })
     act = src.animation_data.action if src.animation_data else None
     bpy.data.objects.remove(src, do_unlink=True)
     if act: bpy.data.actions.remove(act)
     print(f"RETARGET {spec['name']}: {len(pairs)} bones, {len(rows)} frames ({start}-{end}), yaw fix {math.degrees(yaw):.0f}°")
 
+# offset_from: a clip that continues another's pose (sit after sit_down) inherits that clip's final
+# hip offset, so the hand-over doesn't slide the body.
+by = {c["name"]: c for c in out["clips"]}
+for spec in clips:
+    if spec.get("offset_from") and not spec.get("compose"):
+        last = by[spec["offset_from"]]["hip_dxz"][-1]
+        c = by[spec["name"]]
+        c["hip_dxz"] = [[round(a + last[0], 5), round(b + last[1], 5)] for a, b in c.get("hip_dxz", [[0, 0]] * c["frames"])]
 json.dump(out, open(OUT, "w"))
 print("WROTE", OUT)

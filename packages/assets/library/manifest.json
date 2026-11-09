@@ -16,7 +16,8 @@
         "sit_down",
         "sit",
         "stand_up",
-        "pick_up"
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [
@@ -43,7 +44,8 @@
         "sit_down",
         "sit",
         "stand_up",
-        "pick_up"
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [
@@ -70,7 +72,8 @@
         "sit_down",
         "sit",
         "stand_up",
-        "pick_up"
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [
@@ -97,7 +100,8 @@
         "sit_down",
         "sit",
         "stand_up",
-        "pick_up"
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [
@@ -124,7 +128,8 @@
         "sit_down",
         "sit",
         "stand_up",
-        "pick_up"
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [

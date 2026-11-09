@@ -8,7 +8,7 @@ import { scene } from "@vsim/authoring";
 import { SceneRuntime } from "@vsim/core";
 
 const SPEC = JSON.parse(readFileSync(new URL("../../../scripts/blender/mocap/clips.json", import.meta.url), "utf8")) as {
-  clips: { name: string; loop?: boolean; travel?: boolean; ground?: string }[];
+  clips: { name: string; loop?: boolean; travel?: string; ground?: string; offset_from?: string }[];
 };
 const BODIES = ["human", "man", "kid", "suited", "speaker"];
 const FEET = ["foot_l", "foot_r", "ball_l", "ball_r"];
@@ -54,7 +54,7 @@ describe("mocap clip library (CMU → MakeHuman rigs)", () => {
   });
 
   it("clips play in place (films move the character) — except sit/stand travel", { timeout: 60_000 }, async () => {
-    for (const c of SPEC.clips.filter((c) => !c.travel)) {
+    for (const c of SPEC.clips.filter((c) => !c.travel && !c.offset_from)) {
       const { frames } = await track("suited", c.name, ["pelvis"]);
       const drift = Math.max(...frames.map((fr) => Math.hypot(fr.pelvis![0]! - frames[0]!.pelvis![0]!, fr.pelvis![2]! - frames[0]!.pelvis![2]!)));
       expect(drift, `${c.name}: hips wander ${drift.toFixed(2)} m`).toBeLessThan(0.35); // body sway only
@@ -74,6 +74,22 @@ describe("mocap clip library (CMU → MakeHuman rigs)", () => {
       const d = (a: Record<string, number[]>, b: Record<string, number[]>) => Math.max(...joints.map((j) => Math.hypot(...[0, 1, 2].map((k) => a[j]![k]! - b[j]![k]!))));
       const n = frames.length, local = Math.max(d(frames[1]!, first), d(last, frames[n - 2]!));
       expect(gap, `${c.name}: loop seam ${gap.toFixed(3)} m at ${worstJoint} vs neighbouring steps ${local.toFixed(3)} m`).toBeLessThan(Math.max(0.03, local * 2));
+    }
+  });
+
+  it("sit_down → sit → stand_up hand over without sliding the body", { timeout: 60_000 }, async () => {
+    for (const body of ["suited", "kid"]) {
+      const at = async (clip: string, which: "first" | "last") => {
+        const fr = (await track(body, clip, ["pelvis", "foot_l", "foot_r"])).frames;
+        return fr[which === "first" ? 0 : fr.length - 1]!;
+      };
+      const pairs = [[await at("sit_down", "last"), await at("sit", "first")], [await at("sit", "last"), await at("stand_up", "first")]] as const;
+      for (const [a, b] of pairs) {
+        for (const j of ["pelvis", "foot_l", "foot_r"]) {
+          const d = Math.hypot(a[j]![0]! - b[j]![0]!, a[j]![2]! - b[j]![2]!);
+          expect(d, `${body}: ${j} jumps ${d.toFixed(2)} m sideways at a sit hand-over`).toBeLessThan(0.15);
+        }
+      }
     }
   });
 

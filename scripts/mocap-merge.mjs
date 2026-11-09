@@ -17,6 +17,24 @@ const [clipsPath, ...glbs] = process.argv.slice(2);
 if (!clipsPath || !glbs.length) { console.error("usage: mocap-merge.mjs <clips.json> <library.glb>..."); process.exit(1); }
 const data = JSON.parse(readFileSync(clipsPath, "utf8"));
 
+// Composed clips (clips.json "compose": { base, upper }): legs + hips from `base` (looped), the
+// spine and everything above it from `upper` — e.g. sit_talk = sitting legs, talking torso. Upper
+// bones keep their WORLD orientation from `upper`, so the torso stays upright on the seat.
+const LOWER = new Set(["pelvis", "thigh_l", "calf_l", "foot_l", "ball_l", "thigh_r", "calf_r", "foot_r", "ball_r"]);
+const spec = JSON.parse(readFileSync(new URL("./blender/mocap/clips.json", import.meta.url), "utf8"));
+for (const c of spec.clips.filter((c) => c.compose)) {
+  const base = data.clips.find((k) => k.name === c.compose.base), upper = data.clips.find((k) => k.name === c.compose.upper);
+  if (!base || !upper) throw new Error(`compose ${c.name}: missing ${c.compose.base} or ${c.compose.upper}`);
+  const N = upper.frames, bi = (f) => (base.loop ? f % (base.frames - 1) : Math.min(f, base.frames - 1));
+  const bones = {};
+  for (const b of new Set([...Object.keys(base.bones), ...Object.keys(upper.bones)]))
+    bones[b] = Array.from({ length: N }, (_, f) => (LOWER.has(b) ? base.bones[b][bi(f)] : upper.bones[b][f]));
+  const composed = { name: c.name, loop: upper.loop, source: `${base.source} + ${upper.source}`, ground: base.ground, frames: N, bones,
+    hip_dy: Array.from({ length: N }, (_, f) => base.hip_dy[bi(f)]),
+    ...(base.hip_dxz ? { hip_dxz: Array.from({ length: N }, (_, f) => base.hip_dxz[bi(f)]) } : {}) };
+  data.clips = data.clips.filter((k) => k.name !== c.name).concat(composed);
+}
+
 // --- quaternion helpers ([x, y, z, w]) ---
 const qmul = (a, b) => [
   a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],

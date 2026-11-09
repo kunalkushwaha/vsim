@@ -27,7 +27,23 @@
     so the last key must repeat the first pose (else the blended pre-start pose is never shown).
   - Animation ORDER is API (`character()` with no clip plays `animations[0]`) → replace in place.
   - Clip durations arrive as 115.99999 frames → round, don't floor.
-- A (stride matching), C (Film3D) — next.
+- **A (stride matching) — done.** `packages/film3d/src/stride.ts` measures a gait clip's natural
+  ground speed from the rig (per contact vertex, strict contact, median), validated against
+  ground truth from the mocap's own hip travel: walk 1.41 vs 1.48 m/s, run 3.50 vs 3.55. Declared
+  as `CHARACTERS.*.walk/run.stride` (a test re-measures them, ±10%); compile plays gaits at
+  travel ÷ stride, clamped 0.6–1.6×; walk→run switch moved so both stay inside the clamp. Only for
+  rigs whose measurement is validated (suited, fox).
+- **C (Film3D) — done.** One-shot clips (`MAKEHUMAN_ONCE`: sit_down → sit, stand_up → idle,
+  pick_up → idle); a seated state the validator enforces (no walking off a chair; only `sit`,
+  `sit_talk`, `stand_up` while seated); `sit_talk` composed at merge time (sit legs + talk torso);
+  a `bench` prop; copilot prompt lists the clips and how to sit. Demo: `films/park-bench.film3d.json`.
+- Found, not fixed (follow-ups):
+  - **The woman / man / kid bodies aren't film-ready**: no clothes, a leftover MakeHuman helper
+    "skirt", hair as flat strips. They carry the clip library but aren't cast in Film3D until
+    they're regenerated (needs the MakeHuman toolchain — the cache is gone).
+  - **Generated quadrupeds don't plant their feet**: measured stride ≈ 0 for dog walk, owl,
+    squirrel and NEGATIVE for deer and wolf (they moonwalk). Fix in the creature generator.
+  - KayKit run measures 4.4 m/s — implausible for a 1.25 m chibi; not stride-matched until checked.
 
 ## Design
 ### A. Stride-matched gaits (engine-agnostic, all characters)
