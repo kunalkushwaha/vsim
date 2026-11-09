@@ -113,7 +113,7 @@ describe("Film3DDoc schema", () => {
       const { rig } = await loadCharacter(meta.id, 30);
       // Bind pose (no clip): mid-stride poses splay the feet and blur the toe→foot direction.
       const doc = scene({ fps: 30, duration: 2, width: 64, height: 64 })
-        .character("c", rig, { rotation: meta.rotation as [number, number, number] })
+        .character("c", { ...rig, clips: [] }, { rotation: meta.rotation as [number, number, number] }) // no clips → true bind pose
         .camera({ position: [0, 1, 6], lookAt: [0, 1, 0] })
         .build();
       const nodes = new SceneRuntime(doc).computeFrameState(0).nodes;

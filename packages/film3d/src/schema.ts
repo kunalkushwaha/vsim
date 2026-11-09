@@ -56,7 +56,7 @@ export const CHARACTERS = {
     tint: [0.62, 0.52, 0.4] as const,
   },
   suited: {
-    clips: ["walk", "run", "idle", "wave"],
+    clips: ["walk", "run", "idle", "wave", "wait", "talk", "sit_down", "sit", "stand_up", "pick_up"],
     idle: { clip: "idle" },
     walk: { clip: "walk" },
     run: { clip: "run" },
