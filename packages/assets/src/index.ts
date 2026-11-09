@@ -606,19 +606,49 @@ export async function loadSurface(name: string): Promise<{ width: number; height
 }
 // ---- Bundled static models (CC0 packs → self-contained GLBs; scripts/bundle-medieval.mjs) ----
 
-const modelsDir = fileURLToPath(new URL("../models/medieval/", import.meta.url));
+const modelsRoot = fileURLToPath(new URL("../models/", import.meta.url));
+/** Model packs, each `models/<pack>/manifest.json`: the KayKit medieval pack (CC0, bundled by
+ * scripts/bundle-medieval.mjs) and the assetkit pack (generated from small docs by
+ * scripts/blender/assetkit/make.py — buildings, flowers, lakes; real-world metres). */
+const MODEL_PACKS = ["medieval", "assetkit"] as const;
 
 export interface ModelMeta {
   name: string;
   file: string;
-  /** Pack-relative source path the GLB was bundled from. */
+  /** Pack-relative source path (medieval) or generator script (assetkit) the GLB came from. */
   source: string;
+  /** Which pack the model lives in. */
+  pack?: (typeof MODEL_PACKS)[number];
+  /** assetkit: building | flower | lake. */
+  kind?: string;
+  /** false when the origin is NOT the ground contact (e.g. a lake: origin = water level). */
+  grounded?: boolean;
+  /** assetkit: world size in metres in vsim/glTF axes — [width x, height y, depth z] — of the exported model. */
+  size_m?: number[];
 }
 
-/** List the bundled static models (buildings, clutter) from the medieval manifest. */
+/** List every bundled static model (buildings, clutter, flowers, lakes) across the packs. */
 export async function listModels(): Promise<ModelMeta[]> {
-  const raw = JSON.parse(await readFile(resolve(modelsDir, "manifest.json"), "utf8"));
-  return raw.models as ModelMeta[];
+  const out: ModelMeta[] = [];
+  const seen = new Map<string, string>();
+  for (const pack of MODEL_PACKS) {
+    const path = resolve(modelsRoot, pack, "manifest.json");
+    let text: string;
+    try {
+      text = await readFile(path, "utf8");
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") continue; // pack not generated yet
+      throw e;
+    }
+    const raw = JSON.parse(text) as { models: ModelMeta[] }; // a corrupt manifest must fail loudly
+    for (const m of raw.models) {
+      const prev = seen.get(m.name);
+      if (prev) throw new Error(`model name "${m.name}" is defined in both the ${prev} and ${pack} packs — names must be unique`);
+      seen.set(m.name, pack);
+      out.push({ ...m, pack });
+    }
+  }
+  return out;
 }
 
 // One decode per model per process: several props of the same kind share the MeshData
@@ -633,7 +663,7 @@ export function loadModel(name: string): Promise<MeshData> {
       const metas = await listModels();
       const meta = metas.find((m) => m.name === name);
       if (!meta) throw new Error(`unknown model "${name}" (available: ${metas.map((m) => m.name).join(", ")})`);
-      return loadGltf(resolve(modelsDir, meta.file));
+      return loadGltf(resolve(modelsRoot, meta.pack ?? "medieval", meta.file));
     })();
     modelCache.set(name, p);
   }
