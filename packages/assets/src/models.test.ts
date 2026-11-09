@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { listModels, loadModel } from "./index.js";
 
-describe("bundled static models (KayKit medieval)", () => {
+describe("bundled static models (KayKit medieval + assetkit)", () => {
   it("loads every manifest entry with uvs and the embedded palette texture", async () => {
     const metas = await listModels();
     expect(metas.map((m) => m.name)).toEqual(
@@ -16,11 +16,24 @@ describe("bundled static models (KayKit medieval)", () => {
       expect(md.texture!.data.length).toBe(md.texture!.width * md.texture!.height * 4);
       // Grounded at y=0 (props sit on the film's ground plane without offsets) — except
       // sub-node parts re-rooted at their pivot (the windmill fan is centered on its hub).
-      if (m.name !== "windmill-fan") {
+      if (m.name !== "windmill-fan" && m.grounded !== false) {
         let minY = Infinity;
         for (let i = 1; i < md.positions.length; i += 3) minY = Math.min(minY, md.positions[i]!);
         expect(minY, `${m.name} rests on the ground`).toBeGreaterThan(-0.05);
       }
+    }
+  });
+
+  it("model names are unique across packs and assetkit sizes match the loaded geometry", async () => {
+    const metas = await listModels();
+    expect(new Set(metas.map((m) => m.name)).size).toBe(metas.length);
+    for (const m of metas.filter((x) => x.pack === "assetkit")) {
+      const md = await loadModel(m.name);
+      let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < md.positions.length; i += 3)
+        for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k]!, md.positions[i + k]!); hi[k] = Math.max(hi[k]!, md.positions[i + k]!); }
+      const size = hi.map((h, k) => h - lo[k]!);
+      for (let k = 0; k < 3; k++) expect(size[k], `${m.name} size_m[${k}] (x, y-up, z)`).toBeCloseTo(m.size_m![k]!, 1);
     }
   });
 

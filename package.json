@@ -13,6 +13,7 @@
     "typecheck": "pnpm -r run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:assetkit": "${VSIM_BLENDER:-blender} --background --factory-startup --python scripts/blender/assetkit/test_assetkit.py",
     "lint": "node scripts/check-determinism.mjs",
     "render": "tsx packages/cli/src/index.ts render",
     "example:cube": "tsx packages/cli/src/index.ts render examples/01-cube/scene.ts -o out/cube.mp4",
