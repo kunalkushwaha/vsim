@@ -27,18 +27,31 @@ const ADVENTURER = {
   eye: 1.05,
 } as const;
 
+/**
+ * One-shot clips of the MakeHuman mocap library (scripts/blender/mocap/clips.json): each plays
+ * ONCE, then the actor settles into the named clip — sitting down leaves them seated ("sit")
+ * until they stand_up. Everything else loops for the action's duration.
+ */
+export const MAKEHUMAN_ONCE = { sit_down: "sit", stand_up: "idle", pick_up: "idle" } as const;
+/** How long each one-shot clip takes to finish (its clip length; a test keeps these in sync). */
+export const ONCE_DUR = { sit_down: 1.2, stand_up: 0.7, pick_up: 2.85 } as const;
+/** Clips a seated actor may play (sit_talk: sitting legs, talking torso). */
+export const SEATED_CLIPS = ["sit", "sit_talk", "stand_up"] as const;
+
 export const CHARACTERS = {
   fox: {
     clips: ["Walk", "Run", "Survey"],
     idle: { clip: "Survey" },
-    walk: { clip: "Walk" },
-    run: { clip: "Run" },
+    /** stride: the clip's natural ground speed (units/s at film scale), measured by stride.ts — gait
+     *  clips play at travel speed / stride so feet don't skate. */
+    walk: { clip: "Walk", stride: 1.43 },
+    run: { clip: "Run", stride: 2.81 },
     /** World-axis the rig faces at rotation 0 (from the manifest). */
     faces: [0, 1] as const,
     /** Extra uniform scale on top of the manifest's normalization (a fox is small). */
     scale: 0.66,
     /** Comfortable travel speed in units/s per gait — used to pick walk vs run. */
-    runAt: 2.2,
+    runAt: 2.9,
     /** Camera aim height (world units, after scaling) — roughly the head. */
     eye: 0.65,
     /** Flat material override for untextured rigs (the fox/dog samples render gray otherwise). */
@@ -56,13 +69,14 @@ export const CHARACTERS = {
     tint: [0.62, 0.52, 0.4] as const,
   },
   suited: {
-    clips: ["walk", "run", "idle", "wave"],
+    clips: ["walk", "run", "idle", "wave", "wait", "talk", "sit_down", "sit", "stand_up", "sit_talk", "pick_up"],
     idle: { clip: "idle" },
-    walk: { clip: "walk" },
-    run: { clip: "run" },
+    once: MAKEHUMAN_ONCE,
+    walk: { clip: "walk", stride: 1.41 }, // CMU 07_01: 1.48 m/s by hip travel in the mocap
+    run: { clip: "run", stride: 3.5 },    // CMU 09_03: 3.55 m/s
     faces: [0, 1] as const,
     scale: 1,
-    runAt: 2.4,
+    runAt: 3.2,
     eye: 1.45,
   },
   deer: {
@@ -122,6 +136,8 @@ export const PropSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("log"), id: z.string(), x: coord, z: coord, length: z.number().min(0.8).max(3).default(1.6), /** Yaw in degrees. */ angle: z.number().default(0) }),
   z.object({ kind: z.literal("pond"), id: z.string(), x: coord, z: coord, radius: z.number().min(0.8).max(4).default(1.8) }),
   z.object({ kind: z.literal("lantern"), id: z.string(), x: coord, z: coord }),
+  /** A park bench; seat surface at `height` (adults ≈0.4, a woman ≈0.33, a child ≈0.24); front faces +z at angle 0. */
+  z.object({ kind: z.literal("bench"), id: z.string(), x: coord, z: coord, length: z.number().min(0.8).max(3).default(1.6), height: z.number().min(0.2).max(0.6).default(0.4), angle: z.number().default(0) }),
   // Baked-artifact props (docs/plan-surface-pack.md): art names come from the surface
   // library's generated tables so validation stays synchronous.
   z.object({ kind: z.literal("sign"), id: z.string(), x: coord, z: coord, art: z.enum(SURFACE_NAMES as unknown as [string, ...string[]]), /** Yaw in degrees. */ angle: z.number().default(0) }),
@@ -239,6 +255,7 @@ export const Film3DDocSchema = z
     }
 
     let prevEnd = 0;
+    const timeline: { actor: string; char: CharacterId; t: number; a: z.infer<typeof Film3DActionSchema>; beat: string }[] = [];
     for (const b of doc.beats) {
       if (b.start !== prevEnd) ctx.addIssue({ code: "custom", message: `beat "${b.id}" must start at ${prevEnd}s (beats are contiguous)` });
       if (b.end <= b.start) ctx.addIssue({ code: "custom", message: `beat "${b.id}" must end after it starts` });
@@ -255,10 +272,56 @@ export const Film3DDocSchema = z
             ctx.addIssue({ code: "custom", message: `beat "${b.id}": ${char} "${a.actor}" has no clip "${a.clip}" (available: ${clips.join(", ")})` });
           }
         }
-        const dur = a.do === "move" ? a.dur : (a.dur ?? 1);
+        const dur = a.dur; // zod has applied each action's default (play 2s, face 0.6s) by now
+        timeline.push({ actor: a.actor, char, t: b.start + a.at, a, beat: b.id });
         if (b.start + a.at + dur > b.end + 2) {
           ctx.addIssue({ code: "custom", message: `beat "${b.id}": action ${a.do}@${a.actor} overruns the beat by >2s` });
         }
+      }
+    }
+    // Seated state + one-shot clips, on INTERVALS (an action runs [t, t+dur]): sit_down leaves an
+    // actor seated until stand_up; one-shots play to completion with nothing overlapping them.
+    const iv = (e: (typeof timeline)[number]) => [e.t, e.t + e.a.dur] as const;
+    const overlaps = (a: readonly [number, number], b: readonly [number, number]) => a[0] < b[1] - 1e-6 && b[0] < a[1] - 1e-6;
+    const who = (e: (typeof timeline)[number]) => `beat "${e.beat}": "${e.actor}"`;
+    const what = (e: (typeof timeline)[number]) => (e.a.do === "play" ? `"${e.a.clip}"` : e.a.do);
+    for (const actor of new Set(timeline.map((e) => e.actor))) {
+      const evs = timeline.filter((e) => e.actor === actor).sort((p, q) => p.t - q.t);
+      if (!("once" in CHARACTERS[evs[0]!.char])) continue;
+      const isPlay = (e: (typeof timeline)[number], clip: string) => e.a.do === "play" && e.a.clip === clip;
+      // one-shots: long enough to finish, and alone
+      for (const e of evs) {
+        if (e.a.do !== "play" || !(e.a.clip in ONCE_DUR)) continue;
+        const need = ONCE_DUR[e.a.clip as keyof typeof ONCE_DUR];
+        if (e.a.dur < need) ctx.addIssue({ code: "custom", message: `${who(e)} plays "${e.a.clip}" for ${e.a.dur}s — it needs ≥${need}s to finish (set "dur")` });
+        const isOnce = (o: (typeof timeline)[number]) => o.a.do === "play" && o.a.clip in ONCE_DUR;
+        // a pair of overlapping one-shots is reported once (from the earlier one)
+        for (const o of evs) if (o !== e && overlaps(iv(e), iv(o)) && !(isOnce(o) && evs.indexOf(o) < evs.indexOf(e)))
+          ctx.addIssue({ code: "custom", message: `${who(e)}: ${what(o)} at ${o.t}s overlaps "${e.a.clip}" (${e.t}–${(e.t + e.a.dur).toFixed(2)}s) — one-shot clips play alone` });
+      }
+      // seated windows: (sit_down end, stand_up start); only sit / sit_talk inside, only there
+      const windows: [number, number][] = [];
+      let down: (typeof timeline)[number] | undefined;
+      for (const e of evs) {
+        if (isPlay(e, "sit_down")) {
+          if (down) ctx.addIssue({ code: "custom", message: `${who(e)} is already seated (sit_down at ${down.t}s)` });
+          down = e;
+        } else if (isPlay(e, "stand_up")) {
+          if (!down) ctx.addIssue({ code: "custom", message: `${who(e)} plays stand_up but isn't seated — sit_down first` });
+          else windows.push([down.t + down.a.dur, e.t]);
+          down = undefined;
+        }
+      }
+      if (down) windows.push([down.t + down.a.dur, Infinity]);
+      for (const e of evs) {
+        if (isPlay(e, "sit_down") || isPlay(e, "stand_up")) continue;
+        const seatedClip = e.a.do === "play" && (SEATED_CLIPS as readonly string[]).includes(e.a.clip);
+        const inside = windows.some((w) => e.t >= w[0] - 1e-6 && e.t + e.a.dur <= w[1] + 1e-6);
+        const touches = windows.find((w) => overlaps(iv(e), w));
+        if (seatedClip && !inside)
+          ctx.addIssue({ code: "custom", message: `${who(e)} plays ${what(e)} but isn't seated for all of it — "sit_down" first (and "stand_up" after)` });
+        if (!seatedClip && touches)
+          ctx.addIssue({ code: "custom", message: `${who(e)} is seated ${touches[0]}–${touches[1] === Infinity ? "end" : `${touches[1]}s`} — no ${what(e)} while seated (only ${SEATED_CLIPS.filter((c) => c !== "stand_up").map((c) => `"${c}"`).join(", ")}); "stand_up" first` });
       }
     }
     if (prevEnd > 90) ctx.addIssue({ code: "custom", message: `the film is ${prevEnd}s — keep it ≤90s` });

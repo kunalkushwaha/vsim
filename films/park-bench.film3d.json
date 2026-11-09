@@ -1,0 +1,44 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "A Seat in the Park",
+  "set": "meadow",
+  "ambience": "wind",
+  "props": [
+    { "kind": "bench", "id": "bench", "x": 0, "z": -1, "height": 0.4, "angle": 0 },
+    { "kind": "tree", "id": "oak", "x": -2.6, "z": -3.4, "height": 5, "variant": "broadleaf" },
+    { "kind": "tree", "id": "oak2", "x": 4.5, "z": -5.5, "height": 4.2, "variant": "broadleaf" },
+    { "kind": "tree", "id": "pine", "x": -7, "z": -7, "height": 5.5, "variant": "conifer" },
+    { "kind": "bush", "id": "bush1", "x": 2.2, "z": -1.8, "radius": 0.7 },
+    { "kind": "bush", "id": "bush2", "x": -1.8, "z": -1.9, "radius": 0.5 },
+    { "kind": "flowers", "id": "bed", "x": 3.2, "z": 1.5, "radius": 0.9 },
+    { "kind": "lantern", "id": "lamp", "x": 1.4, "z": -1.3 },
+    { "kind": "rock", "id": "stone", "x": 1.6, "z": 2.4, "radius": 0.18 }
+  ],
+  "actors": [{ "id": "sam", "character": "suited", "x": -5.5, "z": 1.2, "facing": [0, -0.68] }],
+  "beats": [
+    { "id": "arrive", "start": 0, "end": 6.5, "caption": "Sam takes the long way home.",
+      "actions": [
+        { "do": "move", "actor": "sam", "to": [0, -0.68], "at": 0, "dur": 4.4 },
+        { "do": "face", "actor": "sam", "to": [0, 5], "at": 4.4, "dur": 0.5 },
+        { "do": "play", "actor": "sam", "clip": "sit_down", "at": 5.0, "dur": 1.5 } ] },
+    { "id": "think", "start": 6.5, "end": 13, "caption": "A quiet minute to think it over.",
+      "actions": [
+        { "do": "play", "actor": "sam", "clip": "sit_talk", "at": 2.2, "dur": 3.8 } ] },
+    { "id": "decide", "start": 13, "end": 19, "caption": "Then something on the path catches his eye.",
+      "actions": [
+        { "do": "play", "actor": "sam", "clip": "stand_up", "at": 0.3, "dur": 1.1 },
+        { "do": "move", "actor": "sam", "to": [1.6, 2.0], "at": 1.6, "dur": 2.0 },
+        { "do": "play", "actor": "sam", "clip": "pick_up", "at": 3.7, "dur": 2.9 } ] },
+    { "id": "go", "start": 19, "end": 25, "caption": "He pockets it, and heads on.",
+      "actions": [
+        { "do": "play", "actor": "sam", "clip": "wave", "at": 0.6, "dur": 1.6 },
+        { "do": "move", "actor": "sam", "to": [7, 5], "at": 2.3, "dur": 3.7 } ] }
+  ],
+  "camera": [
+    { "at": 0, "dur": 6.5, "shot": "follow", "target": "sam" },
+    { "at": 6.5, "dur": 6.5, "shot": "orbit", "target": [0, 0.9, -0.8], "distance": 3.6, "height": 1.3, "angle": -30, "sweep": 35 },
+    { "at": 13, "dur": 6, "shot": "wide", "target": [0.8, 0.8, 0.6], "distance": 6.5, "height": 1.7, "angle": 35 },
+    { "at": 19, "dur": 6, "shot": "wide", "target": [3, 0.9, 2.5], "distance": 8, "height": 2, "angle": -10 }
+  ]
+}
