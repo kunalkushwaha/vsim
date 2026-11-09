@@ -18,7 +18,7 @@
         0,
         0
       ],
-      "faces": "+x",
+      "faces": "+z",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
     },
     {
@@ -39,7 +39,7 @@
         0,
         0
       ],
-      "faces": "+x",
+      "faces": "+z",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
     },
     {
@@ -60,7 +60,7 @@
         0,
         0
       ],
-      "faces": "+x",
+      "faces": "+z",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin from the makehuman_system_assets pack — all CC0."
     },
     {
@@ -81,7 +81,7 @@
         0,
         0
       ],
-      "faces": "+x",
+      "faces": "+z",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin + clothing from the makehuman_system_assets pack — all CC0."
     },
     {
@@ -102,7 +102,7 @@
         0,
         0
       ],
-      "faces": "+x",
+      "faces": "+z",
       "credit": "Generated with MakeHuman / MPFB 2 (makehumancommunity.org); skin + jaw-drop morph from MakeHuman data — all CC0."
     },
     {
@@ -123,7 +123,7 @@
         0,
         0
       ],
-      "faces": "+x",
+      "faces": "+z",
       "credit": "VRM 1.0 avatar generated CC0 by vsim from a MakeHuman / MPFB 2 human (makehumancommunity.org); VRM extension injected by scripts/make-vrm.mjs."
     },
     {
@@ -198,7 +198,7 @@
         0,
         0
       ],
-      "faces": "-x",
+      "faces": "+z",
       "credit": "Fox from glTF Sample Assets — CC0 model (© 2014 PixelMannen) + CC BY 4.0 rig/animation (© 2014 tomkranis; © 2017 AsoboStudio, scurest)."
     },
     {

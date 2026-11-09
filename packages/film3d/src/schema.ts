@@ -34,7 +34,7 @@ export const CHARACTERS = {
     walk: { clip: "Walk" },
     run: { clip: "Run" },
     /** World-axis the rig faces at rotation 0 (from the manifest). */
-    faces: [-1, 0] as const,
+    faces: [0, 1] as const,
     /** Extra uniform scale on top of the manifest's normalization (a fox is small). */
     scale: 0.66,
     /** Comfortable travel speed in units/s per gait — used to pick walk vs run. */
@@ -60,7 +60,7 @@ export const CHARACTERS = {
     idle: { clip: "idle" },
     walk: { clip: "walk" },
     run: { clip: "run" },
-    faces: [1, 0] as const,
+    faces: [0, 1] as const,
     scale: 1,
     runAt: 2.4,
     eye: 1.45,

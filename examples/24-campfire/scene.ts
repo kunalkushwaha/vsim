@@ -104,7 +104,7 @@ export default (async () => {
   b.character("fox", rig, {
     clip: "Survey", loop: true, material: "fox",
     scale: [fs, fs, fs],
-    rotation: [0, 0.5, 0], // the fox faces −x at rest; yaw it to look at the fire
+    rotation: [0, Math.atan2(-1.5, 0.85), 0], // the fox faces +z at rest; yaw it toward the fire at the origin
     position: [1.5, 0, -0.85],
   });
 
