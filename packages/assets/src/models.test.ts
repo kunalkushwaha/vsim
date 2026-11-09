@@ -37,6 +37,23 @@ describe("bundled static models (KayKit medieval + assetkit)", () => {
     }
   });
 
+  it("carries a baked emissive map exactly when the manifest says the model glows", async () => {
+    const assetkit = (await listModels()).filter((x) => x.pack === "assetkit");
+    expect(assetkit.some((m) => m.emissive)).toBe(true);
+    for (const m of assetkit) {
+      const md = await loadModel(m.name);
+      if (!m.emissive) { expect(md.emissiveMap, m.name).toBeUndefined(); continue; }
+      const em = md.emissiveMap!;
+      expect(em, `${m.name} emissiveMap`).toBeDefined();
+      expect(em.data.length).toBe(em.width * em.height * 4);
+      let lit = 0;
+      for (let i = 0; i < em.data.length; i += 4) if (em.data[i]! + em.data[i + 1]! + em.data[i + 2]! > 90) lit++;
+      expect(lit, `${m.name} has lit texels`).toBeGreaterThan(0);
+    }
+    // KayKit models never glow.
+    expect((await loadModel("tavern")).emissiveMap).toBeUndefined();
+  });
+
   it("caches: two loads of the same model share one MeshData", async () => {
     expect(await loadModel("barrel")).toBe(await loadModel("barrel"));
   });

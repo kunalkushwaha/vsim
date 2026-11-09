@@ -1,0 +1,35 @@
+{
+  "version": "film3d-1",
+  "fps": 30,
+  "title": "Evening on Diwali Lane",
+  "set": "meadow",
+  "weather": "fireflies",
+  "ambience": "wind",
+  "transition": { "to": "dusk", "start": 2, "end": 14 },
+  "props": [
+    { "kind": "building", "id": "haveli", "x": 0, "z": -7.5, "variant": "haveli", "angle": 0 },
+    { "kind": "building", "id": "cottage", "x": 9, "z": -6, "variant": "cottage", "angle": -25, "scale": 0.55 },
+    { "kind": "flowers", "id": "marigolds-l", "x": -3, "z": -0.8, "radius": 0.9, "variant": "marigold", "scale": 2 },
+    { "kind": "flowers", "id": "marigolds-r", "x": 3, "z": -0.8, "radius": 0.9, "variant": "marigold", "scale": 2 },
+    { "kind": "pond", "id": "pond", "x": -7, "z": 2, "radius": 2.2 },
+    { "kind": "flowers", "id": "lotus", "x": -5.6, "z": 3.4, "radius": 0.7, "variant": "lotus", "scale": 0.8 },
+    { "kind": "lantern", "id": "lamp-l", "x": -1.6, "z": 0.6 },
+    { "kind": "lantern", "id": "lamp-r", "x": 1.6, "z": 0.6 },
+    { "kind": "tree", "id": "tree1", "x": -10, "z": -9, "height": 5, "variant": "broadleaf" },
+    { "kind": "bush", "id": "bush1", "x": 6, "z": -1.5, "radius": 0.8 }
+  ],
+  "actors": [{ "id": "kid", "character": "suited", "x": 2, "z": 6, "facing": [0, -7] }],
+  "beats": [
+    { "id": "arrive", "start": 0, "end": 7, "caption": "The lane is quiet as the sun goes down.",
+      "actions": [{ "do": "move", "actor": "kid", "to": [0, 1.2], "at": 0.5, "dur": 5.5 }] },
+    { "id": "look", "start": 7, "end": 12, "caption": "Somewhere upstairs, a window is already lit.",
+      "actions": [{ "do": "face", "actor": "kid", "to": [0, -7], "at": 0.2, "dur": 1 }] },
+    { "id": "home", "start": 12, "end": 16, "caption": "Diwali has come home.",
+      "actions": [{ "do": "move", "actor": "kid", "to": [0, -0.6], "at": 0.3, "dur": 2.5 }] }
+  ],
+  "camera": [
+    { "at": 0, "dur": 7, "shot": "follow", "target": "kid" },
+    { "at": 7, "dur": 5, "shot": "wide", "target": [0, 5, -7], "distance": 26, "height": 4.5 },
+    { "at": 12, "dur": 4, "shot": "orbit", "target": [0, 5, -7], "distance": 25, "height": 6, "sweep": 40, "angle": -20 }
+  ]
+}

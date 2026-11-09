@@ -4,6 +4,8 @@ export {
 } from "./schema.js";
 export { compileFilm3D, FILM3D_WIDTH, FILM3D_HEIGHT } from "./compile.js";
 export { SET_LOOKS, applySet, campfire, placeProp, type SetLook } from "./sets.js";
+export { ASSETKIT_MODELS, ASSETKIT_BUILDINGS, ASSETKIT_FLOWERS } from "./assetkit.js";
+export { footprintHalf, flowerPatch, STAGE_HALF, MAX_PATCH_MODELS, MAX_FILM_FLOWER_MODELS } from "./assetkit-props.js";
 export { generateFilm3D, reviewFilm3D } from "./generate.js";
 export { narrationScript, type NarrationSpec } from "./narration.js";
 export { isFilm3D, film3dToScene } from "./load.js";
