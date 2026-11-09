@@ -105,6 +105,8 @@ for spec in clips:
             for e0 in [f for f in frames if end - search <= f <= end + search and f - s0 >= spec.get("min", 360)]:
                 d = dist(e0, s0 - step) + dist(e0 - step, s0 - 2 * step)
                 if best is None or d < best[0]: best = (d, s0, e0)
+        if best is None:
+            raise SystemExit(f"clip {spec['name']}: no loop window — start±search .. end±search never spans min={spec.get('min', 360)} frames; widen the window, 'search' or lower 'min'")
         _, start, end = best
         keep = [i for i, f in enumerate(frames) if start - blend * step <= f <= end]
         frames, samples = [frames[i] for i in keep], [samples[i] for i in keep]
@@ -173,5 +175,7 @@ for spec in clips:
         last = by[spec["offset_from"]]["hip_dxz"][-1]
         c = by[spec["name"]]
         c["hip_dxz"] = [[round(a + last[0], 5), round(b + last[1], 5)] for a, b in c.get("hip_dxz", [[0, 0]] * c["frames"])]
+# Composed clips are assembled by scripts/mocap-merge.mjs from the clips above — pass the recipe on.
+out["compose"] = [{"name": c["name"], **c["compose"]} for c in clips if c.get("compose")]
 json.dump(out, open(OUT, "w"))
 print("WROTE", OUT)

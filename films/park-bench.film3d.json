@@ -29,7 +29,7 @@
       "actions": [
         { "do": "play", "actor": "sam", "clip": "stand_up", "at": 0.3, "dur": 1.1 },
         { "do": "move", "actor": "sam", "to": [1.6, 2.0], "at": 1.6, "dur": 2.0 },
-        { "do": "play", "actor": "sam", "clip": "pick_up", "at": 3.7, "dur": 2.8 } ] },
+        { "do": "play", "actor": "sam", "clip": "pick_up", "at": 3.7, "dur": 2.9 } ] },
     { "id": "go", "start": 19, "end": 25, "caption": "He pockets it, and heads on.",
       "actions": [
         { "do": "play", "actor": "sam", "clip": "wave", "at": 0.6, "dur": 1.6 },

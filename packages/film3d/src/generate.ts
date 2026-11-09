@@ -16,8 +16,9 @@ const CHARACTER_NOTES = CHARACTER_IDS.map((id) => {
 }).join("\n") + `
 
 People ("suited") move with real motion capture. Their clips:
-- "idle" (attentive standing), "wait" (shifting weight, bored), "talk" (explaining with hand gestures — use it whenever a person speaks or narrates), "wave" (greeting), "pick_up" (crouch, pick something up, ~2.8s, plays once).
-- Sitting: "sit_down" (~1.4s, plays once) leaves them SEATED; while seated play only "sit", "sit_talk" (talking while seated) or "stand_up" (~1s, plays once). A seated person cannot move — "stand_up" first.
+- "idle" (attentive standing), "wait" (shifting weight, bored), "talk" (explaining with hand gestures — use it whenever a person speaks or narrates), "wave" (greeting), "pick_up" (crouch and pick something up).
+- One-shot clips play once and need a "dur" of at least: "pick_up" 2.85, "sit_down" 1.2, "stand_up" 0.7 — and nothing else for that person may overlap them (finish a move before sitting down; start walking after stand_up ends).
+- Sitting: "sit_down" leaves them SEATED; while seated play only "sit" or "sit_talk" (talking while seated) until "stand_up". A seated person cannot move or "face" — "stand_up" first. "sit"/"sit_talk" need a sit_down before them.
 - To sit on a bench: stand the person 0.32 units in front of the bench's x/z, "face" the same way the bench faces (angle 0 → toward +z), then "sit_down". Use bench "height" 0.4 for an adult.`;
 
 const INSTRUCTIONS = `You are the film director for vsim, a deterministic 3D animation engine. Turn the topic into a Film3DDoc — a short 3D film as pure JSON. Reply with ONLY the JSON object, no prose, no code fences.

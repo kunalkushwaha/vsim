@@ -21,10 +21,10 @@ const data = JSON.parse(readFileSync(clipsPath, "utf8"));
 // spine and everything above it from `upper` — e.g. sit_talk = sitting legs, talking torso. Upper
 // bones keep their WORLD orientation from `upper`, so the torso stays upright on the seat.
 const LOWER = new Set(["pelvis", "thigh_l", "calf_l", "foot_l", "ball_l", "thigh_r", "calf_r", "foot_r", "ball_r"]);
-const spec = JSON.parse(readFileSync(new URL("./blender/mocap/clips.json", import.meta.url), "utf8"));
-for (const c of spec.clips.filter((c) => c.compose)) {
-  const base = data.clips.find((k) => k.name === c.compose.base), upper = data.clips.find((k) => k.name === c.compose.upper);
-  if (!base || !upper) throw new Error(`compose ${c.name}: missing ${c.compose.base} or ${c.compose.upper}`);
+// The recipe travels with the data (retarget-clips.py copies clips.json's "compose" entries).
+for (const c of data.compose ?? []) {
+  const base = data.clips.find((k) => k.name === c.base), upper = data.clips.find((k) => k.name === c.upper);
+  if (!base || !upper) throw new Error(`compose ${c.name}: missing ${c.base} or ${c.upper} in ${clipsPath}`);
   const N = upper.frames, bi = (f) => (base.loop ? f % (base.frames - 1) : Math.min(f, base.frames - 1));
   const bones = {};
   for (const b of new Set([...Object.keys(base.bones), ...Object.keys(upper.bones)]))

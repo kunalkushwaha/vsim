@@ -118,6 +118,13 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
     states.set(a.id, { character: a.character, track: new Track(a.x, a.z), yawKeys: [{ frame: 0, value: yaw0 }], yaw: yaw0, rest: info.idle.clip });
   }
 
+  /** Blend an actor back into its rest clip — the idle (at its own rate), or "sit" once seated. */
+  const settle = (actor: string, st: ActorState, frame: number) => {
+    const idle = CHARACTERS[st.character].idle;
+    const speed = st.rest === idle.clip && "speed" in idle ? idle.speed : undefined;
+    b.playClip(actor, st.rest, { startFrame: frame, blendIn: 10, loop: true, speed });
+  };
+
   // Absolute-time action list, sorted so each actor's state advances chronologically.
   const acts = doc.beats
     .flatMap((beat) => beat.actions.map((action) => ({ sec: beat.start + action.at, action })))
@@ -150,7 +157,7 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
       const g = info[gait] as { clip: string; stride?: number };
       const rate = g.stride ? Math.min(GAIT_RATE[1], Math.max(GAIT_RATE[0], speed / g.stride)) : undefined;
       b.playClip(action.actor, g.clip, { startFrame: startF, blendIn: 8, loop: true, speed: rate });
-      b.playClip(action.actor, info.idle.clip, { startFrame: endF, blendIn: 10, loop: true, speed: "speed" in info.idle ? info.idle.speed : undefined });
+      settle(action.actor, st, endF);
     } else if (action.do === "face") {
       const pos = st.track.at(startF);
       const [tx, tz] = action.to;
@@ -164,8 +171,7 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
       const once = "once" in info ? (info.once as Record<string, string>)[action.clip] : undefined;
       b.playClip(action.actor, action.clip, { startFrame: startF, blendIn: 8, loop: !once });
       if (once) st.rest = once === "idle" ? info.idle.clip : once;
-      const restIsIdle = st.rest === info.idle.clip;
-      b.playClip(action.actor, st.rest, { startFrame: F(sec + action.dur), blendIn: 10, loop: true, speed: restIsIdle && "speed" in info.idle ? info.idle.speed : undefined });
+      settle(action.actor, st, F(sec + action.dur));
     }
   }
 

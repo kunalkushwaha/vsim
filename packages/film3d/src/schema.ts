@@ -33,6 +33,8 @@ const ADVENTURER = {
  * until they stand_up. Everything else loops for the action's duration.
  */
 export const MAKEHUMAN_ONCE = { sit_down: "sit", stand_up: "idle", pick_up: "idle" } as const;
+/** How long each one-shot clip takes to finish (its clip length; a test keeps these in sync). */
+export const ONCE_DUR = { sit_down: 1.2, stand_up: 0.7, pick_up: 2.85 } as const;
 /** Clips a seated actor may play (sit_talk: sitting legs, talking torso). */
 export const SEATED_CLIPS = ["sit", "sit_talk", "stand_up"] as const;
 
@@ -270,29 +272,56 @@ export const Film3DDocSchema = z
             ctx.addIssue({ code: "custom", message: `beat "${b.id}": ${char} "${a.actor}" has no clip "${a.clip}" (available: ${clips.join(", ")})` });
           }
         }
-        const dur = a.do === "move" ? a.dur : (a.dur ?? 1);
+        const dur = a.dur; // zod has applied each action's default (play 2s, face 0.6s) by now
         timeline.push({ actor: a.actor, char, t: b.start + a.at, a, beat: b.id });
         if (b.start + a.at + dur > b.end + 2) {
           ctx.addIssue({ code: "custom", message: `beat "${b.id}": action ${a.do}@${a.actor} overruns the beat by >2s` });
         }
       }
     }
-    // Seated state: sit_down leaves an actor seated until stand_up — they can't walk off a chair.
-    const seated = new Map<string, number>();
-    for (const e of timeline.sort((p, q) => p.t - q.t)) {
-      if (!("once" in CHARACTERS[e.char])) continue;
-      const at = seated.get(e.actor);
-      if (e.a.do === "move" && at !== undefined)
-        ctx.addIssue({ code: "custom", message: `beat "${e.beat}": "${e.actor}" is seated (sit_down at ${at}s) — play "stand_up" before moving` });
-      if (e.a.do === "play" && at !== undefined && !SEATED_CLIPS.includes(e.a.clip as never) && e.a.clip !== "sit_down")
-        ctx.addIssue({ code: "custom", message: `beat "${e.beat}": "${e.actor}" is seated (sit_down at ${at}s) — while seated play ${SEATED_CLIPS.map((c) => `"${c}"`).join(", ")}; "${e.a.clip}" is a standing clip` });
-      if (e.a.do === "play" && e.a.clip === "sit_down") {
-        if (at !== undefined) ctx.addIssue({ code: "custom", message: `beat "${e.beat}": "${e.actor}" is already seated (sit_down at ${at}s)` });
-        seated.set(e.actor, e.t);
+    // Seated state + one-shot clips, on INTERVALS (an action runs [t, t+dur]): sit_down leaves an
+    // actor seated until stand_up; one-shots play to completion with nothing overlapping them.
+    const iv = (e: (typeof timeline)[number]) => [e.t, e.t + e.a.dur] as const;
+    const overlaps = (a: readonly [number, number], b: readonly [number, number]) => a[0] < b[1] - 1e-6 && b[0] < a[1] - 1e-6;
+    const who = (e: (typeof timeline)[number]) => `beat "${e.beat}": "${e.actor}"`;
+    const what = (e: (typeof timeline)[number]) => (e.a.do === "play" ? `"${e.a.clip}"` : e.a.do);
+    for (const actor of new Set(timeline.map((e) => e.actor))) {
+      const evs = timeline.filter((e) => e.actor === actor).sort((p, q) => p.t - q.t);
+      if (!("once" in CHARACTERS[evs[0]!.char])) continue;
+      const isPlay = (e: (typeof timeline)[number], clip: string) => e.a.do === "play" && e.a.clip === clip;
+      // one-shots: long enough to finish, and alone
+      for (const e of evs) {
+        if (e.a.do !== "play" || !(e.a.clip in ONCE_DUR)) continue;
+        const need = ONCE_DUR[e.a.clip as keyof typeof ONCE_DUR];
+        if (e.a.dur < need) ctx.addIssue({ code: "custom", message: `${who(e)} plays "${e.a.clip}" for ${e.a.dur}s — it needs ≥${need}s to finish (set "dur")` });
+        const isOnce = (o: (typeof timeline)[number]) => o.a.do === "play" && o.a.clip in ONCE_DUR;
+        // a pair of overlapping one-shots is reported once (from the earlier one)
+        for (const o of evs) if (o !== e && overlaps(iv(e), iv(o)) && !(isOnce(o) && evs.indexOf(o) < evs.indexOf(e)))
+          ctx.addIssue({ code: "custom", message: `${who(e)}: ${what(o)} at ${o.t}s overlaps "${e.a.clip}" (${e.t}–${(e.t + e.a.dur).toFixed(2)}s) — one-shot clips play alone` });
       }
-      if (e.a.do === "play" && e.a.clip === "stand_up") {
-        if (at === undefined) ctx.addIssue({ code: "custom", message: `beat "${e.beat}": "${e.actor}" plays stand_up but isn't seated — sit_down first` });
-        seated.delete(e.actor);
+      // seated windows: (sit_down end, stand_up start); only sit / sit_talk inside, only there
+      const windows: [number, number][] = [];
+      let down: (typeof timeline)[number] | undefined;
+      for (const e of evs) {
+        if (isPlay(e, "sit_down")) {
+          if (down) ctx.addIssue({ code: "custom", message: `${who(e)} is already seated (sit_down at ${down.t}s)` });
+          down = e;
+        } else if (isPlay(e, "stand_up")) {
+          if (!down) ctx.addIssue({ code: "custom", message: `${who(e)} plays stand_up but isn't seated — sit_down first` });
+          else windows.push([down.t + down.a.dur, e.t]);
+          down = undefined;
+        }
+      }
+      if (down) windows.push([down.t + down.a.dur, Infinity]);
+      for (const e of evs) {
+        if (isPlay(e, "sit_down") || isPlay(e, "stand_up")) continue;
+        const seatedClip = e.a.do === "play" && (SEATED_CLIPS as readonly string[]).includes(e.a.clip);
+        const inside = windows.some((w) => e.t >= w[0] - 1e-6 && e.t + e.a.dur <= w[1] + 1e-6);
+        const touches = windows.find((w) => overlaps(iv(e), w));
+        if (seatedClip && !inside)
+          ctx.addIssue({ code: "custom", message: `${who(e)} plays ${what(e)} but isn't seated for all of it — "sit_down" first (and "stand_up" after)` });
+        if (!seatedClip && touches)
+          ctx.addIssue({ code: "custom", message: `${who(e)} is seated ${touches[0]}–${touches[1] === Infinity ? "end" : `${touches[1]}s`} — no ${what(e)} while seated (only ${SEATED_CLIPS.filter((c) => c !== "stand_up").map((c) => `"${c}"`).join(", ")}); "stand_up" first` });
       }
     }
     if (prevEnd > 90) ctx.addIssue({ code: "custom", message: `the film is ${prevEnd}s — keep it ≤90s` });

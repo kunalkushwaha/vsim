@@ -37,6 +37,13 @@
   pick_up → idle); a seated state the validator enforces (no walking off a chair; only `sit`,
   `sit_talk`, `stand_up` while seated); `sit_talk` composed at merge time (sit legs + talk torso);
   a `bench` prop; copilot prompt lists the clips and how to sit. Demo: `films/park-bench.film3d.json`.
+- **Review (medium):** 10 findings, all fixed with tests — the seated state and one-shots are
+  now validated on intervals [t, t+dur] (no action overlaps a one-shot; one-shots need their full
+  length: pick_up 2.85 s, sit_down 1.2, stand_up 0.7; no move/face/standing clip while seated;
+  sit/sit_talk only while seated); every settle goes through one rest-clip helper;
+  fetch-cmu.sh skips composed clips and fails loudly; loop-search failure names the clip; the
+  compose recipe travels in the retarget output. Re-review (low): 1 more (duplicate overlap
+  report) — fixed.
 - Found, not fixed (follow-ups):
   - **The woman / man / kid bodies aren't film-ready**: no clothes, a leftover MakeHuman helper
     "skirt", hair as flat strips. They carry the clip library but aren't cast in Film3D until
