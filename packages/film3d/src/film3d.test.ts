@@ -113,7 +113,7 @@ describe("Film3DDoc schema", () => {
       const { rig } = await loadCharacter(meta.id, 30);
       // Bind pose (no clip): mid-stride poses splay the feet and blur the toe→foot direction.
       const doc = scene({ fps: 30, duration: 2, width: 64, height: 64 })
-        .character("c", rig, { rotation: meta.rotation as [number, number, number] })
+        .character("c", { ...rig, clips: [] }, { rotation: meta.rotation as [number, number, number] }) // no clips → true bind pose
         .camera({ position: [0, 1, 6], lookAt: [0, 1, 0] })
         .build();
       const nodes = new SceneRuntime(doc).computeFrameState(0).nodes;
@@ -171,10 +171,13 @@ describe("compileFilm3D", () => {
     const { doc } = parseFilm3D(FILM);
     const sceneDoc = await compileFilm3D(doc!);
     const mesh = sceneDoc.nodes.find((n) => n.id === "fox__mesh")!;
-    const clips = (mesh as any).clips as { clipId: string; startFrame?: number }[];
+    const clips = (mesh as any).clips as { clipId: string; startFrame?: number; speed?: number }[];
     const ids = clips.map((c) => c.clipId);
-    // 7.2 units in 4.5s ≈ 1.6 u/s — past a fox's run threshold, so auto-gait picks Run.
-    expect(ids).toContain("fox/Run");
+    // 7.2 units in 4.5s ≈ 1.6 u/s — a brisk fox WALK (natural pace 1.43), played ~1.12× so the
+    // feet stay planted; a run would have to play at half speed (stride matching, plan-human-motion).
+    expect(ids).toContain("fox/Walk");
+    expect(ids).not.toContain("fox/Run");
+    expect(clips.find((c) => c.clipId === "fox/Walk")!.speed).toBeCloseTo(Math.hypot(7, 1.5) / 4.5 / 1.43, 3); // (4,-1) → (-3,0.5)
     expect(ids.filter((id) => id === "fox/Survey").length).toBeGreaterThanOrEqual(2); // idle base + settle + play action
   });
 

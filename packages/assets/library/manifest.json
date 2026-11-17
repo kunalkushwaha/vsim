@@ -10,7 +10,14 @@
         "walk",
         "run",
         "idle",
-        "wave"
+        "wave",
+        "wait",
+        "talk",
+        "sit_down",
+        "sit",
+        "stand_up",
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [
@@ -31,7 +38,14 @@
         "walk",
         "run",
         "idle",
-        "wave"
+        "wave",
+        "wait",
+        "talk",
+        "sit_down",
+        "sit",
+        "stand_up",
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [
@@ -52,7 +66,14 @@
         "walk",
         "run",
         "idle",
-        "wave"
+        "wave",
+        "wait",
+        "talk",
+        "sit_down",
+        "sit",
+        "stand_up",
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [
@@ -73,7 +94,14 @@
         "walk",
         "run",
         "idle",
-        "wave"
+        "wave",
+        "wait",
+        "talk",
+        "sit_down",
+        "sit",
+        "stand_up",
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [
@@ -94,7 +122,14 @@
         "walk",
         "run",
         "idle",
-        "wave"
+        "wave",
+        "wait",
+        "talk",
+        "sit_down",
+        "sit",
+        "stand_up",
+        "pick_up",
+        "sit_talk"
       ],
       "scale": 1,
       "rotation": [
