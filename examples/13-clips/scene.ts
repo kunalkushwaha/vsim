@@ -17,14 +17,14 @@ export default (async () => {
     .light({ type: "directional", intensity: 0.9, direction: [-0.4, -1, -0.3] })
     .mesh("ground", { geometry: { kind: "plane", size: [40, 40] }, material: "grass" });
 
-  // one human per clip, spread across X, turned to face the camera (rig faces +x → yaw -90° → +z)
+  // one human per clip, spread across X, facing the camera (the rig faces +z at rest)
   clips.forEach((clip, i) => {
     s.character(`h_${clip}`, rig, {
       clip,
       loop: true,
       material: "skin",
       scale: [meta.scale, meta.scale, meta.scale],
-      rotation: [meta.rotation[0], -Math.PI / 2, meta.rotation[2]],
+      rotation: [meta.rotation[0], 0, meta.rotation[2]],
       position: [(i - (clips.length - 1) / 2) * 1.8, 0, 0],
     });
   });

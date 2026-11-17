@@ -23,7 +23,7 @@ export default (async () => {
       loop: true,
       material: "skin",
       scale: [meta.scale, meta.scale, meta.scale],
-      rotation: [meta.rotation[0], -Math.PI / 2, meta.rotation[2]], // face the camera
+      rotation: [meta.rotation[0], 0, meta.rotation[2]], // MakeHuman rigs face +z — toward the camera
       position: [(i - 1) * 1.6, 0, 0],
     });
   });

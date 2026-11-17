@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { listCharacters } from "@vsim/assets";
+import { listCharacters, loadCharacter } from "@vsim/assets";
+import { scene } from "@vsim/authoring";
 import { SceneRuntime } from "@vsim/core";
 import { parseFilm3D, CHARACTERS, CHARACTER_IDS } from "./schema.js";
 import { compileFilm3D } from "./compile.js";
@@ -93,6 +94,48 @@ describe("Film3DDoc schema", () => {
       const axis: Record<string, readonly [number, number]> = { "+x": [1, 0], "-x": [-1, 0], "+z": [0, 1], "-z": [0, -1] };
       expect(CHARACTERS[id].faces).toEqual(axis[meta!.faces]);
     }
+  });
+
+  // The manifest's `faces` was hand-written and wrong for the MakeHuman humans and the fox
+  // (+x / -x — they really face +z), so every film walked them sideways. Derive the facing from
+  // the skeleton itself: bipeds point their toes forward of their feet; everything else carries
+  // its head forward of its tail (or hips).
+  it("manifest `faces` matches the facing measured from each rig's skeleton", async () => {
+    // Rigs whose skeleton has no usable front/back landmarks — listed, never skipped silently.
+    const UNMEASURABLE: Record<string, string> = {
+      person: "CesiumMan sample: bones are Skeleton_*_joint_N, no foot/toe/head/tail names",
+      figure: "box figure: head sits exactly over the pelvis, so head→hips has no direction",
+    };
+    const wrong: string[] = [];
+    let measuredCount = 0;
+    for (const meta of await listCharacters()) {
+      if (meta.id in UNMEASURABLE) continue;
+      const { rig } = await loadCharacter(meta.id, 30);
+      // Bind pose (no clip): mid-stride poses splay the feet and blur the toe→foot direction.
+      const doc = scene({ fps: 30, duration: 2, width: 64, height: 64 })
+        .character("c", rig, { rotation: meta.rotation as [number, number, number] })
+        .camera({ position: [0, 1, 6], lookAt: [0, 1, 0] })
+        .build();
+      const nodes = new SceneRuntime(doc).computeFrameState(0).nodes;
+      const pos = (re: RegExp) => {
+        const hits = nodes.filter((n) => n.id.startsWith("c/") && re.test(n.id.slice(2)));
+        if (!hits.length) return undefined;
+        return [12, 14].map((k) => hits.reduce((a, n) => a + n.worldMatrix[k]!, 0) / hits.length) as [number, number];
+      };
+      const toe = pos(/^(ball|toes?)[._]?[lr]?_\d+$/i), foot = pos(/^foot[._]?[lr]_\d+$/i);
+      const head = pos(/^(b_)?head(_0\d)?_\d+$/i), tail = pos(/^(b_)?tail0?1?(_0\d+)?_\d+$/i) ?? pos(/^(b_)?(hips?|pelvis)(_0\d)?_\d+$/i);
+      const [a, b] = toe && foot ? [toe, foot] : head && tail ? [head, tail] : [undefined, undefined];
+      expect(a && b, `${meta.id}: no front/back landmarks — fix the patterns or list it in UNMEASURABLE`).toBeTruthy();
+      const dx = a![0] - b![0], dz = a![1] - b![1];
+      // Refuse to guess: the landmarks must be clearly apart and clearly along one axis.
+      expect(Math.hypot(dx, dz), `${meta.id}: landmarks coincide`).toBeGreaterThan(0.02);
+      expect(Math.max(Math.abs(dx), Math.abs(dz)) / Math.hypot(dx, dz), `${meta.id}: facing is not axis-aligned`).toBeGreaterThan(0.85);
+      const measured = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? "+x" : "-x") : dz > 0 ? "+z" : "-z";
+      measuredCount++;
+      if (measured !== meta.faces) wrong.push(`${meta.id}: manifest says ${meta.faces}, rig faces ${measured}`);
+    }
+    expect(measuredCount).toBeGreaterThanOrEqual(18); // every character except the listed ones
+    expect(wrong).toEqual([]);
   });
 });
 

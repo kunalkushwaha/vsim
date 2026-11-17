@@ -20,7 +20,7 @@ export default (async () => {
     .character("h", rig, {
       clip: "idle", loop: true, material: "skin", blendIn: 10,
       scale: [meta.scale, meta.scale, meta.scale],
-      rotation: [meta.rotation[0], -Math.PI / 2.6, meta.rotation[2]],
+      rotation: [meta.rotation[0], 0.33, meta.rotation[2]], // rig faces +z; turn a little toward the camera (three-quarter view)
     })
     .playClip("h", "walk", { startFrame: 50, blendIn: 15, loop: true })
     .playClip("h", "run", { startFrame: 100, blendIn: 15, loop: true })

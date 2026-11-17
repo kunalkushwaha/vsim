@@ -24,7 +24,6 @@ export default (async () => {
     // open the mouth on every beat (morph weight 0 → 1 → 0); path is "morph.<targetName>"
     .animate("speaker__mesh", "morph.mouthOpen", pulseKeyframes(beats, { base: 0, peak: 1, release: 5 }))
     .audio("beat", { gain: 0.8, beats })
-    // close-up on the face (the rig faces +x, so frame it from the front)
     // close-up on the face, framed from the front (the rig faces +z, toward +z like example 12)
     .camera({ position: [0, 1.52, 1.5], lookAt: [0, 1.5, 0], fov: 28 })
     .build();
