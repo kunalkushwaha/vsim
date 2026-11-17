@@ -5,6 +5,7 @@
 import { spawn } from "node:child_process";
 import { CHARACTERS, CHARACTER_IDS, parseFilm3D, type Film3DDoc } from "./schema.js";
 import { SURFACE_NAMES, CUTOUT_NAMES, SCREEN_NAMES } from "./surfaces.js";
+import { ASSETKIT_MODELS, ASSETKIT_BUILDINGS, ASSETKIT_FLOWERS } from "./assetkit.js";
 import { extractJson, parseReviewReply, type ReviewStill } from "./review.js";
 import { parseCreature, type CreatureDoc } from "./creature.js";
 import { parseSurface, SURFACE_FONT, type SurfaceDoc } from "./surface-gen.js";
@@ -30,7 +31,7 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
     { "kind": "rock", "id", "x", "z", "radius": 0.1..1.5 },
     { "kind": "campfire", "id", "x", "z" },                  // a full lit fire: stones, logs, flames, sparks, warm light
     { "kind": "bush", "id", "x", "z", "radius": 0.3..1.5 },
-    { "kind": "flowers", "id", "x", "z", "radius": 0.3..2 },  // a patch of blossoms in the set's accent colors
+    { "kind": "flowers", "id", "x", "z", "radius": 0.3..2, "variant"?: ${ASSETKIT_FLOWERS.map((n) => JSON.stringify(n)).join("|")}, "scale"?: 0.5..3 },  // no variant: blossoms in the set's accent colors; with a variant: a patch of REAL flower models (marigold = festive/devotional, lotus = sacred/serene, at a pond's edge); "scale" exaggerates them for a storybook look
     { "kind": "stump", "id", "x", "z", "radius": 0.15..0.5 },
     { "kind": "log", "id", "x", "z", "length": 0.8..3, "angle": yaw degrees },  // fallen trunk — a natural bench/obstacle
     { "kind": "pond", "id", "x", "z", "radius": 0.8..4 },     // still water ringed by shore stones
@@ -38,7 +39,7 @@ The world is a 3D ground plane; x/z coordinates in [-14, 14], y is up. The camer
     { "kind": "sign", "id", "x", "z", "art": one of ${JSON.stringify([...SURFACE_NAMES])}, "angle": yaw degrees },  // a wooden board with real painted artwork
     { "kind": "cutout", "id", "x", "z", "art": one of ${JSON.stringify([...CUTOUT_NAMES])}, "height": 0.5..4, "angle": yaw },  // an extruded silhouette, like stage scenery
     { "kind": "screen", "id", "x", "z", "art": one of ${JSON.stringify([...SCREEN_NAMES])}, "angle": yaw },  // an ANIMATED kiosk panel — its artwork plays on a loop (eye-catching at dusk/night)
-    { "kind": "building", "id", "x", "z", "variant": "hut"|"tavern"|"windmill"|"well"|"tower", "angle": yaw },  // a real medieval building model (CC0) — stage villages, farms, castles
+    { "kind": "building", "id", "x", "z", "variant": "hut"|"tavern"|"windmill"|"well"|"tower"|${ASSETKIT_BUILDINGS.map((n) => JSON.stringify(n)).join("|")}, "angle": yaw, "scale"?: 0.25..2 },  // hut…tower: small medieval models — villages, farms, castles. ${ASSETKIT_BUILDINGS.map((n) => `${n} = real-size ${ASSETKIT_MODELS[n]!.size_m[0]}×${ASSETKIT_MODELS[n]!.size_m[2]}m, ${ASSETKIT_MODELS[n]!.size_m[1]}m tall`).join("; ")} (haveli: an Indian mansion — streets, festivals; cottage: a brick village home). Real-size buildings are LANDMARKS: one at the back of the stage (z ≈ -7), facing the camera (angle 0 = front toward +z); the whole footprint must stay within ±14; a few warm lit windows are baked in (always on — they read best at dusk/night)
     { "kind": "clutter", "id", "x", "z", "variant": "barrel"|"crate"|"tent"|"wheelbarrow"|"sack", "angle": yaw }  // small village clutter models — cluster 2-3 near buildings for life
   ],
   "actors": [                                                // ≤3

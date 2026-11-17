@@ -473,8 +473,14 @@ function appendMesh(json: any, buffers: Uint8Array[], mesh: any, world: Mat4, me
       for (let i = 0; i < vcount; i++) merged.uvs.push(uv?.[i * 2] ?? 0, uv?.[i * 2 + 1] ?? 0);
     }
     if (!merged.texture) {
-      const tex = texRef(json, buffers, json.materials?.[prim.material]?.pbrMetallicRoughness?.baseColorTexture);
-      if (tex) merged.texture = tex;
+      const mat = json.materials?.[prim.material];
+      const tex = texRef(json, buffers, mat?.pbrMetallicRoughness?.baseColorTexture);
+      if (tex) {
+        merged.texture = tex;
+        // Baked emissive (assetkit lit windows) rides with the colour atlas it was baked beside.
+        const em = texRef(json, buffers, mat?.emissiveTexture);
+        if (em) merged.emissiveMap = em;
+      }
     }
     for (const k of idx) merged.indices.push(baseVertex + k);
     if (!nrm) computeNormals(merged, baseVertex);
@@ -625,6 +631,8 @@ export interface ModelMeta {
   grounded?: boolean;
   /** assetkit: world size in metres in vsim/glTF axes — [width x, height y, depth z] — of the exported model. */
   size_m?: number[];
+  /** assetkit: the GLB carries a baked emissive map (lit windows) — loadModel() returns it as `emissiveMap`. */
+  emissive?: boolean;
 }
 
 /** List every bundled static model (buildings, clutter, flowers, lakes) across the packs. */

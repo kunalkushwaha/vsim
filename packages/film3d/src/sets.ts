@@ -7,6 +7,7 @@ import type { Film3DProp } from "./schema.js";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { loadSurface, loadSurfaceFrames, loadModel, svgToMesh } from "@vsim/assets";
+import { flowerPatch } from "./assetkit-props.js";
 
 export interface SetLook {
   background: Vec3;
@@ -234,6 +235,21 @@ const scatter = (n: number, radius: number) =>
     return { x: Math.cos(a) * r, z: Math.sin(a) * r, i };
   });
 
+/**
+ * A patch of REAL flower models (assetkit — lotus, marigold, …) laid out by flowerPatch(),
+ * the same pure layout the schema budgets against. One shared white material: the colour is
+ * in each model's baked atlas.
+ */
+export async function flowerModels(b: SceneBuilder, id: string, x: number, z: number, radius: number, variant: string, scale: number): Promise<void> {
+  const md = await loadModel(variant);
+  b.group(id, { position: [x, 0, z] });
+  b.material(`${id}__baked`, { color: [1, 1, 1], roughness: 0.75 });
+  flowerPatch(variant, radius, scale).forEach((f, i) => {
+    b.mesh(`${id}__f${i}`, { parent: id, geometry: { kind: "mesh", data: md as never }, material: `${id}__baked`,
+      position: [f.x, 0, f.z], rotation: [0, (f.yaw * Math.PI) / 180, 0], scale: [f.s, f.s, f.s] });
+  });
+}
+
 /** A shrub: overlapping flattened leaf spheres, sized to read at film distance. */
 export function bush(b: SceneBuilder, look: SetLook, id: string, x: number, z: number, radius: number): void {
   b.group(id, { position: [x, 0, z] });
@@ -361,10 +377,14 @@ const MODEL_SCALE: Record<string, number> = {
   barrel: 3, crate: 3, tent: 2.6, wheelbarrow: 3, sack: 3.5,
 };
 
-/** A bundled CC0 model (building or clutter) at (x, 0, z) — palette texture, white material. */
-export async function model(b: SceneBuilder, id: string, name: string, x: number, z: number, angleDeg: number): Promise<void> {
+/**
+ * A bundled CC0 model (building or clutter) at (x, 0, z) — baked/palette texture, white
+ * material. KayKit models get their MODEL_SCALE; assetkit models are real metres (scale 1,
+ * since 1 film unit = 1 m). `scale` multiplies either.
+ */
+export async function model(b: SceneBuilder, id: string, name: string, x: number, z: number, angleDeg: number, scale = 1): Promise<void> {
   const md = await loadModel(name);
-  const s = MODEL_SCALE[name] ?? 1;
+  const s = (MODEL_SCALE[name] ?? 1) * scale;
   b.material(`${id}__palette`, { color: [1, 1, 1], roughness: 0.85 });
   b.mesh(id, {
     geometry: { kind: "mesh", data: md as never },
@@ -383,9 +403,9 @@ const WINDMILL_FAN_PIVOT: Vec3 = [0, 0.957, 0.332];
  * hub — scripts/bundle-medieval.mjs), so a linear rotation track spins the fan for the whole
  * film. One stately revolution every 8 seconds.
  */
-export async function windmill(b: SceneBuilder, id: string, x: number, z: number, angleDeg: number, durationFrames: number, fps: number): Promise<void> {
+export async function windmill(b: SceneBuilder, id: string, x: number, z: number, angleDeg: number, durationFrames: number, fps: number, scale = 1): Promise<void> {
   const [body, fan] = await Promise.all([loadModel("windmill"), loadModel("windmill-fan")]);
-  const s = MODEL_SCALE.windmill!;
+  const s = MODEL_SCALE.windmill! * scale;
   b.group(id, { position: [x, 0, z], rotation: [0, (angleDeg * Math.PI) / 180, 0], scale: [s, s, s] });
   b.material(`${id}__palette`, { color: [1, 1, 1], roughness: 0.85 });
   b.mesh(`${id}__body`, { parent: id, geometry: { kind: "mesh", data: body as never }, material: `${id}__palette` });
@@ -488,7 +508,9 @@ export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, d
     case "rock": b.rock(p.id, { position: [p.x, 0, p.z], radius: p.radius, color: look.stone }); return;
     case "campfire": return campfire(b, p.id, p.x, p.z, durationFrames);
     case "bush": return bush(b, look, p.id, p.x, p.z, p.radius);
-    case "flowers": return flowers(b, look, p.id, p.x, p.z, p.radius);
+    case "flowers": return p.variant
+      ? flowerModels(b, p.id, p.x, p.z, p.radius, p.variant, p.scale)
+      : flowers(b, look, p.id, p.x, p.z, p.radius);
     case "stump": return stump(b, look, p.id, p.x, p.z, p.radius);
     case "log": return log(b, look, p.id, p.x, p.z, p.length, p.angle);
     case "pond": return pond(b, look, p.id, p.x, p.z, p.radius);
@@ -497,8 +519,8 @@ export async function placeProp(b: SceneBuilder, look: SetLook, p: Film3DProp, d
     case "cutout": return cutout(b, look, p.id, p.x, p.z, p.art, p.height, p.depth, p.angle);
     case "screen": return screen(b, look, p.id, p.x, p.z, p.art, p.angle, durationFrames, fps);
     case "building": return p.variant === "windmill"
-      ? windmill(b, p.id, p.x, p.z, p.angle, durationFrames, fps)
-      : model(b, p.id, p.variant, p.x, p.z, p.angle);
+      ? windmill(b, p.id, p.x, p.z, p.angle, durationFrames, fps, p.scale)
+      : model(b, p.id, p.variant, p.x, p.z, p.angle, p.scale);
     case "clutter": return model(b, p.id, p.variant, p.x, p.z, p.angle);
     default: { const exhaustive: never = p; throw new Error(`unhandled prop kind ${(exhaustive as Film3DProp).kind}`); }
   }
