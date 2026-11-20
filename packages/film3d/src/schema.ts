@@ -63,7 +63,7 @@ export const CHARACTERS = {
   suited: {
     clips: ["walk", "run", "idle", "wave"],
     idle: { clip: "idle" },
-    walk: { clip: "walk", stride: 1.2 },
+    walk: { clip: "walk", stride: 1.42 },
     run: { clip: "run", stride: 4.61 },
     faces: [0, 1] as const,
     scale: 1,

@@ -26,7 +26,8 @@ export default (async () => {
     })
     // Walk forward along the facing/stride axis (+z) at a stride-matched speed, filmed side-on with a
     // STATIC camera — so the feet plant and the body travels (no foot-slide, no "treadmill" look).
-    .animate("human", "position.z", [{ frame: 0, value: -2.5 }, { frame: 90, value: 2.5 }])
+    // (the walk clip's feet move at 1.10 u/s — scripts/blender/gait-report.py — so 3.3 units in 3 s).
+    .animate("human", "position.z", [{ frame: 0, value: -1.65 }, { frame: 90, value: 1.65 }])
     .camera({ position: [5, 1.5, 0], lookAt: [0, 0.85, 0], fov: 40 })
     .build();
 })();

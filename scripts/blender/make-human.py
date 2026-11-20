@@ -182,51 +182,13 @@ def author(name, keys):
     trk.strips.new(name, 1, act)   # stash → its own track (gives the action a user + a clean name)
     ad.action = None
 
-# Retarget a CMU mocap BVH onto the game_engine rig: copy each source bone's rotation RELATIVE TO ITS
-# REST onto the matching target bone relative to ITS rest (handles different rest poses). Rotations
-# only → an in-place clip (the scene translates the character).
-BVH_MAP = {
-    "pelvis": "Hips", "spine_01": "LowerBack", "spine_02": "Spine", "spine_03": "Spine1", "neck_01": "Neck", "head": "Head",
-    "clavicle_l": "LeftShoulder", "upperarm_l": "LeftArm", "lowerarm_l": "LeftForeArm", "hand_l": "LeftHand",
-    "clavicle_r": "RightShoulder", "upperarm_r": "RightArm", "lowerarm_r": "RightForeArm", "hand_r": "RightHand",
-    "thigh_l": "LeftUpLeg", "calf_l": "LeftLeg", "foot_l": "LeftFoot", "ball_l": "LeftToeBase",
-    "thigh_r": "RightUpLeg", "calf_r": "RightLeg", "foot_r": "RightFoot", "ball_r": "RightToeBase",
-}
-def _depth(b):
-    d = 0
-    while b.parent: b = b.parent; d += 1
-    return d
-def retarget(bvh_path, name, fstart, fend, fstep):
-    before = set(bpy.data.objects)
-    bpy.ops.import_anim.bvh(filepath=bvh_path, axis_forward='-Z', axis_up='Y', use_fps_scale=False)
-    src = next(o for o in bpy.data.objects if o not in before and o.type == 'ARMATURE')
-    imp_act = src.animation_data.action if src.animation_data else None  # the raw BVH action (drop later)
-    pairs = {tb: sb for tb, sb in BVH_MAP.items() if tb in pb and sb in src.pose.bones}
-    tgt_rest = {tb: arm.data.bones[tb].matrix_local.to_3x3() for tb in pairs}
-    src_rest = {tb: src.data.bones[sb].matrix_local.to_3x3() for tb, sb in pairs.items()}
-    order = sorted(pairs, key=lambda b: _depth(arm.data.bones[b]))  # parents first
-    for b in pb: b.rotation_mode = 'XYZ'  # keyframe euler (matches the other clips' mode at export time)
-    act = bpy.data.actions.new(name + "_rt"); ad.action = act  # temp name so it won't collide with the BVH action
-    bpy.context.view_layer.objects.active = arm
-    of = 1
-    for f in range(fstart, fend + 1, fstep):
-        bpy.context.scene.frame_set(f)
-        se = src.evaluated_get(bpy.context.evaluated_depsgraph_get())  # animated pose lives on the evaluated copy
-        for tb in order:
-            Rw = se.pose.bones[pairs[tb]].matrix.to_3x3() @ src_rest[tb].inverted() @ tgt_rest[tb]
-            p = pb[tb]
-            p.matrix = mathutils.Matrix.Translation(p.matrix.to_translation()) @ Rw.to_4x4()
-            bpy.context.view_layer.update()  # so children read the updated parent pose
-            p.keyframe_insert("rotation_euler", frame=of)
-        of += 1
-    key_relax(1)  # relaxed (curled) fingers — the mocap has no finger data
-    trk = ad.nla_tracks.new(); trk.name = name; trk.strips.new(name, 1, act); ad.action = None
-    bpy.data.objects.remove(src, do_unlink=True)
-    if imp_act:
-        try: bpy.data.actions.remove(imp_act)  # free the raw BVH action's name
-        except Exception: pass
-    act.name = name  # now safe to claim "walk"
-    print(f"RETARGET {name}: {len(pairs)} bones, {of - 1} frames from {os.path.basename(bvh_path)}")
+# Retarget a CMU mocap BVH onto the game_engine rig (rotations only → an in-place clip; the scene
+# translates the character). The window is the cleanest whole gait cycle (gaitlib.best_loop) so
+# the loop tiles without a pop. Shared with scripts/blender/patch-walk.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import gaitlib
+def retarget(bvh_path, name, fstep):
+    gaitlib.retarget_bvh(arm, bvh_path, name, fstep, extra_keys=key_relax)
 
 # A hand-keyed walk cycle (fallback): thigh swing + knee bend + foot roll, counter-swinging bent arms.
 def pose(rt, rc, rf, lt, lc, lf, ra, la, el=0.18):
@@ -234,7 +196,7 @@ def pose(rt, rc, rf, lt, lc, lf, ra, la, el=0.18):
             thighL:(lt,0,0), calfL:(lc,0,0), footL:(lf,0,0),
             armR:(ra,0,0), armL:(la,0,0), forearmR:(el,0,0), forearmL:(el,0,0)}
 if walk_bvh:
-    retarget(walk_bvh, "walk", 30, 150, 4)  # a steady stride window of the mocap, 120fps → 30fps
+    retarget(walk_bvh, "walk", 4)  # the cleanest whole stride cycle of the mocap, 120fps → 30fps
 else:
     A = 0.5
     author("walk", [
