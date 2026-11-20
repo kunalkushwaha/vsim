@@ -19,8 +19,8 @@ import { SURFACE_NAMES, CUTOUT_NAMES, SCREEN_NAMES } from "./surfaces.js";
 const ADVENTURER = {
   clips: ["Idle", "Walking_A", "Running_A", "Cheer", "Interact", "PickUp", "Sit_Floor_Idle", "Lie_Down", "Spellcasting", "Jump_Full_Short"],
   idle: { clip: "Idle" },
-  walk: { clip: "Walking_A" },
-  run: { clip: "Running_A" },
+  walk: { clip: "Walking_A", stride: 0.81 },
+  run: { clip: "Running_A", stride: 4.06 },
   faces: [0, 1] as const,
   scale: 1,
   runAt: 2.4,
@@ -31,13 +31,18 @@ export const CHARACTERS = {
   fox: {
     clips: ["Walk", "Run", "Survey"],
     idle: { clip: "Survey" },
-    walk: { clip: "Walk" },
-    run: { clip: "Run" },
+    /**
+     * `stride`: the ground speed the clip was authored for, in the RIG's native units/s (the
+     * planted foot's horizontal speed), measured by scripts/blender/gait-report.py. The
+     * compiler plays the clip at `travelSpeed / (stride × scale)` so feet stop sliding.
+     */
+    walk: { clip: "Walk", stride: 100.8 },
+    run: { clip: "Run", stride: 163.0 },
     /** World-axis the rig faces at rotation 0 (from the manifest). */
     faces: [0, 1] as const,
     /** Extra uniform scale on top of the manifest's normalization (a fox is small). */
     scale: 0.66,
-    /** Comfortable travel speed in units/s per gait — used to pick walk vs run. */
+    /** Travel speed (world units/s) above which the actor runs (×0.7, see compile.ts). */
     runAt: 2.2,
     /** Camera aim height (world units, after scaling) — roughly the head. */
     eye: 0.65,
@@ -47,8 +52,8 @@ export const CHARACTERS = {
   dog: {
     clips: ["walk", "trot"],
     idle: { clip: "walk", speed: 0.18 }, // no idle clip — a slow shuffle reads as resting
-    walk: { clip: "walk" },
-    run: { clip: "trot" },
+    walk: { clip: "walk", stride: 0.63 },
+    run: { clip: "trot", stride: 1.04 },
     faces: [0, -1] as const,
     scale: 1,
     runAt: 2.0,
@@ -58,8 +63,8 @@ export const CHARACTERS = {
   suited: {
     clips: ["walk", "run", "idle", "wave"],
     idle: { clip: "idle" },
-    walk: { clip: "walk" },
-    run: { clip: "run" },
+    walk: { clip: "walk", stride: 1.2 },
+    run: { clip: "run", stride: 4.61 },
     faces: [0, 1] as const,
     scale: 1,
     runAt: 2.4,
@@ -68,8 +73,8 @@ export const CHARACTERS = {
   deer: {
     clips: ["walk", "run", "idle"],
     idle: { clip: "idle" },
-    walk: { clip: "walk" },
-    run: { clip: "run" },
+    walk: { clip: "walk", stride: 0.88 },
+    run: { clip: "run", stride: 1.79 },
     faces: [0, -1] as const,
     scale: 1,
     runAt: 2.8,
@@ -78,8 +83,8 @@ export const CHARACTERS = {
   bear: {
     clips: ["walk", "run", "idle"],
     idle: { clip: "idle" },
-    walk: { clip: "walk" },
-    run: { clip: "run" },
+    walk: { clip: "walk", stride: 0.55 },
+    run: { clip: "run", stride: 1.11 },
     faces: [0, -1] as const,
     scale: 1.1,
     runAt: 2.0,
@@ -88,8 +93,8 @@ export const CHARACTERS = {
   rabbit: {
     clips: ["walk", "run", "idle"],
     idle: { clip: "idle" },
-    walk: { clip: "walk" },
-    run: { clip: "run" },
+    walk: { clip: "walk", stride: 0.34 },
+    run: { clip: "run", stride: 0.55 },
     faces: [0, -1] as const,
     scale: 0.9,
     runAt: 1.5,

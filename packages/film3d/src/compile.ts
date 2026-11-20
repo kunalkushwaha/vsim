@@ -56,6 +56,23 @@ interface ActorState {
   track: Track;
   yawKeys: Key[];
   yaw: number;
+  /** World units per rig unit (manifest normalization × the cast table's extra scale). */
+  scale: number;
+}
+
+/** A gait clip's authored ground speed in WORLD units/s, or undefined when it was never measured. */
+function strideOf(gait: { clip: string; stride?: number }, scale: number): number | undefined {
+  return gait.stride === undefined ? undefined : gait.stride * scale;
+}
+
+/**
+ * Playback rate that makes an in-place locomotion clip's feet move at the actor's travel speed
+ * (rate 1 = the speed the clip was authored for). Clamped so a slow stroll doesn't crawl and a
+ * sprint doesn't flicker; without a measured stride the clip plays at its natural rate.
+ */
+export function gaitRate(travelSpeed: number, stride: number | undefined): number {
+  if (!stride) return 1;
+  return Math.round(Math.min(2.5, Math.max(0.5, travelSpeed / stride)) * 1000) / 1000;
 }
 
 /** Compile a validated Film3DDoc into a render-ready SceneDocument. */
@@ -111,7 +128,7 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
     });
     // Aim node at head height — cameras look at (and follow) this, not the actor's feet.
     b.group(`${a.id}__aim`, { parent: a.id, position: [0, info.eye, 0] });
-    states.set(a.id, { character: a.character, track: new Track(a.x, a.z), yawKeys: [{ frame: 0, value: yaw0 }], yaw: yaw0 });
+    states.set(a.id, { character: a.character, track: new Track(a.x, a.z), yawKeys: [{ frame: 0, value: yaw0 }], yaw: yaw0, scale: s });
   }
 
   // Absolute-time action list, sorted so each actor's state advances chronologically.
@@ -138,10 +155,12 @@ export async function compileFilm3D(doc: Film3DDoc): Promise<SceneDocument> {
       const turnF = Math.max(1, Math.min(Math.round(0.4 * fps), Math.floor((endF - startF) / 3) || 1));
       st.yawKeys.push({ frame: startF, value: st.yaw }, { frame: startF + turnF, value: heading, easing: "easeInOut" });
       st.yaw = heading;
-      // Gait: explicit, or picked from travel speed; settle back to idle on arrival.
+      // Gait: explicit, or picked from travel speed — run past the character's threshold, or
+      // when the walk cycle would have to play more than 2× to keep up. Settle to idle on arrival.
       const speed = dist / action.dur;
-      const gait = action.gait ?? (speed > info.runAt * 0.7 ? "run" : "walk");
-      b.playClip(action.actor, info[gait].clip, { startFrame: startF, blendIn: 8, loop: true });
+      const walkStride = strideOf(info.walk, st.scale);
+      const gait = action.gait ?? (speed > info.runAt * 0.7 || (walkStride !== undefined && speed > 2 * walkStride) ? "run" : "walk");
+      b.playClip(action.actor, info[gait].clip, { startFrame: startF, blendIn: 8, loop: true, speed: gaitRate(speed, strideOf(info[gait], st.scale)) });
       b.playClip(action.actor, info.idle.clip, { startFrame: endF, blendIn: 10, loop: true, speed: "speed" in info.idle ? info.idle.speed : undefined });
     } else if (action.do === "face") {
       const pos = st.track.at(startF);

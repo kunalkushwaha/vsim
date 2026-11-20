@@ -3,7 +3,7 @@ import { listCharacters, loadCharacter } from "@vsim/assets";
 import { scene } from "@vsim/authoring";
 import { SceneRuntime } from "@vsim/core";
 import { parseFilm3D, CHARACTERS, CHARACTER_IDS } from "./schema.js";
-import { compileFilm3D } from "./compile.js";
+import { compileFilm3D, gaitRate } from "./compile.js";
 import { narrationScript, DEFAULT_ELEVENLABS_VOICE } from "./narration.js";
 import { pickReviewStills, parseReviewReply } from "./review.js";
 import { isFilm3D, film3dToScene } from "./load.js";
@@ -176,6 +176,29 @@ describe("compileFilm3D", () => {
     // 7.2 units in 4.5s ≈ 1.6 u/s — past a fox's run threshold, so auto-gait picks Run.
     expect(ids).toContain("fox/Run");
     expect(ids.filter((id) => id === "fox/Survey").length).toBeGreaterThanOrEqual(2); // idle base + settle + play action
+  });
+
+  it("plays gait clips at travelSpeed / stride so feet stop sliding (clamped 0.5–2.5×)", async () => {
+    const film = {
+      ...FILM,
+      actors: [{ id: "k", character: "knight", x: 0, z: 0 }],
+      beats: [
+        { id: "b1", start: 0, end: 4, actions: [{ do: "move", actor: "k", to: [2, 0], at: 0, dur: 4 }] }, // 0.5 u/s stroll
+        { id: "b2", start: 4, end: 6, actions: [{ do: "move", actor: "k", to: [10, 0], at: 0, dur: 2, gait: "walk" }] }, // 4 u/s, forced walk
+        { id: "b3", start: 6, end: 10, actions: [{ do: "move", actor: "k", to: [3.4, 0], at: 0, dur: 4 }] }, // 1.65 u/s: under runAt×0.7, but walk would need >2× → run
+      ],
+      camera: [{ at: 0, dur: 10, shot: "follow", target: "k" }],
+    };
+    const { doc, errors } = parseFilm3D(film);
+    expect(errors, errors?.join("\n")).toBeUndefined();
+    const sceneDoc = await compileFilm3D(doc!);
+    const mesh = sceneDoc.nodes.find((n) => n.id === "k__mesh")!;
+    const clips = (mesh as any).clips as { clipId: string; startFrame: number; speed: number }[];
+    const at = (frame: number) => clips.find((c) => c.startFrame === frame && c.clipId !== "k/Idle")!; // skip the idle base/settles
+    expect(at(0).clipId).toBe("k/Walking_A");
+    expect(at(0).speed).toBeCloseTo(0.5 / CHARACTERS.knight.walk.stride, 3); // feet at 0.5 u/s
+    expect(at(120)).toMatchObject({ clipId: "k/Walking_A", speed: 2.5 }); // 4 / 0.81 ≈ 4.9× → clamped
+    expect(at(180)).toMatchObject({ clipId: "k/Running_A", speed: gaitRate(1.65, CHARACTERS.knight.run.stride) }); // 0.41× → clamped 0.5
   });
 
   it("adds caption overlays with fade windows and a title card", async () => {

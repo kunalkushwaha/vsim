@@ -6,8 +6,8 @@ export const EXTRA_CHARACTERS = {
   wolf: {
     clips: ["walk", "run", "idle"],
     idle: { clip: "idle" },
-    walk: { clip: "walk" },
-    run: { clip: "run" },
+    walk: { clip: "walk", stride: 0.74 },
+    run: { clip: "run", stride: 1.03 },
     faces: [0, -1] as const,
     scale: 1,
     runAt: 3.8,
@@ -16,8 +16,8 @@ export const EXTRA_CHARACTERS = {
   barnowl: {
     clips: ["walk", "run", "idle"],
     idle: { clip: "idle" },
-    walk: { clip: "walk" },
-    run: { clip: "run" },
+    walk: { clip: "walk", stride: 0.35 },
+    run: { clip: "run", stride: 0.49 },
     faces: [0, -1] as const,
     scale: 0.8,
     runAt: 1.2,
@@ -26,8 +26,8 @@ export const EXTRA_CHARACTERS = {
   redsquirrel: {
     clips: ["walk", "run", "idle"],
     idle: { clip: "idle" },
-    walk: { clip: "walk" },
-    run: { clip: "run" },
+    walk: { clip: "walk", stride: 0.25 },
+    run: { clip: "run", stride: 0.38 },
     faces: [0, -1] as const,
     scale: 1,
     runAt: 3.5,
