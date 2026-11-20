@@ -23,7 +23,8 @@ export default (async () => {
       rotation: meta.rotation,
     })
     // walk forward along the stride axis (+z), stride-matched, filmed side-on with a static camera
-    .animate("guy", "position.z", [{ frame: 0, value: -2.5 }, { frame: 90, value: 2.5 }])
+    // (the suited walk's feet move at 1.42 u/s — scripts/blender/gait-report.py — so 4.26 units in 3 s)
+    .animate("guy", "position.z", [{ frame: 0, value: -2.13 }, { frame: 90, value: 2.13 }])
     .camera({ position: [5, 1.5, 0], lookAt: [0, 0.85, 0], fov: 40 })
     .build();
 })();
